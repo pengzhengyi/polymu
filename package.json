@@ -1,5 +1,5 @@
 {
-  "name": "readingassistant",
+  "name": "polymu",
   "version": "1.0.0",
   "description": "Browser extension to improve reading experience",
   "main": "index.js",
@@ -18,18 +18,20 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/pengzhengyi/ReadingAssistant.git"
+    "url": "git@github.com:pengzhengyi/polymu.git"
   },
   "keywords": [
-    "browser-extension",
-    "reading"
+    "scrolling",
+    "HTML",
+    "partial rendering",
+    "infinite scrolling"
   ],
   "author": "pengzhengyi",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/pengzhengyi/ReadingAssistant/issues"
+    "url": "https://github.com/pengzhengyi/polymu/issues"
   },
-  "homepage": "https://github.com/pengzhengyi/ReadingAssistant#readme",
+  "homepage": "https://github.com/pengzhengyi/polymu#readme",
   "devDependencies": {
     "@types/jest": "^26.0.10",
     "@typescript-eslint/eslint-plugin": "^3.9.1",
