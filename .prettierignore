@@ -1,0 +1,13 @@
+**/tests/fixtures/**/*
+**/tests/fixture-project/**/*
+**/dist
+**/coverage
+**/shared-fixtures
+**/.vscode
+**/.nyc_output
+**/.vs
+.github
+.all-contributorsrc
+CONTRIBUTORS.md
+# Ignore config files
+*.config.js
