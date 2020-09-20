@@ -291,7 +291,6 @@ export class DomFallthroughInstantiation<TDomElement extends HTMLElement = HTMLE
      *
      * The existence of this field can also indicates the completion of base class initialization.
      */
-
     Object.defineProperty(this, '_instantiation', {
       configurable: false,
       enumerable: false,
@@ -483,5 +482,20 @@ export class DomFallthroughInstantiation<TDomElement extends HTMLElement = HTMLE
         return Reflect.setPrototypeOf(target, prototype);
       },
     });
+  }
+
+  /**
+   * Ignore warning since instantiation implements the TDomElement interface through proxying -- type engine cannot reason on such relationship.
+   *
+   * This function only performs a type cast and can be used without concern for performance.
+   *
+   * @public
+   * @returns Cast current instantiation as type TDomElement
+   * @type {TDomElement} The type of the forwarding element.
+   */
+
+  public asDomElement__(): TDomElement {
+    // @ts-ignore: Class incorrectly implements interface
+    return this as TDomElement;
   }
 }

@@ -102,10 +102,10 @@ describe('DomFallthroughInstantiation', () => {
     expect((instantiation as any).textContent).toBe('Hello World!');
     expect((instantiation as any).children.length).toBe(0);
 
-    (instantiation as any).id = 'polymu';
+    instantiation.asDomElement__().id = 'polymu';
     expect(forwardingTarget.id).toBe('polymu');
     (instantiation as any).textContent = 'polymu';
-    expect((instantiation as any).textContent).toBe('polymu');
+    expect(instantiation.asDomElement__().textContent).toBe('polymu');
   });
 
   test('in', () => {
