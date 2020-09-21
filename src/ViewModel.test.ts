@@ -1,17 +1,6 @@
 import { ViewModel } from './ViewModel';
-import {
-  DomForwardingInstantiation as _DomForwardingInstantiation,
-  ForwardingPropertyDescriptor,
-} from './Instantiation';
+import { DomForwardingInstantiation, ForwardingPropertyDescriptor } from './Instantiation';
 import { MutationReporter } from './MutationReporter';
-
-class DomForwardingInstantiation extends _DomForwardingInstantiation {
-  public static public_defaultForwardingDescriptor__(
-    property: string
-  ): Partial<ForwardingPropertyDescriptor> {
-    return this.defaultForwardingDescriptor__(property);
-  }
-}
 
 describe('View Model', () => {
   let source: HTMLElement;
@@ -27,22 +16,9 @@ describe('View Model', () => {
       <td id="961365" tabindex="-1">Brown University</td>
       <td id="961368" tabindex="-1">Harvard University</td>
     `;
-    viewModel = new ViewModel(
-      {
-        children: {
-          get: DomForwardingInstantiation.public_defaultForwardingDescriptor__('children').get,
-          set: () => undefined,
-        },
-      },
-      source,
-      undefined,
-      undefined,
-      undefined,
-      [
-        (element) =>
-          new ViewModel({ id: undefined, tabindex: undefined, textContent: undefined }, element),
-      ]
-    );
+    viewModel = new ViewModel(source, undefined, undefined, undefined, [
+      (element) => new ViewModel(element),
+    ]);
     viewModel.patchWithDOM__(source);
   });
 
@@ -60,11 +36,12 @@ describe('View Model', () => {
     const table = document.createElement('table');
     table.appendChild(source);
     document.body.appendChild(table);
-    expect(ViewModel.getElementByIdentifier(identifiers[0])).toBe(source.children[0]);
+    expect(ViewModel.getElementByIdentifier__(identifiers[0])).toBe(source.children[0]);
   });
 
   test('Access Properties', () => {
-    expect(new Set(Object.keys(viewModel))).toEqual(new Set(['children']));
+    // no explicit key registered
+    expect(Object.keys(viewModel).length).toBe(0);
     expect((viewModel as any).children.length).toBe(6);
     expect(viewModel.children_.length).toBe(6);
     expect(viewModel.element_).toBe(source);
@@ -73,12 +50,11 @@ describe('View Model', () => {
     expect((viewModel.children_[4] as any).id).toBe('961365');
   });
 
-  test('create view model to accomodate DOM child', () => {
+  test('create view model to accommodate DOM child', () => {
     viewModel.removeChildByIndex__(0);
     viewModel.removeChild__(viewModel.children_[0]);
     expect(viewModel.children_.length).toBe(4);
     expect((viewModel as any).children.length).toBe(6);
-    // debugger;
     viewModel.patchWithDOM__(source.cloneNode(true) as HTMLElement);
     expect((viewModel as any).children.length).toBe(6);
     expect(viewModel.children_.length).toBe(6);
@@ -88,22 +64,9 @@ describe('View Model', () => {
   });
 
   test('observe childList mutation', (done) => {
-    const vm: ViewModel = new ViewModel(
-      {
-        children: {
-          get: DomForwardingInstantiation.public_defaultForwardingDescriptor__('children').get,
-          set: () => undefined,
-        },
-      },
-      source,
-      undefined,
-      undefined,
-      undefined,
-      [
-        (element) =>
-          new ViewModel({ id: undefined, tabindex: undefined, textContent: undefined }, element),
-      ]
-    );
+    const vm: ViewModel = new ViewModel(source, undefined, undefined, undefined, [
+      (element) => new ViewModel(element),
+    ]);
     vm.setMutationReporter__(
       function (
         mutations: Array<MutationRecord>,

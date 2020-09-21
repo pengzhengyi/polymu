@@ -1,4 +1,5 @@
-import { DomForwardingInstantiation, ForwardingPropertyDescriptor } from './Instantiation';
+import { Prop } from './Abstraction';
+import { DomFallthroughInstantiation, ForwardingPropertyDescriptor } from './Instantiation';
 import { MutationReporter, MutationReporterCallback } from './MutationReporter';
 import { v4 as uuid } from 'uuid';
 
@@ -6,13 +7,48 @@ import { v4 as uuid } from 'uuid';
  * A function to create a ViewModel from a HTMLElement.
  * @see {@link ViewModel#constructor}.
  * @example A builder to create ViewModel abstraction for a `<p>` element
- *    `(element) => new ViewModel({id: undefined, classList: undefined, textContent: undefined }, element)`
+ *    `(element) => new ViewModel(element)`
  */
 export type ViewModelBuilder = (
   element: HTMLElement,
   parent?: ViewModel,
   builders?: ViewModelBuilder | Array<ViewModelBuilder>
 ) => ViewModel;
+
+/**
+ * Different ways to patch current view model's element using another view model's element.
+ *
+ * @see {@link ViewModel#patchWithViewModel__}
+ */
+enum PatchModeForMatch {
+  /**
+   * reassign this view model's element to the other view model's element.
+   *
+   * NOTE:
+   *    + This mode is most time and space efficient.
+   *    + The other view model's element will have `identifier_` overwritten, additional setup is needed to preserve the `identifier_` of other view model's element
+   */
+
+  CreateAlias,
+  /**
+   * 1. use Node.CloneNode to create a clone of the other view model's element
+   * 2. reassign this view model's element to the created clone
+   *
+   * NOTE: make a clone could be potentially expensive when the node has a large number of descendants
+   */
+
+  CloneNode,
+  /**
+   * Iterate over all JS properties from the other view model's element (for example, the properties of a `<input>` element including value, readOnly...), assign same property value to current view model's element
+   *
+   * NOTE:
+   *
+   *  + reassigning properties is usually expensive as just HTMLElement (the base type for other HTML element types like HTMLInputElement, HTMLSpanElement...) already has a very large number of properties
+   *  + reassigning properties will copy over all properties, it could both overwrite existing properties or introduce new properties
+   */
+
+  ModifyProperties,
+}
 
 /**
  * ViewModel represents an Abstraction equivalent of HTMLElement in that:
@@ -27,12 +63,14 @@ export type ViewModelBuilder = (
  *
  * @augments DomForwardingInstantiation
  */
-export class ViewModel extends DomForwardingInstantiation {
+export class ViewModel<
+  TDomElement extends HTMLElement = HTMLElement
+> extends DomFallthroughInstantiation<TDomElement> {
   /** parent view model where current view model exists as a child */
   parent_: ViewModel;
 
   /** every view model has a unique identifier */
-  readonly identifier_: string;
+  readonly identifier_: string = uuid();
 
   /**
    * If view model has a forwarding target (DOM element), then the view model identifier will also exists in the element's dataset:
@@ -85,10 +123,55 @@ export class ViewModel extends DomForwardingInstantiation {
   private _mutationReporter: MutationReporter;
 
   /**
+   * Exposes `this._children`
+   * @public
+   * @return The child view models of current view model.
+   */
+  get children_(): Array<ViewModel> {
+    return this._children;
+  }
+
+  /**
+   * Registers an array of ViewModel as current view model's child view models.
+   *
+   * These steps will be performed:
+   *
+   *    + previously bound child view models will have their `parent_` nullified
+   *    + `this._children` will be replaced by the new array of ViewModel
+   *    + `this._identifierToChild` will be replaced by a new Map where entries are from identifiers to new view models
+   *    + every new child view model will have their `parent_` set to current view instance
+   *
+   * @public
+   * @param {Array<ViewModel>} children - An array of child view models.
+   */
+  set children_(children: Array<ViewModel>) {
+    if (this._children) {
+      this._children.forEach((child) => (child.parent_ = null));
+    }
+
+    Object.defineProperty(this, '_children', {
+      configurable: false,
+      enumerable: false,
+      value: children,
+      writable: true,
+    });
+
+    Object.defineProperty(this, '_identifierToChild', {
+      configurable: false,
+      enumerable: false,
+      value: new Map(),
+      writable: true,
+    });
+    children.forEach((child) => {
+      child.parent_ = this;
+      this._identifierToChild.set(child.identifier_, child);
+    });
+  }
+
+  /**
    * Creates a ViewModel instance.
    *
    * @public
-   * @param {Record<Prop, Partial<ForwardingPropertyDescriptor<ViewModel>>} propsToForward: An object containing mapping from properties to their descriptors. {@link Instantiation:ForwardingInstantiation#constructor}
    * @param {HTMLElement} forwardingTo - A DOM element to which access/modification operations are forwarded. {@link Instantiation:ForwardingInstantiation#constructor}
    * @param {MutationReporterCallback} [mutationReporterCallback] - A callback to be executed when desired mutation has been observed. If not specified, `this.onMutation__` will be invoked. {@link MutationReporter:MutationReporter#constructor}.
    * @param {ViewModel} [parent = null] - Parent view model of current view model. Null by default.
@@ -97,28 +180,27 @@ export class ViewModel extends DomForwardingInstantiation {
    * @constructs ViewModel
    */
   constructor(
-    propsToForward: Record<string, Partial<ForwardingPropertyDescriptor<ViewModel>>> = {},
     forwardingTo?: HTMLElement,
     callback?: MutationReporterCallback,
     parent: ViewModel = null,
     children: Array<ViewModel> = [],
     viewModelBuilders: ViewModelBuilder | Array<ViewModelBuilder> = []
   ) {
-    super(propsToForward, forwardingTo);
+    super(forwardingTo);
+    // redeclare identifier variable with same value to enforce proper access control
     Object.defineProperty(this, 'identifier_', {
       configurable: false,
       enumerable: false,
-      value: uuid(),
+      value: this.identifier_,
       writable: false,
     });
-    this.setForwardingTo__(forwardingTo);
     Object.defineProperty(this, 'parent_', {
       configurable: false,
       enumerable: false,
       value: parent,
       writable: true,
     });
-    this.setChildren__(children);
+    this.children_ = children;
     Object.defineProperty(this, '_viewModelBuilders', {
       configurable: false,
       enumerable: false,
@@ -147,7 +229,7 @@ export class ViewModel extends DomForwardingInstantiation {
    * @param {string} [selectors = ""] - A group of selectors to match the descendant elements of the `root` against.
    * @return {HTMLElement} The first element found which matches specified group of selectors and has the specified identifier value in dataset.
    */
-  static getElementByIdentifier(
+  static getElementByIdentifier__(
     identifier: string,
     root: Document | DocumentFragment | Element = document,
     selectors: string = ''
@@ -162,7 +244,7 @@ export class ViewModel extends DomForwardingInstantiation {
    * @override
    * @description In addition to changing the forwarding target, this method will also remove the identifier from previous forwarding target's dataset (if exists) and add the identifier to the new forwarding target's dataset.
    */
-  setForwardingTo__(forwardingTo: HTMLElement) {
+  setForwardingTo__(forwardingTo: TDomElement) {
     if (this.forwardingTo_) {
       delete this.forwardingTo_.dataset[ViewModel.identifierDatasetName_];
     }
@@ -170,59 +252,6 @@ export class ViewModel extends DomForwardingInstantiation {
     if (this.forwardingTo_) {
       this.forwardingTo_.dataset[ViewModel.identifierDatasetName_] = this.identifier_;
     }
-  }
-
-  /**
-   * Exposes `this._children`
-   * @public
-   * @return The child view models of current view model.
-   */
-  get children_(): Array<ViewModel> {
-    return this._children;
-  }
-
-  /**
-   * Equivalent of `this.setChildren__` as `this.children__`.
-   * @public
-   */
-  set children_(children: Array<ViewModel>) {
-    this.setChildren__(children);
-  }
-
-  /**
-   * Registers an array of ViewModel as current view model's child view models.
-   *
-   * These steps will be performed:
-   *
-   *    + previously bound child view models will have their `parent_` nullified
-   *    + `this._children` will be replaced by the new array of ViewModel
-   *    + `this._identifierToChild` will be replaced by a new Map where entries are from identifiers to new view models
-   *    + every new child view model will have their `parent_` set to current view instance
-   *
-   * @param {Array<ViewModel>} children - An array of child view models.
-   */
-  protected setChildren__(children: Array<ViewModel>) {
-    if (this._children) {
-      this._children.forEach((child) => (child.parent_ = null));
-    }
-
-    Object.defineProperty(this, '_children', {
-      configurable: false,
-      enumerable: false,
-      value: children,
-      writable: true,
-    });
-
-    Object.defineProperty(this, '_identifierToChild', {
-      configurable: false,
-      enumerable: false,
-      value: new Map(),
-      writable: true,
-    });
-    children.forEach((child) => {
-      child.parent_ = this;
-      this._identifierToChild.set(child.identifier_, child);
-    });
   }
 
   /**
@@ -321,79 +350,6 @@ export class ViewModel extends DomForwardingInstantiation {
   }
 
   /**
-   * Creates a MutationReporter with a callback and bins to current ViewModel instance.
-   *
-   * Calling this method after a MutationReporter has been bound to current instance will recreate the MutationReporter. Previous bound MutationReporter will be disconnected.
-   *
-   * @public
-   * @param {MutationReporterCallback} callback - The callback to be invoked when mutations are observed. It will be invoked with `this` bound to current view model.
-   */
-  setMutationReporter__(callback: MutationReporterCallback) {
-    if (this._mutationReporter) {
-      this._mutationReporter.disconnect();
-    }
-
-    Object.defineProperty(this, '_mutationReporter', {
-      configurable: false,
-      enumerable: false,
-      value: new MutationReporter(callback),
-      writable: true,
-    });
-  }
-
-  /**
-   * Default callback for observed mutations -- report each mutation as its corresponding event.
-   *
-   * @see {@link MutationReporter:MutationReporterCallback}
-   */
-  protected onMutation__(
-    mutations: Array<MutationRecord>,
-    observer: MutationObserver,
-    originalMutations: Array<MutationRecord>,
-    reporter: MutationReporter
-  ) {
-    reporter.report(mutations);
-    if (mutations.some((mutation) => mutation.type === 'childList')) {
-      // update child view models
-      this.patchWithDOM__(this.element_);
-    }
-  }
-
-  /**
-   * Let the bound MutationReporter observe target mutations according to provided options.
-   *
-   *    + See more about config options from {@link MutationReporter:MutationReporter.createMutationObserverInit}.
-   *    + See more about observe from {@link https://developer.mozilla.org/en-US/docs/Web/API/MutationObserver/observe}
-   */
-  observe__(
-    target: Node,
-    shouldObserveAttributes: boolean,
-    attributeFilter: Array<string>,
-    shouldObserveCharacterData: boolean,
-    shouldObserveChildList: boolean,
-    shouldObserveSubtree: boolean
-  ) {
-    const options = MutationReporter.createMutationObserverInit(
-      shouldObserveAttributes,
-      shouldObserveCharacterData,
-      shouldObserveChildList,
-      shouldObserveSubtree,
-      attributeFilter
-    );
-    this._mutationReporter.observe(target, options);
-  }
-
-  /** @see {@link MutationReporter:MutationReporter#unobserve} */
-  unobserve__(target: Node) {
-    this._mutationReporter.unobserve(target);
-  }
-
-  /** @see {@link MutationReporter:MutationReporter#reconnectToExecute} */
-  reconnectToExecute__(callback: () => void) {
-    this._mutationReporter.reconnectToExecute(callback);
-  }
-
-  /**
    * Iterate over a range of child view models, applies an operation, and returns an array containing the result.
    *
    * Equivalent of `this._children.slice(begin, end).map(operation)`.
@@ -447,9 +403,45 @@ export class ViewModel extends DomForwardingInstantiation {
   }
 
   /**
+   * Update current view model's elment using the other view model's element. This applies to the Match scenario described in `patchWithViewModel__`.
+   *
+   * @param {TDomElement} other - The HTML element of the other view model.
+   * @param {PatchModeForMatch} [mode=PatchModeForMatch.CreateAlias] - Determines how to update current view model's HTML element.
+   * @param {IterableIterator<Prop>} [properties] - An iterable of properties. This parameter is only used when `mode === PatchModeForMatch.ModifyProperties`. If not suplied, will update all properties exist in the other view model's HTML element.
+   */
+
+  private __patchSelf(
+    other: TDomElement,
+    mode = PatchModeForMatch.CreateAlias,
+    properties?: IterableIterator<Prop>
+  ) {
+    switch (mode) {
+      case PatchModeForMatch.CreateAlias:
+        this.setForwardingTo__(other);
+        break;
+      case PatchModeForMatch.CloneNode:
+        this.setForwardingTo__(other.cloneNode(true) as TDomElement);
+        break;
+      case PatchModeForMatch.ModifyProperties:
+        if (properties) {
+          for (const propName of properties) {
+            if ((this as any)[propName] !== (other as any)[propName]) {
+              (this as any)[propName] = (other as any)[propName];
+            }
+          }
+        } else {
+          for (const prop in other) {
+            this.asDomElement__()[prop] = other[prop];
+          }
+        }
+        break;
+    }
+  }
+
+  /**
    * Updates current view model by another view model using the in-place-patch algorithm.
    *
-   * From the following illustrations describing scenarios different `_children` length, one call tell there are three potential scenarios:
+   * From the following illustrations describing scenarios for different `_children` length, one can tell there are three potential scenarios:
    *
    *    + MATCH: there is a child view model and a matching child view model in `other`. In this case, `patchWithViewModel__` will recur on these two view models.
    *    + SURPLUS (append): there is a child view model in `other` that does not have a matching child view model in `this`. In this case, the child view model will be appended to `this._children`. If `noAttach` is false, the corresponding DOM element will also be appended to `this.element_`.
@@ -467,23 +459,25 @@ export class ViewModel extends DomForwardingInstantiation {
    *
    *
    * @param {ViewModel} other - An view model used to patch current view model.
+   * @param {PatchModeForMatch} [mode=PatchModeForMatch.CreateAlias] - Determines how to update current view model's HTML element.
    * @param {boolean} [noDetach = true] - Whether surplus DOM elements of `this._children` will be removed from DOM tree.
    * @param {boolean} [noAttach = true] - Whether surplus DOM elements of `other._children` will be appended
    */
-  patchWithViewModel__(other: ViewModel, noDetach: boolean = true, noAttach: boolean = true) {
+  patchWithViewModel__(
+    other: ViewModel,
+    mode = PatchModeForMatch.CreateAlias,
+    noDetach: boolean = true,
+    noAttach: boolean = true
+  ) {
     // patch self
-    for (const propName of this.propNames_) {
-      if ((this as any)[propName] !== (other as any)[propName]) {
-        (this as any)[propName] = (other as any)[propName];
-      }
-    }
+    this.__patchSelf(other.element_ as TDomElement, mode);
 
     // patch children
     const numChildren = other._children.length;
     let childIndex = 0;
     for (const child of this._children) {
       if (childIndex < numChildren) {
-        child.patchWithViewModel__(other._children[childIndex], noDetach, noAttach);
+        child.patchWithViewModel__(other._children[childIndex], mode, noDetach, noAttach);
       } else {
         // this view model surplus: remove
         this.removeChildByIndex__(childIndex);
@@ -516,19 +510,21 @@ export class ViewModel extends DomForwardingInstantiation {
    *      `this.patchWithDOM__(this.element_.cloneNode(true))`
    *
    * @param {HTMLElement} other - A HTML element used to patch current view model.
+   * @param {PatchModeForMatch} [mode=PatchModeForMatch.CreateAlias] - Determines how to update current view model's HTML element.
    * @param {boolean} [noDetach = true] - Whether surplus DOM elements of `this._children` will be removed from DOM tree.
    * @param {boolean} [noAttach = true] - Whether surplus DOM elements of `other.children` will be appended
    */
-  patchWithDOM__(other: HTMLElement, noDetach: boolean = true, noAttach: boolean = true) {
+  patchWithDOM__(
+    other: TDomElement,
+    mode = PatchModeForMatch.CreateAlias,
+    noDetach: boolean = true,
+    noAttach: boolean = true
+  ) {
     // patch self
-    for (const propName of this.propNames_) {
-      if ((this as any)[propName] !== (other as any)[propName]) {
-        (this as any)[propName] = (other as any)[propName];
-      }
-    }
+    this.__patchSelf(other, mode);
 
     // patch children
-    this.patchChildViewModelsWithDOMElements__(other.children, noDetach, noAttach);
+    this.patchChildViewModelsWithDOMElements__(other.children, mode, noDetach, noAttach);
   }
 
   /**
@@ -537,11 +533,13 @@ export class ViewModel extends DomForwardingInstantiation {
    *      @example `other` has two child nodes, current view model is an abstraction of `other` but only has a child view model for the second child node. When calling `this.patchWithDOM__(other)`, second child node will be live edited (because of property forwarding): its registered properties wll be set to those of first child node.
    *
    * @param {Array<HTMLElement>} elements - An array of DOM elements to patch curent child view models.
+   * @param {PatchModeForMatch} [mode=PatchModeForMatch.CreateAlias] - Determines how to update current view model's HTML element.
    * @param {boolean} [noDetach = true] - Whether surplus DOM elements of `this._children` will be removed from DOM tree.
    * @param {boolean} [noAttach = true] - Whether surplus DOM elements of `other.children` will be appended
    */
   patchChildViewModelsWithDOMElements__(
     elements: Array<HTMLElement> | HTMLCollection,
+    mode = PatchModeForMatch.CreateAlias,
     noDetach: boolean = true,
     noAttach: boolean = true
   ) {
@@ -550,7 +548,7 @@ export class ViewModel extends DomForwardingInstantiation {
     let childIndex = 0;
     for (const child of this._children) {
       if (childIndex < numChildren) {
-        child.patchWithDOM__(elements[childIndex] as HTMLElement, noDetach, noAttach);
+        child.patchWithDOM__(elements[childIndex] as HTMLElement, mode, noDetach, noAttach);
       } else {
         // this view model surplus: remove
         this.removeChildByIndex__(childIndex);
@@ -575,5 +573,78 @@ export class ViewModel extends DomForwardingInstantiation {
         this.element_.appendChild(viewModel.element_);
       }
     }
+  }
+
+  /**
+   * Creates a MutationReporter with a callback that responds to changes happening to current ViewModel instance.
+   *
+   * Calling this method after a MutationReporter has been bound to current instance will recreate the MutationReporter. Previous bound MutationReporter will be disconnected.
+   *
+   * @public
+   * @param {MutationReporterCallback} callback - The callback to be invoked when mutations are observed. It will be invoked with `this` bound to current view model.
+   */
+  setMutationReporter__(callback: MutationReporterCallback) {
+    if (this._mutationReporter) {
+      this._mutationReporter.disconnect();
+    }
+
+    Object.defineProperty(this, '_mutationReporter', {
+      configurable: false,
+      enumerable: false,
+      value: new MutationReporter(callback),
+      writable: true,
+    });
+  }
+
+  /**
+   * Default callback for observed mutations -- report each mutation as its corresponding event and update view model children on child list change.
+   *
+   * @see {@link MutationReporter:MutationReporterCallback}
+   */
+  protected onMutation__(
+    mutations: Array<MutationRecord>,
+    observer: MutationObserver,
+    originalMutations: Array<MutationRecord>,
+    reporter: MutationReporter
+  ) {
+    reporter.report(mutations);
+    if (mutations.some((mutation) => mutation.type === 'childList')) {
+      // update child view models
+      this.patchWithDOM__(this.element_);
+    }
+  }
+
+  /**
+   * Let the bound MutationReporter observe target mutations according to provided options.
+   *
+   *    + See more about config options from {@link MutationReporter:MutationReporter.createMutationObserverInit}.
+   *    + See more about observe from {@link https://developer.mozilla.org/en-US/docs/Web/API/MutationObserver/observe}
+   */
+  observe__(
+    target: Node,
+    shouldObserveAttributes: boolean,
+    attributeFilter: Array<string>,
+    shouldObserveCharacterData: boolean,
+    shouldObserveChildList: boolean,
+    shouldObserveSubtree: boolean
+  ) {
+    const options = MutationReporter.createMutationObserverInit(
+      shouldObserveAttributes,
+      shouldObserveCharacterData,
+      shouldObserveChildList,
+      shouldObserveSubtree,
+      attributeFilter
+    );
+    this._mutationReporter.observe(target, options);
+  }
+
+  /** @see {@link MutationReporter:MutationReporter#unobserve} */
+  unobserve__(target: Node) {
+    this._mutationReporter.unobserve(target);
+  }
+
+  /** @see {@link MutationReporter:MutationReporter#reconnectToExecute} */
+  reconnectToExecute__(callback: () => void) {
+    this._mutationReporter.reconnectToExecute(callback);
   }
 }

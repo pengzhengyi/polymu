@@ -440,7 +440,11 @@ export class DomFallthroughInstantiation<TDomElement extends HTMLElement = HTMLE
        */
 
       ownKeys(target: DomFallthroughInstantiation<TDomElement>): Array<Prop> {
-        return Reflect.ownKeys(target).concat(Reflect.ownKeys(target.element_));
+        const keys = new Set(Reflect.ownKeys(target));
+        for (const elementKey in Reflect.ownKeys(target.element_)) {
+          keys.add(elementKey);
+        }
+        return Array.from(keys);
       },
       /**
        * A trap for {@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/preventExtensions Object.preventExtensions()}.
