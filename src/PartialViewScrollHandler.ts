@@ -4,6 +4,7 @@
  * This module provides a scroll handler that updates rendering view based on scrolling position.
  */
 
+import { EventNotifier } from './EventNotification';
 import { PartialView } from './ViewFunction';
 import { ViewModel } from './ViewModel';
 import { bound } from './utils/math';
@@ -104,22 +105,6 @@ interface PartialViewScrollHandlerOptions<T> {
    *          X X X X X
    */
   scrollAxis?: Axis;
-  /**
-   * A callback executed before view is updated.
-   *
-   * @callback
-   * @param {Array<T>} view - The old view to be discarded.
-   * @param {PartialViewScrollHandler<T>} handler - Where the view update request is initiated.
-   */
-  beforeViewUpdate?: (view: Array<T>, handler: PartialViewScrollHandler<T>) => void;
-  /**
-   * A callback executed after view is updated.
-   *
-   * @callback
-   * @param {Array<T>} view - The new view to be discarded.
-   * @param {PartialViewScrollHandler<T>} handler - Where the view update request is initiated.
-   */
-  afterViewUpdate?: (view: Array<T>, handler: PartialViewScrollHandler<T>) => void;
   /** IntersectionObserverOptions for top filler */
   startFillerObserverOptions?: IntersectionObserverOptions;
   /** IntersectionObserverOptions for bottom filler */
@@ -130,7 +115,12 @@ interface PartialViewScrollHandlerOptions<T> {
   endSentinelObserverOptions?: IntersectionObserverOptions;
 }
 
-export class PartialViewScrollHandler<T> {
+export class PartialViewScrollHandler<T> extends EventNotifier {
+  /** denotes the event that will be emitted before view update, it will supply the target view */
+  static readonly beforeViewUpdateEventName = 'beforeViewUpdate';
+  /** denotes the event that will be emitted after view update, it will supply the target view */
+  static readonly afterViewUpdateEventName = 'afterViewUpdate';
+
   /** the scrollable container for target view */
   private scrollTarget: HTMLElement;
   /** Which axis to monitor for scrolling */
@@ -196,10 +186,6 @@ export class PartialViewScrollHandler<T> {
 
   /** @see {@link PartialViewScrollHandlerOptions#target} */
   private target: HTMLElement;
-  /** @see {@link PartialViewScrollHandlerOptions#beforeViewUpdate} */
-  beforeViewUpdate: (view: Array<T>, handler: PartialViewScrollHandler<T>) => void;
-  /** @see {@link PartialViewScrollHandlerOptions#afterViewUpdate} */
-  afterViewUpdate: (view: Array<T>, handler: PartialViewScrollHandler<T>) => void;
 
   /**
    * A filler element to
@@ -314,12 +300,11 @@ export class PartialViewScrollHandler<T> {
    * @constructs PartialViewScrollHandler
    */
   constructor(options: PartialViewScrollHandlerOptions<T>) {
+    super();
     this.initializeConvert(options.convert);
     this.partialView = options.partialView;
     this.target = options.target;
     this.scrollTarget = getScrollParent(this.target) as HTMLElement;
-    this.beforeViewUpdate = options.beforeViewUpdate;
-    this.afterViewUpdate = options.afterViewUpdate;
     this.initializeScrollEventListener();
     this.initializeFillers();
     this.initializeFillerObservers(
@@ -617,18 +602,14 @@ export class PartialViewScrollHandler<T> {
     this.deactivateObservers();
 
     // view generation will happen
-    if (this.beforeViewUpdate) {
-      this.beforeViewUpdate(this.partialView.targetView, this);
-    }
+    this.invoke(PartialViewScrollHandler.beforeViewUpdateEventName, this.partialView.targetView);
 
     const newView = viewFunction();
     const scrollPosition = this.scrollPosition;
     this.setFillerLengths();
     this.syncView(newView);
     this.scrollPosition = scrollPosition;
-    if (this.afterViewUpdate) {
-      this.afterViewUpdate(newView, this);
-    }
+    this.invoke(PartialViewScrollHandler.afterViewUpdateEventName, this.partialView.targetView);
 
     this.activateObservers();
   }
@@ -671,9 +652,7 @@ export class PartialViewScrollHandler<T> {
     }
 
     this.deactivateObservers();
-    if (this.beforeViewUpdate) {
-      this.beforeViewUpdate(this.partialView.targetView, this);
-    }
+    this.invoke(PartialViewScrollHandler.beforeViewUpdateEventName, this.partialView.targetView);
 
     const view = this.partialView.view(this.partialView.lastSourceView);
     const isShiftTowardsEnd = shiftAmount > 0;
@@ -710,9 +689,7 @@ export class PartialViewScrollHandler<T> {
       this.setFillerLengths();
     }
 
-    if (this.afterViewUpdate) {
-      this.afterViewUpdate(this.partialView.targetView, this);
-    }
+    this.invoke(PartialViewScrollHandler.afterViewUpdateEventName, this.partialView.targetView);
     this.activateObservers();
   }
 
