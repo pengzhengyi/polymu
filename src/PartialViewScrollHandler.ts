@@ -67,7 +67,7 @@ interface PartialViewScrollHandlerOptions<T> {
    *
    * If `elementLength` is not provided, it will be measured by appending an element and measures its `clientWidth` or `clientHeight` depending on scrollAxis.
    *
-   * @example If the partial rendering happens on the vertical axis, then `elementLength` denotes the element height
+   * @example If the partial rendering happens on the vertical axis, then `elementLength` denotes the element height.
    *
    * **ASSUMPTION**
    * Using one concrete value to designate the length assumes all elements have same length. If elements have different lengths, a possible compromise is to use an average length.
@@ -258,7 +258,7 @@ export class PartialViewScrollHandler<T> {
    * @returns {T} The view element of the start sentinel in the target window.
    */
   get startSentinel(): T {
-    return this.partialView.currentView[this.startSentinelIndex];
+    return this.partialView.targetView[this.startSentinelIndex];
   }
   /**
    * @returns {HTMLElement} A start sentinel is a DOM element in the target window that signals a landmark: a earlier view should be loaded.
@@ -282,7 +282,7 @@ export class PartialViewScrollHandler<T> {
    * @returns {T} The view element of the end sentinel in the target window.
    */
   get endSentinel(): T {
-    return this.partialView.currentView[this.endSentinelIndex];
+    return this.partialView.targetView[this.endSentinelIndex];
   }
   /**
    * @returns {HTMLElement} A end sentinel is a DOM element in the target window that signals a landmark: a later view should be loaded.
@@ -375,8 +375,8 @@ export class PartialViewScrollHandler<T> {
     } else {
       // measures element directly
       const propName = this.scrollAxis === Axis.Vertical ? 'clientHeight' : 'clientWidth';
-      if (this.partialView.currentView.length > 0) {
-        const renderedElement = this.convert(this.partialView.currentView[0]);
+      if (this.partialView.targetView.length > 0) {
+        const renderedElement = this.convert(this.partialView.targetView[0]);
         this.elementLength = renderedElement[propName];
       }
     }
@@ -396,10 +396,10 @@ export class PartialViewScrollHandler<T> {
     if (axis) {
       this.scrollAxis = axis;
     } else {
-      if (this.partialView.currentView.length >= 2) {
+      if (this.partialView.targetView.length >= 2) {
         // check element placement relationship
-        const firstElement = this.convert(this.partialView.currentView[0]);
-        const secondElement = this.convert(this.partialView.currentView[1]);
+        const firstElement = this.convert(this.partialView.targetView[0]);
+        const secondElement = this.convert(this.partialView.targetView[1]);
         const { x: firstX, y: firstY } = firstElement.getBoundingClientRect();
         const { x: secondX, y: secondY } = secondElement.getBoundingClientRect();
         if (firstX === secondX && firstY !== secondY) {
@@ -595,7 +595,7 @@ export class PartialViewScrollHandler<T> {
     endIndex: number = startIndex + this.partialView.maximumWindowSize - 1
   ) {
     if (this.partialView.setWindow(startIndex, endIndex)) {
-      this.setView(() => this.partialView.view(this.partialView.lastSource));
+      this.setView(() => this.partialView.view(this.partialView.lastSourceView));
     }
   }
 
@@ -618,7 +618,7 @@ export class PartialViewScrollHandler<T> {
 
     // view generation will happen
     if (this.beforeViewUpdate) {
-      this.beforeViewUpdate(this.partialView.currentView, this);
+      this.beforeViewUpdate(this.partialView.targetView, this);
     }
 
     const newView = viewFunction();
@@ -636,9 +636,9 @@ export class PartialViewScrollHandler<T> {
   /**
    * Syncing the DOM with a new view. In effect, the child nodes in `this.target` will be replaced with current view.
    *
-   * @param {Array<T>} [newView = this.partialView.currentView] - A new view to update the rendered view.
+   * @param {Array<T>} [newView = this.partialView.targetView] - A new view to update the rendered view.
    */
-  private syncView(newView: Array<T> = this.partialView.currentView) {
+  private syncView(newView: Array<T> = this.partialView.targetView) {
     const numViewElement: number = newView.length;
     const elements = this.target.children;
     let elementIndex = 0;
@@ -672,10 +672,10 @@ export class PartialViewScrollHandler<T> {
 
     this.deactivateObservers();
     if (this.beforeViewUpdate) {
-      this.beforeViewUpdate(this.partialView.currentView, this);
+      this.beforeViewUpdate(this.partialView.targetView, this);
     }
 
-    const view = this.partialView.view(this.partialView.lastSource);
+    const view = this.partialView.view(this.partialView.lastSourceView);
     const isShiftTowardsEnd = shiftAmount > 0;
     const numViewElement = view.length;
 
@@ -711,7 +711,7 @@ export class PartialViewScrollHandler<T> {
     }
 
     if (this.afterViewUpdate) {
-      this.afterViewUpdate(this.partialView.currentView, this);
+      this.afterViewUpdate(this.partialView.targetView, this);
     }
     this.activateObservers();
   }

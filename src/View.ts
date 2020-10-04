@@ -71,7 +71,6 @@ export class BasicView {
    * @param {number} upperBound - A new upper bound for window size.
    */
   protected set windowSizeUpperBound(upperBound: number) {
-    this.viewFunctionChain.modifyViewFunction(2);
     this.partialView.maximumWindowSize = upperBound;
   }
 
@@ -101,14 +100,13 @@ export class BasicView {
    */
   constructor(source: SourceType, target: HTMLElement) {
     this.sourceViewModel = new ViewModel(
-      undefined,
       target,
       (mutations, observer, originalMutations, reporter) =>
         this.onMutation(mutations, observer, originalMutations, reporter),
       undefined,
       undefined,
       // model only children of `target`
-      [(element) => new ViewModel(undefined, element)]
+      [(element: HTMLElement) => new ViewModel(element)]
     );
     this.parseSource(source);
     this.initializeViewFunction();
@@ -347,7 +345,7 @@ export class BasicView {
     // tries to maximize the window
     if (this.partialView.setWindow(this.partialView.partialViewStartIndex)) {
       // window changed
-      view = this.partialView.view(this.partialView.lastSource);
+      view = this.partialView.view(this.partialView.lastSourceView);
     }
     this.scrollHandler.setView(() => view);
   }
@@ -359,28 +357,15 @@ export class BasicView {
    *
    * Will update the DOM when the filter function changes the final view.
    *
+   * @public
    * @see {@link ViewFunction:FilteredView#addFilterFunction}
    * @param {any} key - An identifier.
-   * @param {FilterFunction<ViewModel>} filterFunction - A function to determine whether an element in the source view should be kept in the target view.
+   * @param {FilterFunction<ViewModel>} filterFunction - A function to determine whether an element in the source view should be kept in the target view. Since `ViewModel` extends `DomFallthroughInstantiation`, it can be seen as a HTMLElement. Or if you want to be explicit, you can also use {@link ViewModel:ViewModel#asDomElement__}
    */
-  protected addFilterFunction_(key: any, filterFunction: FilterFunction<ViewModel>) {
+  protected addFilterFunction(key: any, filterFunction: FilterFunction<ViewModel>) {
     if (this.filteredView.addFilterFunction(key, filterFunction)) {
-      this.viewFunctionChain.modifyViewFunctions();
       this.refreshView();
     }
-  }
-
-  /**
-   * Binds a filter function under a key.
-   *
-   * This filter function should determine whether an HTML element should go into the DOM target view.
-   *
-   * This function is a wrapper around {BasicView#addFilterFunction_} as it will simply operates on the extracted HTMLElement from ViewModel.
-   *
-   * @public
-   */
-  addFilterFunction(name: any, filterFunction: FilterFunction<HTMLElement>) {
-    this.addFilterFunction_(name, (viewModel) => filterFunction(viewModel.element_));
   }
 
   /**
@@ -393,7 +378,6 @@ export class BasicView {
    */
   deleteFilterFunction(key: any) {
     if (this.filteredView.deleteFilterFunction(key)) {
-      this.viewFunctionChain.modifyViewFunctions();
       this.refreshView();
     }
   }
@@ -408,7 +392,6 @@ export class BasicView {
    */
   clearFilterFunction() {
     if (this.filteredView.clearFilterFunction()) {
-      this.viewFunctionChain.modifyViewFunctions();
       this.refreshView();
     }
   }
@@ -420,31 +403,16 @@ export class BasicView {
    *
    * Will update the DOM when the added sorting function changes the final view.
    *
+   * @public
    * @see {@link ViewFunction:FilteredView#addSortingFunction}
    * @param {any} key - An identifier.
-   * @param {SortingFunction<T>} sortingFunction - A function to determine how elements from source view should be ordered in the target view.
+   * @param {SortingFunction<T>} sortingFunction - A function to determine how elements from source view should be ordered in the target view. Since `ViewModel` extends `DomFallthroughInstantiation`, it can be seen as a HTMLElement. Or if you want to be explicit, you can also use {@link ViewModel:ViewModel#asDomElement__}.
    * @param {number} priority - The priority of newly-bound sorting function. The higher the priority, the more important the sorting function. Defaults to the negative of the number of existing sorting function. In other words, default to add a least important sorting function.
    */
-  addSortingFunction_(key: any, sortingFunction: SortingFunction<ViewModel>, priority?: number) {
+  addSortingFunction(key: any, sortingFunction: SortingFunction<ViewModel>, priority?: number) {
     if (this.sortedView.addSortingFunction(key, sortingFunction, priority)) {
-      this.viewFunctionChain.modifyViewFunctions();
       this.refreshView();
     }
-  }
-
-  /**
-   * Binds a sorting function with given priority under a key. This sorting function should determine the ordering between two HTMLElements.
-   *
-   * This function is a wrapper around {BasicView#addSortingFunction_} as it will simply operates on the extracted HTMLElements from ViewModels.
-   *
-   * @public
-   */
-  addSortingFunction(key: any, sortingFunction: SortingFunction<HTMLElement>, priority?: number) {
-    this.addSortingFunction_(
-      key,
-      (vm1, vm2) => sortingFunction(vm1.element_, vm2.element_),
-      priority
-    );
   }
 
   /**
@@ -457,7 +425,6 @@ export class BasicView {
    */
   deleteSortingFunction(key: any) {
     if (this.sortedView.deleteSortingFunction(key)) {
-      this.viewFunctionChain.modifyViewFunctions();
       this.refreshView();
     }
   }
@@ -472,7 +439,6 @@ export class BasicView {
    */
   clearSortingFunction() {
     if (this.sortedView.clearSortingFunction()) {
-      this.viewFunctionChain.modifyViewFunctions();
       this.refreshView();
     }
   }
@@ -487,7 +453,6 @@ export class BasicView {
    */
   reorderSortingFunction(reordering: Map<any, number>) {
     if (this.sortedView.reorderSortingFunction(reordering)) {
-      this.viewFunctionChain.modifyViewFunctions();
       this.refreshView();
     }
   }

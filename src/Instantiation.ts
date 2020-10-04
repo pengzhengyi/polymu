@@ -381,7 +381,6 @@ export class DomFallthroughInstantiation<TDomElement extends HTMLElement = HTMLE
        *
        * @see {@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Proxy/Proxy/get}
        */
-
       get(target: DomFallthroughInstantiation<TDomElement>, prop: Prop, receiver: any) {
         if (prop in target) {
           // attempts to resolve `prop` on the instantiation

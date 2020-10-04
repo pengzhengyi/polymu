@@ -162,6 +162,7 @@ export class ViewModel<
       value: new Map(),
       writable: true,
     });
+
     children.forEach((child) => {
       child.parent_ = this;
       this._identifierToChild.set(child.identifier_, child);
@@ -208,12 +209,7 @@ export class ViewModel<
       writable: true,
     });
 
-    this.setMutationReporter__(
-      callback
-        ? callback
-        : (mutations, observer, originalMutations, reporter) =>
-            this.onMutation__(mutations, observer, originalMutations, reporter)
-    );
+    this.setMutationReporter__(callback ? callback : this.onMutation__.bind(this));
   }
 
   /**
@@ -407,7 +403,7 @@ export class ViewModel<
    *
    * @param {TDomElement} other - The HTML element of the other view model.
    * @param {PatchModeForMatch} [mode=PatchModeForMatch.CreateAlias] - Determines how to update current view model's HTML element.
-   * @param {IterableIterator<Prop>} [properties] - An iterable of properties. This parameter is only used when `mode === PatchModeForMatch.ModifyProperties`. If not suplied, will update all properties exist in the other view model's HTML element.
+   * @param {IterableIterator<Prop>} [properties] - An iterable of properties. This parameter is only used when `mode === PatchModeForMatch.ModifyProperties`. If not supplied, will update all properties exist in the other view model's HTML element.
    */
 
   private __patchSelf(

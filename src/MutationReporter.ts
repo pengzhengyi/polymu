@@ -4,8 +4,11 @@
  * This modules provides a MutationReporter class that encapsulates MutationObserver which is capable both observing DOM mutation and reporting mutation as custom events.
  */
 
-import { CharacterDataChangeEvent, ChildListChangeEvent, PropertyChangeEvent } from "./CustomEvents";
-
+import {
+  CharacterDataChangeEvent,
+  ChildListChangeEvent,
+  PropertyChangeEvent,
+} from './CustomEvents';
 
 /**
  * Callback type for MutationObserver. {@link https://developer.mozilla.org/en-US/docs/Web/API/MutationObserver/MutationObserver}
@@ -23,8 +26,12 @@ type MutationCallback = (mutations: Array<MutationRecord>, observer: MutationObs
  * @param {Array<MutationRecord>} originalMutations - The unmodified original array of MutationRecord objects.
  * @param {MutationReporter} reporter - The MutationReporter instance by which the mutations are observed. Provides a {@link MutationReporter#report} function to report mutation-related events.
  */
-export type MutationReporterCallback = (mutations: Array<MutationRecord>, observer: MutationObserver, originalMutations: Array<MutationRecord>, reporter: MutationReporter) => void;
-
+export type MutationReporterCallback = (
+  mutations: Array<MutationRecord>,
+  observer: MutationObserver,
+  originalMutations: Array<MutationRecord>,
+  reporter: MutationReporter
+) => void;
 
 /**
  * MutationObserver provides the ability to watch for changes being made to the DOM tree while a MutationReporter provides these additional abilities:
@@ -36,7 +43,9 @@ export type MutationReporterCallback = (mutations: Array<MutationRecord>, observ
  */
 export class MutationReporter {
   /** NodeList equivalent of empty array */
-  private static readonly emptyNodeList: NodeList = document.createElement("div").querySelectorAll("#empty-nodelist");
+  private static readonly emptyNodeList: NodeList = document
+    .createElement('div')
+    .querySelectorAll('#empty-nodelist');
   private readonly mutationObserver: MutationObserver;
 
   /** A mapping from observed targets to their observing configuration (MutationObserverInit) */
@@ -55,14 +64,16 @@ export class MutationReporter {
    *
    * Note:
    *
-   *    + If a callback isn't provided, the default action is to call the {@link MutationReporte#report} method.
+   *    + If a callback isn't provided, the default action is to call the {@link MutationReporter#report} method.
    *
    * @public
    * @param {MutationReporterCallback} mutationReporterCallback - A callback to be executed when desired mutation has been observed.
    * @constructs MutationReporter
    */
   constructor(mutationReporterCallback?: MutationReporterCallback) {
-    this.mutationObserver = new MutationObserver((mutations, observer) => this.onMutations(mutations, observer));
+    this.mutationObserver = new MutationObserver((mutations, observer) =>
+      this.onMutations(mutations, observer)
+    );
     this.mutationReporterCallback = mutationReporterCallback;
   }
 
@@ -77,7 +88,13 @@ export class MutationReporter {
    * @param {Array<string>} attributeFilter - An array of specific attribute names to be monitored. If this property isn't included, changes to all attributes cause mutation notifications.
    * @return {MutationObserverInit} A MutationObserverInit dictionary describes the configuration of a mutation observer.
    */
-  static createMutationObserverInit(shouldObserveAttributes: boolean, shouldObserveCharacterData: boolean, shouldObserveChildList: boolean, shouldObserveSubtree: boolean = false, attributeFilter: Array<string> = undefined): MutationObserverInit {
+  static createMutationObserverInit(
+    shouldObserveAttributes: boolean,
+    shouldObserveCharacterData: boolean,
+    shouldObserveChildList: boolean,
+    shouldObserveSubtree: boolean = false,
+    attributeFilter: Array<string> = undefined
+  ): MutationObserverInit {
     const mutationObserverInit: MutationObserverInit = {};
 
     if (shouldObserveAttributes) {
@@ -156,11 +173,11 @@ export class MutationReporter {
       nextSibling = nextSibling.nextSibling;
     }
 
-    const oldValue: string = nodeTextContents.join("");
+    const oldValue: string = nodeTextContents.join('');
 
     /** {@link https://www.quirksmode.org/blog/archives/2017/11/mutation_observ.html} the childList change actually reflect a characterData change */
     return {
-      type: "characterData",
+      type: 'characterData',
       target: mutationRecord.target,
       addedNodes: this.emptyNodeList,
       removedNodes: this.emptyNodeList,
@@ -168,7 +185,7 @@ export class MutationReporter {
       nextSibling: null,
       attributeName: null,
       attributeNamespace: null,
-      oldValue
+      oldValue,
     };
   }
 
@@ -206,11 +223,11 @@ export class MutationReporter {
    */
   private static correctMutationRecord(mutationRecord: MutationRecord): Array<MutationRecord> {
     switch (mutationRecord.type) {
-      case "childList":
+      case 'childList':
         if (this.hasTextContentMutation(mutationRecord)) {
           return [MutationReporter.childListToCharacterData(mutationRecord), mutationRecord];
         }
-        // fallthrough
+      // fallthrough
       default:
         return [mutationRecord];
     }
@@ -314,7 +331,7 @@ export class MutationReporter {
    *
    * Note:
    *
-   *    + If a mutation happens in the very short interval when the observer is restarteds, it might be dropped.
+   *    + If a mutation happens in the very short interval when the observer is restarts, it might be dropped.
    *
    * @public
    * @param {() => void} callback - A callback to be executed after the observer has disconnected and before the observer is reconnected.
@@ -344,27 +361,27 @@ export class MutationReporter {
       let event: Event;
       const target: Node = mutation.target;
       switch (mutation.type) {
-        case "attributes":
+        case 'attributes':
           event = new PropertyChangeEvent({
             target,
             attributeName: mutation.attributeName,
-           oldAttributeValue: mutation.oldValue
+            oldAttributeValue: mutation.oldValue,
           });
           break;
-        case "characterData":
+        case 'characterData':
           event = new CharacterDataChangeEvent({
             target,
             oldValue: mutation.oldValue,
-            newValue: mutation.target.textContent
+            newValue: mutation.target.textContent,
           });
           break;
-        case "childList":
+        case 'childList':
           event = new ChildListChangeEvent({
             target,
             addedNodes: mutation.addedNodes,
             removedNodes: mutation.removedNodes,
             previousSibling: mutation.previousSibling,
-            nextSibling: mutation.nextSibling
+            nextSibling: mutation.nextSibling,
           });
           break;
       }

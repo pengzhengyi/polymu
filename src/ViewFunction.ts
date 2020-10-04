@@ -1,37 +1,133 @@
 /**
  * @module
  *
- * This module provides functions that transform a source view into a target view, where a view is simply an array of elements.
+ * This module provides functions that transform a source view into a target view, where a view is simply an array of view elements (for example, a `ViewModel`).
  *
  * These transformations have following properties:
  *
- *    + non-destructive: since the source view for a view function might be used elsewhere, the view function provides the guarantee of not modifying the source view.
- *    + efficient: view generation is avoided as much as possible, especially when same view is provided.
- *    + chainable: see {@link ViewFunctionChain}. The target view of a view function can be passed as source view for another view function. This chaining is still efficient since view generation is avoided when possible at every view function and at the aggregate view function. Therefore, if a view function in the chain changed while the initial source view does not change, the target views before that changed view function is reused while every view function after it will regenerate its view.
+ *    + non-destructive: since the source view for a view function might be used elsewhere, the view function guarantees not to modify the source view.
+ *    + efficient: view generation is avoided whenever possible, especially when same source view is provided.
+ *    + chainable: see {@link ViewFunctionChain}. The target view of a view function can be passed as source view for another view function. This chaining is still efficient since view generation is avoided when possible at every view function and therefore also for the aggregate view function. This efficiency is greedy in the sense that if a view function in the chain changes while the first source view does not change, the target views before that changed view function are reused while every view function after it will regenerate target view.
  */
 
+import { NotSupported } from './utils/errors';
+import { Prop } from './Abstraction';
+import { EventNotifier } from './EventNotification';
 import { TaskQueue } from './TaskQueue';
 import { bound } from './utils/math';
 
 /**
- * ViewFunction represents an unit in transforming a source view to a target view.
+ * ViewFunction represents an unit that transforms a source view to a target view.
  *
  * Some `ViewFunction` implementations in this modules includes:
  *
  *    + `FilteredView` which selects elements meeting certain conditions
+ *    + `PartialView` which renders contiguous elements in a "window"
  *    + `SortedView` which reorders elements according to some criterion
  *
- * @type T: Element type, a view is represented as an array of elements.
+ * @type T: Type for view element, a view is represented as an array of view elements.
  */
 export interface ViewFunction<T> {
   /**
    * The view transformer function which will consume a `source` view and produces a target view of same type.
    *
-   * @param {Array<T>} source - An array of elements of certain type. Represents the source view. The source view will not be modified.
+   * @param {Array<T>} sourceView - An array of elements of certain type. Represents the source view. The source view will not be modified.
    * @param {boolean} useCache - Whether previous target view (cache) can be reused giving same source view and same transformation.
    * @return {Array<T>} The transformed view as an array of elements of same type.
    */
-  view(source: Array<T>, useCache?: boolean): Array<T>;
+  view(sourceView: Array<T>, useCache?: boolean): Array<T>;
+}
+
+/**
+ * The basic prototype for creating an efficient implementation of ViewFunction.
+ *
+ * This prototype provides two core properties:
+ *
+ *    + `targetView`: contains the output view. The `view` function will first call `regenerateView` to recreate the `targetView` if necessary and then return the modified `targetView` as output.
+ *    + `lastSourceView`: contains a previous snapshot of `sourceView` that was passed as argument in last invocation of `view` function. This property could be combined with `shouldRegenerateView` to create a way to determine whether the target view should be regenerated in `regenerateView`.
+ *
+ * In addition, `AbstractViewFunction` provides two task queues to add tasks that should be executed before/after updating target view one-off/every-time.
+ *
+ * To extend `AbstractViewFunction`, derived classes should override `regenerateView` to create target view efficiently.
+ */
+
+abstract class AbstractViewFunction<T> extends EventNotifier implements ViewFunction<T> {
+  /** a queue containing tasks executed before view update */
+  beforeViewUpdateTaskQueue: TaskQueue = new TaskQueue();
+  /** a queue containing tasks executed after view update */
+  afterViewUpdateTaskQueue: TaskQueue = new TaskQueue();
+
+  /**
+   * When `shouldRegenerateView` is set to `false` from `true`, this implies target view needs to be regenerated. In this case, an event will be raised signaling to any potential subscribers that a view regeneration is immediate.
+   *
+   * For example, consider a `SortedView` that reorders a collection of item and a renderer which returns the top N items. When a new sorting function is added to the `SortedView`, in other words, the `SortedView` needs to generate a different list of recommendation, the renderer will be notified through the event and it can request an actual generation of target view through `SortedView`'s `view` function. After the new target view is produced, the renderer can then returns a different set of top N items.
+   */
+
+  static shouldRegenerateViewEventName: string = 'willRegenerateView';
+  /**
+   * Whether target view should be regenerated even if source view is the same as `lastSourceView`
+   *
+   * This property is not in effect, but derived classes could make use of this property to devise a way to determine whether a regeneration of target view is necessary.
+   *
+   * `_shouldRegenerateView` is true initially since target view must be `regenerated` as there is no meaningful reference to prior target view for first time.
+   */
+  protected _shouldRegenerateView: boolean = true;
+
+  protected get shouldRegenerateView(): boolean {
+    return this._shouldRegenerateView;
+  }
+  protected set shouldRegenerateView(newValue: boolean) {
+    if (newValue && !this._shouldRegenerateView) {
+      // `_shouldRegenerateView` is set to `true` from `false`
+      this.invoke(AbstractViewFunction.shouldRegenerateViewEventName);
+    }
+    this._shouldRegenerateView = newValue;
+  }
+
+  /** previous source view, could be used to determine whether source view is the same */
+  lastSourceView: Array<T>;
+
+  /** holds target view */
+  protected _targetView: Array<T>;
+
+  get targetView(): Array<T> {
+    return this._targetView;
+  }
+  set targetView(view: Array<T>) {
+    this.beforeViewUpdateTaskQueue.work(this);
+    this._targetView = view;
+    this.afterViewUpdateTaskQueue.work(this);
+  }
+
+  /**
+   * @public
+   * @override
+   * @description View is lazily generated. In other words, last target view is cached and reused if possible.
+   */
+  view(sourceView: Array<T>, useCache: boolean = true): Array<T> {
+    this.regenerateView(sourceView, useCache);
+    return this.targetView;
+  }
+
+  /**
+   * Generates the target view.
+   *
+   * This function should be overriden in derived classes to provide actual implementation of target view generation.
+   *
+   * Usually, consider to regenerate target view if any of the following conditions are true:
+   *
+   *    + `source` view changed
+   *    + target view should be regenerated -- indicated by the `shouldRegenerateView` boolean property.
+   *
+   * Consider to reuse the target view from last time if both conditions are false -- same target view will be returned.
+   *
+   * @param {Array<T>} sourceView - An array of elements of certain type representing the source view.
+   * @param {boolean} useCache - Whether previous target view (cache) can be reused giving same source view and same transformation.
+   */
+  protected regenerateView(sourceView: Array<T>, useCache: boolean) {
+    this.shouldRegenerateView = false;
+    this.lastSourceView = sourceView;
+  }
 }
 
 /**
@@ -45,28 +141,9 @@ export type FilterFunction<T> = (element: T) => boolean;
 /**
  * Selects elements meeting certain condition(s).
  */
-export class FilteredView<T> implements ViewFunction<T> {
-  /** should target view be regenerated if source view is the same */
-  private shouldRegenerateView: boolean = true;
-  /** should target view be regenerated based off the last target view `this.currentView` (making refinement to current view) if target view needs to be regenerated */
+export class FilteredView<T> extends AbstractViewFunction<T> {
+  /** when target view needs to be regenerated, whether it can be regenerated by making refinement (further filtering) to the last target view which is referenced by `this.currentView` */
   private shouldRefineView: boolean = true;
-  /** previous source view, used to determine whether source view is the same */
-  lastSource: Array<T> = null;
-  /** holds target view */
-  private _currentView: Array<T>;
-  get currentView(): Array<T> {
-    return this._currentView;
-  }
-  set currentView(view: Array<T>) {
-    this.beforeViewUpdateTaskQueue.work();
-    this._currentView = view;
-    this.afterViewUpdateTaskQueue.work();
-  }
-
-  /** tasks executed before view update */
-  beforeViewUpdateTaskQueue: TaskQueue = new TaskQueue();
-  /** tasks executed after view update */
-  afterViewUpdateTaskQueue: TaskQueue = new TaskQueue();
 
   /** A mapping from identifier to filter function */
   private filterFunctions: Map<any, FilterFunction<T>> = new Map();
@@ -83,50 +160,40 @@ export class FilteredView<T> implements ViewFunction<T> {
   }
 
   /**
-   * @public
-   * @override
-   * @description View is lazily generated. In other words, last target view is cached and reused if possible.
-   */
-  view(source: Array<T>, useCache: boolean = true): Array<T> {
-    this.regenerateView(source, useCache);
-    return this.currentView;
-  }
-
-  /**
    * Regenerates the target view if any of the following conditions are true:
    *
-   *    + `source` view changed
-   *    + target view should be regenerated -- the filter functions changed
+   *   + `source` view changed
+   *   + target view should be regenerated -- the filter functions changed
    *
    * If both conditions are false, nothing will be done -- same target view will be returned.
    *
    * If `source` view does not change and only new filter functions have been added, target view will be generated from last target view. In other words, previous target view will be refined to reduce computation.
-   *
-   * @param {Array<T>} source - An array of elements of certain type representing the source view.
-   * @param {boolean} useCache - Whether previous target view (cache) can be reused giving same source view and same transformation.
+   * @override
    */
-  private regenerateView(source: Array<T>, useCache: boolean) {
-    if (useCache && source === this.lastSource) {
+  protected regenerateView(sourceView: Array<T>, useCache: boolean) {
+    if (useCache && sourceView === this.lastSourceView) {
       if (this.shouldRegenerateView) {
         if (this.shouldRefineView) {
-          source = this.currentView;
+          // make refinement to last target view
+          sourceView = this.targetView;
         }
       } else {
+        // `shouldRegenerateView` is false, no need to modify target view
         return;
       }
     }
 
     const filter = this.filter;
     if (filter) {
-      this.currentView = source.filter(filter);
+      this.targetView = sourceView.filter(filter);
     } else {
       // no filter is applied
-      this.currentView = source;
+      this.targetView = sourceView;
     }
 
-    this.shouldRegenerateView = false;
+    // since `shouldRefineView` is defined specially for `FilteredView`, it needs to be reset here
     this.shouldRefineView = true;
-    this.lastSource = source;
+    super.regenerateView(sourceView, useCache);
   }
 
   /**
@@ -193,28 +260,7 @@ export class FilteredView<T> implements ViewFunction<T> {
 /**
  * Selects a window from a view.
  */
-export class PartialView<T> implements ViewFunction<T> {
-  /** should target view be regenerated if source view is the same */
-  private shouldRegenerateView: boolean = true;
-
-  /** previous source view, used to determine whether source view is the same */
-  lastSource: Array<T>;
-  /** holds target view */
-  private _currentView: Array<T>;
-  get currentView(): Array<T> {
-    return this._currentView;
-  }
-  set currentView(view: Array<T>) {
-    this.beforeViewUpdateTaskQueue.work();
-    this._currentView = view;
-    this.afterViewUpdateTaskQueue.work();
-  }
-
-  /** tasks executed before view update */
-  beforeViewUpdateTaskQueue: TaskQueue = new TaskQueue();
-  /** tasks executed after view update */
-  afterViewUpdateTaskQueue: TaskQueue = new TaskQueue();
-
+export class PartialView<T> extends AbstractViewFunction<T> {
   /** start index of the window, inclusive */
   partialViewStartIndex: number;
   /** end index of the window, inclusive */
@@ -225,7 +271,7 @@ export class PartialView<T> implements ViewFunction<T> {
 
   /** number of elements in source view. */
   get numElement(): number {
-    return this.lastSource.length;
+    return this.lastSourceView.length;
   }
 
   /** maximum window size -- maximum number of elements in the window */
@@ -257,14 +303,14 @@ export class PartialView<T> implements ViewFunction<T> {
     return this.partialViewStartIndex;
   }
 
-  /** whether the window has reached the left boundary -- it cannot be shifted leftward without shrinking the window length */
-  get reachedStart(): boolean {
-    return this.numElementNotRenderedBefore === 0;
-  }
-
   /** number of elements in source view not rendered because they are "after" the window */
   get numElementNotRenderedAfter(): number {
     return this.numElement - this.numElementNotRenderedBefore - this.windowSize;
+  }
+
+  /** whether the window has reached the left boundary -- it cannot be shifted leftward without shrinking the window length */
+  get reachedStart(): boolean {
+    return this.numElementNotRenderedBefore === 0;
   }
 
   /** whether the window has reached the right boundary -- it cannot be shifted rightward without shrinking the window length */
@@ -276,53 +322,42 @@ export class PartialView<T> implements ViewFunction<T> {
    * Creates a PartialView instance.
    *
    * @public
-   * @param {Array<T>} [source = []] - initial source view.
+   * @param {Array<T>} [sourceView = []] - initial source view.
    * @param {number} [windowStartIndex = -1] - start index of the window.
    * @param {number} [windowEndIndex = -1] - end index of the window.
    * @param {number} [windowSizeUpperBound = Number.POSITIVE_INFINITY] - Maximum window size.
    * @constructs PartialView<T>
    */
   constructor(
-    source: Array<T> = [],
+    sourceView: Array<T> = [],
     windowStartIndex: number = -1,
     windowEndIndex: number = -1,
     windowSizeUpperBound: number = Number.POSITIVE_INFINITY
   ) {
+    super();
     this.windowSizeUpperBound = windowSizeUpperBound;
-    this.lastSource = source;
+    this.lastSourceView = sourceView;
     this.setWindow(windowStartIndex, windowEndIndex);
-    this.regenerateView(source, false);
+    this.regenerateView(sourceView, false);
   }
 
   /**
-   * @public
    * @override
-   * @description View is lazily generated. In other words, last target view is cached and reused if possible.
-   */
-  view(source: Array<T>, useCache: boolean = true): Array<T> {
-    this.regenerateView(source, useCache);
-    return this.currentView;
-  }
-
-  /**
    * Regenerates the target view if any of the following conditions are true:
    *
    *    + `source` view changed
    *    + target view should be regenerated -- window changed
    *
    * If both conditions are false, nothing will be done -- same target view will be returned.
-   *
-   * @param {Array<T>} source - An array of elements of certain type representing the source view.
-   * @param {boolean} useCache - Whether previous target view (cache) can be reused giving same source view and same transformation.
    */
-  private regenerateView(source: Array<T>, useCache: boolean) {
-    if (useCache && source === this.lastSource && !this.shouldRegenerateView) {
+  protected regenerateView(sourceView: Array<T>, useCache: boolean) {
+    if (useCache && sourceView === this.lastSourceView && !this.shouldRegenerateView) {
       return;
     }
 
     // if the number of elements in source decreased, trying to shift the window
     // so that same (close) number of elements are rendered
-    const numElements = source.length;
+    const numElements = sourceView.length;
     const maximumIndex = numElements - 1;
 
     const previousEndIndex = this.partialViewEndIndex;
@@ -330,10 +365,9 @@ export class PartialView<T> implements ViewFunction<T> {
     const adjustment = previousEndIndex - this.partialViewEndIndex;
 
     this.partialViewStartIndex = bound(this.partialViewStartIndex - adjustment, 0, maximumIndex);
-    this.currentView = source.slice(this.partialViewStartIndex, this.partialViewEndIndex + 1);
+    this.targetView = sourceView.slice(this.partialViewStartIndex, this.partialViewEndIndex + 1);
 
-    this.lastSource = source;
-    this.shouldRegenerateView = false;
+    super.regenerateView(sourceView, useCache);
   }
 
   /**
@@ -359,6 +393,7 @@ export class PartialView<T> implements ViewFunction<T> {
     const newEndIndex = bound(endIndex, newStartIndex, this.numElement - 1);
 
     if (newStartIndex === this.partialViewStartIndex && newEndIndex === this.partialViewEndIndex) {
+      // new window is identical to old window, no change
       return false;
     }
 
@@ -445,28 +480,7 @@ export interface SortingFunctionWithPriority<T> {
 /**
  * Reorders elements according to certain comparison method(s).
  */
-export class SortedView<T> implements ViewFunction<T> {
-  /** should target view be regenerated if source view is the same */
-  private shouldRegenerateView: boolean = true;
-  /** previous source view, used to determine whether source view is the same */
-  lastSource: Array<T>;
-  /** holds target view */
-  /** holds target view */
-  private _currentView: Array<T>;
-  get currentView(): Array<T> {
-    return this._currentView;
-  }
-  set currentView(view: Array<T>) {
-    this.beforeViewUpdateTaskQueue.work();
-    this._currentView = view;
-    this.afterViewUpdateTaskQueue.work();
-  }
-
-  /** tasks executed before view update */
-  beforeViewUpdateTaskQueue: TaskQueue = new TaskQueue();
-  /** tasks executed after view update */
-  afterViewUpdateTaskQueue: TaskQueue = new TaskQueue();
-
+export class SortedView<T> extends AbstractViewFunction<T> {
   /** a mapping from identifier to a sorting function and its priority */
   sortingFunctions: Map<any, SortingFunctionWithPriority<T>> = new Map();
 
@@ -503,26 +517,14 @@ export class SortedView<T> implements ViewFunction<T> {
   }
 
   /**
-   * @public
    * @override
-   * @description View is lazily generated. In other words, last target view is cached and reused if possible.
-   */
-  view(source?: Array<T>, useCache: boolean = true): Array<T> {
-    this.regenerateView(source, useCache);
-    return this.currentView;
-  }
-
-  /**
    * Regenerates the target view if any of the following conditions are true:
    *
    *    + `source` view changed
    *    + target view should be regenerated -- the sorting function changed
-   *
-   * @param {Array<T>} source - An array of elements of certain type representing the source view.
-   * @param {boolean} useCache - Whether previous target view (cache) can be reused giving same source view and same transformation.
    */
-  private regenerateView(source: Array<T>, useCache: boolean) {
-    if (useCache && source === this.lastSource && !this.shouldRegenerateView) {
+  protected regenerateView(sourceView: Array<T>, useCache: boolean) {
+    if (useCache && sourceView === this.lastSourceView && !this.shouldRegenerateView) {
       // source has not change and sorting functions have not changed => we can reuse current view
       return;
     }
@@ -530,15 +532,14 @@ export class SortedView<T> implements ViewFunction<T> {
     const sorter = this.sorter;
 
     if (sorter) {
-      const indices: Array<number> = Array.from(source.keys());
-      indices.sort((index1, index2) => sorter(source[index1], source[index2]));
-      this.currentView = indices.map((index) => source[index]);
+      const indices: Array<number> = Array.from(sourceView.keys());
+      indices.sort((index1, index2) => sorter(sourceView[index1], sourceView[index2]));
+      this.targetView = indices.map((index) => sourceView[index]);
     } else {
-      this.currentView = source;
+      this.targetView = sourceView;
     }
 
-    this.lastSource = source;
-    this.shouldRegenerateView = false;
+    super.regenerateView(sourceView, useCache);
   }
 
   /**
@@ -636,97 +637,199 @@ export class SortedView<T> implements ViewFunction<T> {
 /**
  * Combines several view functions into an aggregate view function.
  *
- * When target view needs to be generated from a source view, the source view will be provided to first view function, whose target view will be provided as source view to the second view function until the last view function's target view be returned as the final target view.
+ * When target view needs to be generated from a source view, the source view will be provided to first view function, whose target view will be provided as source view to the second view function, and so on, where the last view function's target view be returned as the final target view.
  */
-export class ViewFunctionChain<T> implements ViewFunction<T> {
+export class ViewFunctionChain<T> extends AbstractViewFunction<T> {
   /** an array of view functions that consist the chain */
-  private viewFunctions: Array<ViewFunction<T>>;
-  /** should target view be regenerated if source view is the same */
-  private shouldRegenerateView: boolean = true;
-  /** previous source view, used to determine whether source view is the same */
-  lastSource: Array<T>;
-  /** holds target view */
-  private _currentView: Array<T>;
-  get currentView(): Array<T> {
-    return this._currentView;
-  }
-  set currentView(view: Array<T>) {
-    this.beforeViewUpdateTaskQueue.work();
-    this._currentView = view;
-    this.afterViewUpdateTaskQueue.work();
-  }
-
-  /** tasks executed before view update */
-  beforeViewUpdateTaskQueue: TaskQueue = new TaskQueue();
-  /** tasks executed after view update */
-  afterViewUpdateTaskQueue: TaskQueue = new TaskQueue();
-
-  constructor(viewFunctions: Array<ViewFunction<T>> = []) {
-    this.viewFunctions = viewFunctions;
-  }
+  private _viewFunctions: Array<AbstractViewFunction<T>>;
+  private _viewFunctionsProxy: Array<AbstractViewFunction<T>>;
 
   /**
-   * @public
-   * @override
-   * @description View is lazily generated. In other words, last target view is cached and reused if possible.
+   * Obtains a reference to the `_viewFunctions` defining this chain which could be used to add new view function or manipulate existing view function. Since `_viewFunctions` will potentially be changed, this function also conservatively notifies the chain that target view regeneration is necessary for next time (by setting `this.shouldRegenerateView` to `true`.
+   * @returns {Array<AbstractViewFunction<T>>} An array of view functions where each view function's index determines its order in transforming the source view.
    */
-  view(source: Array<T>, useCache: boolean = true): Array<T> {
-    this.regenerateView(source, useCache);
-    return this.currentView;
+
+  get viewFunctions(): Array<AbstractViewFunction<T>> {
+    this.shouldRegenerateView = true;
+    return this._viewFunctionsProxy;
   }
 
   /**
+   * @constructs {ViewFunctionChain<T>} A pipeline (chain) of view functions.
+   * @param {Array<AbstractViewFunction<T>>} [viewFunctions = []] - An array of view function that transforms source view elements of specified type to target view elements of same type.
+   * @param {boolean} [asAggregateViewFunction = true] - Whether this chain should be outputted as a proxy that provides access to properties defined in registered view functions.
+   */
+
+  constructor(
+    viewFunctions: Array<AbstractViewFunction<T>> = [],
+    asAggregateViewFunction: boolean = true
+  ) {
+    super();
+
+    const chain = this;
+    this._viewFunctions = viewFunctions;
+    for (const viewFunction of viewFunctions) {
+      // subscribe chain to target view regeneration of newly added view function
+      viewFunction.subscribe(chain, AbstractViewFunction.shouldRegenerateViewEventName, () =>
+        chain.onViewFunctionWillRegenerateView()
+      );
+    }
+    this._viewFunctionsProxy = new Proxy(this._viewFunctions, {
+      /**
+       * A trap for getting a property value.
+       *
+       * @see {@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Proxy/Proxy/get}
+       */
+      get(target: Array<AbstractViewFunction<T>>, prop: Prop, receiver: any) {
+        const numViewFunction: number = target.length;
+        switch (prop) {
+          case 'copyWithin':
+            throw new NotSupported(
+              'copyWithin is not supported on view function chain as it might cause one view to appear multiple times in chain'
+            );
+          case 'fill':
+            throw new NotSupported(
+              'fill is not supported on view function chain as it might cause one view to appear multiple times in chain'
+            );
+          case 'pop':
+            // unsubscribe chain from last view function if exists
+            if (numViewFunction > 0) {
+              target[numViewFunction - 1].unsubscribe(
+                chain,
+                AbstractViewFunction.shouldRegenerateViewEventName
+              );
+            }
+            break;
+          case 'push':
+            // return a wrapper function of `Array.push`
+            return function (...items: Array<AbstractViewFunction<T>>) {
+              const newNumViewFunction: number = Reflect.apply(target.push, target, items);
+              // for loop is used after a call to `Array.push` to avoid the rare case where a TypeError is thrown because the array will become too large
+              for (const item of items) {
+                // subscribe chain to target view regeneration of newly added view function
+                item.subscribe(chain, AbstractViewFunction.shouldRegenerateViewEventName, () =>
+                  chain.onViewFunctionWillRegenerateView()
+                );
+              }
+
+              return newNumViewFunction;
+            };
+          case 'shift':
+            // unsubscribes chain from first view function if exists
+            if (numViewFunction > 0) {
+              target[0].unsubscribe(chain, AbstractViewFunction.shouldRegenerateViewEventName);
+            }
+            break;
+          case 'splice':
+            return function (
+              start: number,
+              deleteCount: number = numViewFunction - start,
+              ...items: Array<AbstractViewFunction<T>>
+            ) {
+              const deletedViewFunctions = Reflect.apply(target.splice, target, [
+                start,
+                deleteCount,
+                ...items,
+              ]);
+
+              for (const viewFunction of items) {
+                // subscribe chain to target view regeneration of newly added view function
+                viewFunction.subscribe(
+                  chain,
+                  AbstractViewFunction.shouldRegenerateViewEventName,
+                  () => chain.onViewFunctionWillRegenerateView()
+                );
+              }
+              for (const deletedViewFunction of deletedViewFunctions) {
+                // unsubscribe from deleted view functions
+                deletedViewFunction.unsubscribe(
+                  chain,
+                  AbstractViewFunction.shouldRegenerateViewEventName
+                );
+              }
+
+              return deletedViewFunctions;
+            };
+          case 'unshift':
+            // return a wrapper function of `Array.unshift`
+            return function (...items: Array<AbstractViewFunction<T>>) {
+              const newNumViewFunction: number = Reflect.apply(target.unshift, target, items);
+              // for loop is used after a call to `Array.push` to avoid the rare case where a TypeError is thrown because the array will become too large
+              for (const item of items) {
+                // subscribe chain to target view regeneration of newly added view function
+                item.subscribe(chain, AbstractViewFunction.shouldRegenerateViewEventName, () =>
+                  chain.onViewFunctionWillRegenerateView()
+                );
+              }
+
+              return newNumViewFunction;
+            };
+        }
+        return Reflect.get(target, prop, receiver);
+      },
+    });
+
+    if (asAggregateViewFunction) {
+      return this.asAggregateViewFunction();
+    }
+  }
+
+  /**
+   * @override
    * Regenerates the target view if any of the following conditions are true:
    *
    *    + `source` view changed
    *    + target view should be regenerated -- any view function is inserted, modified, removed. In other words, whether the aggregate view function changed.
-   *
-   * @param {Array<T>} source - An array of elements of certain type representing the source view.
-   * @param {boolean} useCache - Whether previous target view (cache) can be reused giving same source view and same transformation.
    */
-  private regenerateView(source: Array<T>, useCache: boolean) {
-    if (useCache && source === this.lastSource && !this.shouldRegenerateView) {
+  protected regenerateView(sourceView: Array<T>, useCache: boolean) {
+    if (useCache && sourceView === this.lastSourceView && !this.shouldRegenerateView) {
       return;
     }
 
-    // Target view will be generated by piping the source view through the chain
-    this.currentView = this.viewFunctions.reduce(
+    // target view will be generated by piping the source view through the chain
+    this.targetView = this.viewFunctions.reduce(
       (_source, viewFunction) => viewFunction.view(_source, useCache),
-      source
+      sourceView
     );
 
-    this.lastSource = source;
-    this.shouldRegenerateView = false;
+    super.regenerateView(sourceView, useCache);
   }
 
   /**
-   * Retrieves a view function for modification.
-   *
-   * Using this function notifies the ViewFunctionChain that the target view needs to be regenerated due to view function change.
-   *
-   * Will trigger a view regeneration.
-   *
-   * @param {number} index - which view function to retrieve.
-   * @returns {ViewFunction<T>} A view function in the chain.
+   * If a registered view function will need to regenerate target view, this function will be called to signal a target view regeneration is also necessary for the view function chain.
    */
-  modifyViewFunction(index: number): ViewFunction<T> {
+
+  protected onViewFunctionWillRegenerateView() {
     this.shouldRegenerateView = true;
-    return this.viewFunctions[index];
   }
 
   /**
-   * Retrieves the entire array of view function for modification.
-   *
-   * Note any permanent change should be committed in-place to the array. Merely assigning the array to another array will not actually change the view function chain.
-   *
-   * Using this function notifies the ViewFunctionChain that the target view needs to be regenerated due to view function change.
-   *
-   * Will trigger a view regeneration.
-   *
-   * @returns {Array<ViewFunction<T>>} The array of view function constitutes the chain.
+   * @returns {Proxy} A proxy that can access properties that are either defined on the chain or a view function in the chain. This facilitates quick invocation of methods like `addFilterFunction` on the chain.
+   *                  This proxy only sets a trap for [[get]], so actions like checking whether a property is defined on a registered view function can not be done directly on the chain proxy.
+   *                  The trap for [[get]] will check property defined in the chain first, then search in each registered view function in order. Therefore, properties that are defined in early search targets will shadow same-named properties that are defined in later search targets. For example, since `shouldRegenerateView` is defined in the chain, the `shouldRegenerateView` properties defined in view functions will never be looked up. Similarly, if there are two view function of same type, the earlier view function of such type will shadow properties of later view function of such type. If you want to make sure that you are accessing properties of a particular registered view function, use syntax like `this.viewFunctions[<index>].<property>`.
    */
-  modifyViewFunctions(): Array<ViewFunction<T>> {
-    this.shouldRegenerateView = true;
-    return this.viewFunctions;
+
+  private asAggregateViewFunction() {
+    return new Proxy(this, {
+      /**
+       * A trap for getting a property value.
+       *
+       * First attempts to get the property value defined on the chain, then search inside each view function in order.
+       *
+       * @see {@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Proxy/Proxy/get}
+       */
+      get(target: ViewFunctionChain<T>, prop: Prop, receiver: any) {
+        if (prop in target) {
+          // first searches prop in this chain
+          return Reflect.get(target, prop, receiver);
+        }
+
+        for (const viewFunction of target._viewFunctions) {
+          if (prop in viewFunction) {
+            return Reflect.get(viewFunction, prop, receiver);
+          }
+        }
+      },
+    });
   }
 }
