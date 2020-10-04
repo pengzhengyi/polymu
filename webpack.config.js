@@ -1,7 +1,7 @@
 const path = require('path');
 
 module.exports = {
-  entry: './src/index.ts',
+  entry: './src/View.ts',
   devtool: 'inline-source-map',
   module: {
     rules: [
@@ -16,7 +16,7 @@ module.exports = {
     extensions: [ '.tsx', '.ts', '.js' ],
   },
   output: {
-    filename: 'reader.bundle.js',
+    filename: 'polymu.bundle.js',
     path: path.resolve(__dirname, 'dist'),
   },
 };
