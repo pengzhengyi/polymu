@@ -77,11 +77,12 @@ export abstract class AbstractViewFunction<T> extends EventNotifier implements V
     return this._shouldRegenerateView;
   }
   protected set shouldRegenerateView(newValue: boolean) {
-    if (newValue && !this._shouldRegenerateView) {
+    const shouldInvokeEvent: boolean = newValue && !this._shouldRegenerateView;
+    this._shouldRegenerateView = newValue;
+    if (shouldInvokeEvent) {
       // `_shouldRegenerateView` is set to `true` from `false`
       this.invoke(AbstractViewFunction.shouldRegenerateViewEventName);
     }
-    this._shouldRegenerateView = newValue;
   }
 
   /** previous source view, could be used to determine whether source view is the same */

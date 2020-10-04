@@ -234,7 +234,7 @@ export class BasicView {
   protected initializeScrollHandler() {
     this.scrollHandler = new PartialViewScrollHandler<ViewModel>({
       partialView: this.partialView,
-      target: this.sourceViewModel.asDomElement__(),
+      target: this.sourceViewModel.element_,
     });
     this.scrollHandler.subscribe(this, PartialViewScrollHandler.beforeViewUpdateEventName, () =>
       this.beforeScrollUpdateTaskQueue.work()
