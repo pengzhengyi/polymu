@@ -10,10 +10,10 @@
  *    + chainable: see {@link ViewFunctionChain}. The target view of a view function can be passed as source view for another view function. This chaining is still efficient since view generation is avoided when possible at every view function and therefore also for the aggregate view function. This efficiency is greedy in the sense that if a view function in the chain changes while the first source view does not change, the target views before that changed view function are reused while every view function after it will regenerate target view.
  */
 
-import { NotSupported } from './utils/errors';
 import { Prop } from './Abstraction';
 import { EventNotifier } from './EventNotification';
 import { TaskQueue } from './TaskQueue';
+import { NotSupported } from './utils/errors';
 import { bound } from './utils/math';
 
 /**
@@ -51,7 +51,7 @@ export interface ViewFunction<T> {
  * To extend `AbstractViewFunction`, derived classes should override `regenerateView` to create target view efficiently.
  */
 
-abstract class AbstractViewFunction<T> extends EventNotifier implements ViewFunction<T> {
+export abstract class AbstractViewFunction<T> extends EventNotifier implements ViewFunction<T> {
   /** a queue containing tasks executed before view update */
   beforeViewUpdateTaskQueue: TaskQueue = new TaskQueue();
   /** a queue containing tasks executed after view update */

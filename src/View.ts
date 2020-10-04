@@ -1,8 +1,10 @@
+import { Prop } from './Abstraction';
 import { MutationReporter } from './MutationReporter';
 import { PartialViewScrollHandler, Axis } from './PartialViewScrollHandler';
 import { TaskQueue } from './TaskQueue';
 import { ViewModel } from './ViewModel';
 import {
+  AbstractViewFunction,
   FilterFunction,
   FilteredView,
   PartialView,
@@ -101,8 +103,7 @@ export class BasicView {
   constructor(source: SourceType, target: HTMLElement) {
     this.sourceViewModel = new ViewModel(
       target,
-      (mutations, observer, originalMutations, reporter) =>
-        this.onMutation(mutations, observer, originalMutations, reporter),
+      this.onMutation.bind(this),
       undefined,
       undefined,
       // model only children of `target`
@@ -117,6 +118,24 @@ export class BasicView {
     this.refreshView();
     this.initializeResizeHandler();
     this.monitor();
+
+    return new Proxy(this, {
+      /**
+       * A trap for getting a property value.
+       *
+       * First attempts to get the property value defined in this BasicView instance, then search for property defined on the view function chain, including those properties surfaced up from individual view function.
+       *
+       * @see {@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Proxy/Proxy/get}
+       */
+      get(target: BasicView, prop: Prop, receiver: any) {
+        if (prop in target) {
+          // first searches prop in this chain
+          return Reflect.get(target, prop, receiver);
+        }
+
+        return Reflect.get(target.viewFunctionChain, prop, receiver);
+      },
+    });
   }
 
   /**
@@ -190,6 +209,10 @@ export class BasicView {
       this.sortedView,
       this.partialView,
     ]);
+    // if the view function chain needs to regenerate target view, refresh and render target view immediately. A potential scenario could be a filter function is added to the `FilteredView`
+    this.viewFunctionChain.subscribe(this, AbstractViewFunction.shouldRegenerateViewEventName, () =>
+      this.refreshView()
+    );
     // set up the first target view
     this.view;
   }
@@ -323,7 +346,7 @@ export class BasicView {
   }
 
   /**
-   * Removes a view element from `this.source`  and refresh the current view.
+   * Removes a view element from `this.source` and refresh the current view.
    *
    * @see {@link BasicView#manipulateSource}
    *
@@ -352,113 +375,6 @@ export class BasicView {
       view = this.partialView.view(this.partialView.lastSourceView);
     }
     this.scrollHandler.setView(() => view);
-  }
-
-  /**
-   * Binds a filter function under a key.
-   *
-   * This filter function should determine whether a ViewModel should go into the target view.
-   *
-   * Will update the DOM when the filter function changes the final view.
-   *
-   * @public
-   * @see {@link ViewFunction:FilteredView#addFilterFunction}
-   * @param {any} key - An identifier.
-   * @param {FilterFunction<ViewModel>} filterFunction - A function to determine whether an element in the source view should be kept in the target view. Since `ViewModel` extends `DomFallthroughInstantiation`, it can be seen as a HTMLElement. Or if you want to be explicit, you can also use {@link ViewModel:ViewModel#asDomElement__}
-   */
-  protected addFilterFunction(key: any, filterFunction: FilterFunction<ViewModel>) {
-    if (this.filteredView.addFilterFunction(key, filterFunction)) {
-      this.refreshView();
-    }
-  }
-
-  /**
-   * Deletes a filter function bound under given key.
-   *
-   * Will update the DOM when the deletion changes the final view.
-   *
-   * @public
-   * @see {@link ViewFunction:FilteredView#deleteFilterFunction}
-   */
-  deleteFilterFunction(key: any) {
-    if (this.filteredView.deleteFilterFunction(key)) {
-      this.refreshView();
-    }
-  }
-
-  /**
-   * Clears all filter functions.
-   *
-   * Will update the DOM when the deletions change the final view.
-   *
-   * @public
-   * @see {@link ViewFunction:FilteredView#clearFilterFunction}
-   */
-  clearFilterFunction() {
-    if (this.filteredView.clearFilterFunction()) {
-      this.refreshView();
-    }
-  }
-
-  /**
-   * Binds a sorting function with given priority under a key.
-   *
-   * This filter function should determine whether a ViewModel should go into the target view.
-   *
-   * Will update the DOM when the added sorting function changes the final view.
-   *
-   * @public
-   * @see {@link ViewFunction:FilteredView#addSortingFunction}
-   * @param {any} key - An identifier.
-   * @param {SortingFunction<T>} sortingFunction - A function to determine how elements from source view should be ordered in the target view. Since `ViewModel` extends `DomFallthroughInstantiation`, it can be seen as a HTMLElement. Or if you want to be explicit, you can also use {@link ViewModel:ViewModel#asDomElement__}.
-   * @param {number} priority - The priority of newly-bound sorting function. The higher the priority, the more important the sorting function. Defaults to the negative of the number of existing sorting function. In other words, default to add a least important sorting function.
-   */
-  addSortingFunction(key: any, sortingFunction: SortingFunction<ViewModel>, priority?: number) {
-    if (this.sortedView.addSortingFunction(key, sortingFunction, priority)) {
-      this.refreshView();
-    }
-  }
-
-  /**
-   * Deletes a sorting function bound under given key.
-   *
-   * Will update the DOM when the deletion changes the final view.
-   *
-   * @public
-   * @see {@link ViewFunction:SortedView#deleteSortingFunction}
-   */
-  deleteSortingFunction(key: any) {
-    if (this.sortedView.deleteSortingFunction(key)) {
-      this.refreshView();
-    }
-  }
-
-  /**
-   * Clears all sorting functions.
-   *
-   * Will update the DOM when the deletions change the final view.
-   *
-   * @public
-   * @see {@link ViewFunction:SortedView#clearSortingFunction}
-   */
-  clearSortingFunction() {
-    if (this.sortedView.clearSortingFunction()) {
-      this.refreshView();
-    }
-  }
-
-  /**
-   * Assigns a set of sorting function different priority numbers.
-   *
-   * Will update the DOM when the reordering change the final view.
-   *
-   * @public
-   * @see {@link ViewFunction:SortedView#clearSortingFunction}
-   */
-  reorderSortingFunction(reordering: Map<any, number>) {
-    if (this.sortedView.reorderSortingFunction(reordering)) {
-      this.refreshView();
-    }
   }
 }
 (window as any).View = BasicView;
