@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8" />
+    <title>List Example</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <!-- Bootstrap CSS -->
+    <link
+      rel="stylesheet"
+      href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"
+      integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z"
+      crossorigin="anonymous"
+    />
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+  </head>
+  <body>
+    <h1>List Example</h1>
+    <div>
+      <ul id="target" class="list-group"></ul>
+    </div>
+    <template id="source"> </template>
+    <script src="../dist/polymu.bundle.js"></script>
+    <script>
+      // initialize source
+      const source = document.getElementById('source');
+      for (let i = 0; i < 10000; i++) {
+        const listItem = document.createElement('li');
+        listItem.classList.add('list-group-item');
+        listItem.textContent = i.toString();
+        source.content.appendChild(listItem);
+      }
+
+      // render
+      const view = new View(source, target);
+    </script>
+  </body>
+</html>
