@@ -70,7 +70,7 @@ export class ViewModel<
   parent_: ViewModel;
 
   /** every view model has a unique identifier */
-  readonly identifier_: string = uuid();
+  readonly identifier_: string;
 
   /**
    * If view model has a forwarding target (DOM element), then the view model identifier will also exists in the element's dataset:
@@ -192,9 +192,12 @@ export class ViewModel<
     Object.defineProperty(this, 'identifier_', {
       configurable: false,
       enumerable: false,
-      value: this.identifier_,
+      value: uuid(),
       writable: false,
     });
+    // reset the identfier value in dataset as its prior value is `undefined`
+    this.forwardingTo_.dataset[ViewModel.identifierDatasetName_] = this.identifier_;
+
     Object.defineProperty(this, 'parent_', {
       configurable: false,
       enumerable: false,

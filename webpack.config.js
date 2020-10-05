@@ -1,6 +1,8 @@
 const path = require('path');
 
-module.exports = {
+module.exports = [
+  'source-map'
+].map(devtool => ({
   entry: './src/View.ts',
   devtool: 'inline-source-map',
   module: {
@@ -16,7 +18,12 @@ module.exports = {
     extensions: [ '.tsx', '.ts', '.js' ],
   },
   output: {
-    filename: 'polymu.bundle.js',
+    filename: 'polymu.js',
     path: path.resolve(__dirname, 'dist'),
+    library: 'polymu',
   },
-};
+  devtool,
+  optimization: {
+    runtimeChunk: true
+  },
+}));

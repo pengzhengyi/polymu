@@ -2,7 +2,8 @@
   "name": "polymu",
   "version": "1.0.0",
   "description": "Browser extension to improve reading experience",
-  "main": "index.js",
+  "main": "./dist/polymu.js",
+  "module": "./src/View.ts",
   "scripts": {
     "build-dev": "webpack --colors --config webpack.config.js --mode development",
     "build-prod": "webpack --colors --config webpack.config.js --mode production",

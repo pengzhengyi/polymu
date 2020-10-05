@@ -6,12 +6,12 @@
     <title>List Example</title>
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
     <!-- Bootstrap CSS -->
-    <link
-      rel="stylesheet"
-      href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"
-      integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z"
-      crossorigin="anonymous"
-    />
+    <!-- <link -->
+    <!--   rel="stylesheet" -->
+    <!--   href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" -->
+    <!--   integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z" -->
+    <!--   crossorigin="anonymous" -->
+    <!-- /> -->
     <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
   </head>
   <body>
@@ -20,7 +20,8 @@
       <ul id="target" class="list-group"></ul>
     </div>
     <template id="source"> </template>
-    <script src="../dist/polymu.bundle.js"></script>
+    <script src="../dist/polymu.js"></script>
+    <script src="../dist/main.polymu.js"></script>
     <script>
       // initialize source
       const source = document.getElementById('source');
@@ -32,7 +33,7 @@
       }
 
       // render
-      const view = new View(source, target);
+      const view = new polymu.BasicView(source, target);
     </script>
   </body>
 </html>

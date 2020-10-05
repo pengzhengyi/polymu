@@ -377,4 +377,3 @@ export class BasicView {
     this.scrollHandler.setView(() => view);
   }
 }
-(window as any).View = BasicView;
