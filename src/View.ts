@@ -371,8 +371,8 @@ export class BasicView {
     let view = this.view;
     // tries to maximize the window
     if (this.partialView.setWindow(this.partialView.partialViewStartIndex)) {
-      // window changed
-      view = this.partialView.view(this.partialView.lastSourceView);
+      // since window changed, target view generation is necessary and `refreshView` will already been invoked to render the newest view. Therefore, we can skip current refresh.
+      return;
     }
     this.scrollHandler.setView(() => view);
   }
