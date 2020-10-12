@@ -384,11 +384,13 @@ export class PartialView<T> extends AbstractViewFunction<T> {
    * @public
    * @param {number} [startIndex = 0] - The start index of the window.
    * @param {number} [endIndex = startIndex + this.maximumWindowSize - 1] - The end index of the window.
+   * @param {boolean} [noEventNotification = false] - This determines whether setting view window will trigger a {@link AbstractViewFunction.shouldRegenerateViewEventName} event. Leaving this value as `false` or passing `false` to this parameter means this event will be triggered and might be handled by subscribers. For example, the `ViewFunctionChain` subscribes to this event which invokes a same-named event which is then subscribed by the `BasicView` (if registered) which handles this event by actually rendering the changed view. Setting this value to `true` is useful when `setWindow` is triggered by an instance which handles this event. For example, `BasicView` handles this event by calling `refreshView` which will call the `setWindow` function. Therefore, to prevent double re-rendering, the `setWindow` call from `refreshView` should have this parameter set to `true`. This applies to other scenario where the caller of `setWindow` is responsible for actually rendering the view.
    * @returns Whether this operation will cause a regeneration of view. Even this operation does not cause view regeneration, a view regeneration might still happen because of other operations.
    */
   setWindow(
     startIndex: number = 0,
-    endIndex: number = startIndex + this.maximumWindowSize - 1
+    endIndex: number = startIndex + this.maximumWindowSize - 1,
+    noEventNotification: boolean = false
   ): boolean {
     const newStartIndex = bound(startIndex, 0, this.numElement - 1);
     const newEndIndex = bound(endIndex, newStartIndex, this.numElement - 1);
@@ -400,11 +402,17 @@ export class PartialView<T> extends AbstractViewFunction<T> {
 
     this.partialViewStartIndex = newStartIndex;
     this.partialViewEndIndex = newEndIndex;
-    return (this.shouldRegenerateView = true);
+
+    if (noEventNotification) {
+      // not triggering {@link AbstractViewFunction.shouldRegenerateViewEventName} event
+      return (this._shouldRegenerateView = true);
+    } else {
+      return (this.shouldRegenerateView = true);
+    }
   }
 
   /**
-   * Shifts the current window right by some amount.
+   * Shifts the current window towards the end by some amount.
    *
    * + if `preserveWindowSize === true`
    *     Window size will not change even when it might cause no shifting happens.
@@ -422,10 +430,15 @@ export class PartialView<T> extends AbstractViewFunction<T> {
    *
    * @public
    * @param {number} shiftAmount - The amount to shift the window rightward. If negative, the window will actually be shifted leftward.
-   * @param {boolean} preserveWindowSize - Whether the window size should be preserved at the compromise of not shifting sufficiently or no shifting at all.
+   * @param {boolean} preserveWindowSize - Whether the window size should be preserved even if doing so will result in not shifting sufficiently or no shifting at all.
+   * @param {boolean } noEventNotification - @see {@link PartialView#setWindow}. This determines whether the call to `setWindow` can result in event notification.
    * @returns {number} The actual amount of shifting. This number also indicates whether this operation will cause a regeneration of view: 0 means no regeneration while non-zero means regeneration needed. Even this operation does not cause view regeneration, a view regeneration might still happen because of other operations.
    */
-  shiftWindow(shiftAmount: number, preserveWindowSize: boolean): number {
+  shiftWindow(
+    shiftAmount: number,
+    preserveWindowSize: boolean,
+    noEventNotification: boolean = false
+  ): number {
     if (shiftAmount === 0) {
       return 0;
     }
@@ -449,7 +462,7 @@ export class PartialView<T> extends AbstractViewFunction<T> {
       endIndex = startIndex + this.windowSize - 1;
     }
     const previousStartIndex = this.partialViewStartIndex;
-    if (this.setWindow(startIndex, endIndex)) {
+    if (this.setWindow(startIndex, endIndex, noEventNotification)) {
       return this.partialViewStartIndex - previousStartIndex;
     } else {
       return 0;

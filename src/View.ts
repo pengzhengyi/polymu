@@ -113,7 +113,7 @@ export class BasicView {
     this.initializeViewFunction();
     this.initializeTaskQueue();
     this.initializeScrollHandler();
-    // updates to a window size appropriate for window size
+    // updates to a window size appropriate for viewport
     this.adjustWindowSizeUpperBound();
     this.refreshView();
     this.initializeResizeHandler();
@@ -370,9 +370,8 @@ export class BasicView {
   protected refreshView() {
     let view = this.view;
     // tries to maximize the window
-    if (this.partialView.setWindow(this.partialView.partialViewStartIndex)) {
-      // since window changed, target view generation is necessary and `refreshView` will already been invoked to render the newest view. Therefore, we can skip current refresh.
-      return;
+    if (this.partialView.setWindow(this.partialView.partialViewStartIndex, undefined, true)) {
+      // we prevent `shouldRegenerateViewEventName` event triggered from the call to `setWindow`
     }
     this.scrollHandler.setView(() => view);
   }

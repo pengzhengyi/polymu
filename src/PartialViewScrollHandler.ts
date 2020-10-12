@@ -647,7 +647,7 @@ export class PartialViewScrollHandler<T> extends EventNotifier {
 
   private shiftView(shiftAmount: number) {
     // shiftAmount will be rectified to the actual window shift amount
-    if ((shiftAmount = this.partialView.shiftWindow(shiftAmount, true)) === 0) {
+    if ((shiftAmount = this.partialView.shiftWindow(shiftAmount, true, true)) === 0) {
       return;
     }
 
