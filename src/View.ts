@@ -304,8 +304,14 @@ export class BasicView {
 
     const addedNodeToChildIndex: Map<Node, number> = new Map();
     for (const addedNode of mutation.addedNodes) {
+      if (addedNode.nodeType !== Node.ELEMENT_NODE) {
+        // ignore mutations of other types of node (for example, text node)
+        continue;
+      }
+
       let childIndex = 0;
       let child = addedNode;
+      // the following while loop gets the node's index in its parent node's childlist
       while ((child = (child as HTMLElement).previousElementSibling)) {
         childIndex++;
         if (addedNodeToChildIndex.has(child)) {
