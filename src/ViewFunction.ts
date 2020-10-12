@@ -840,7 +840,13 @@ export class ViewFunctionChain<T> extends AbstractViewFunction<T> {
 
         for (const viewFunction of target._viewFunctions) {
           if (prop in viewFunction) {
-            return Reflect.get(viewFunction, prop, receiver);
+            const result = Reflect.get(viewFunction, prop, receiver);
+
+            if (typeof result === 'function') {
+              // ensure retrieved function has appropriate reference to `this` variable
+              return result.bind(viewFunction);
+            }
+            return result;
           }
         }
       },

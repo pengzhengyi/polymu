@@ -1,4 +1,10 @@
-import { FilteredView, PartialView, SortedView, ViewFunctionChain } from './ViewFunction';
+import {
+  AbstractViewFunction,
+  FilteredView,
+  PartialView,
+  SortedView,
+  ViewFunctionChain,
+} from './ViewFunction';
 
 describe('SortedView', () => {
   test('basic sorting', () => {
@@ -231,5 +237,30 @@ describe('ViewFunctionChain', () => {
     expect(vc.view([1, 2, 3, 4, 5])).toEqual([1, 2, 3]);
     expect((fv as any).shouldRegenerateView).toBe(false);
     expect((vc as any).shouldRegenerateView).toBe(false);
+  });
+
+  test('this reference', () => {
+    const sv = new SortedView<number>();
+    const fv = new FilteredView<number>();
+    const vc = new ViewFunctionChain<number>([sv, fv]);
+    (vc as any).addFilterFunction('<= 3', (n: number) => n <= 3);
+    expect(vc.view([1, 2, 3, 4, 5])).toEqual([1, 2, 3]);
+  });
+
+  test('get notification', () => {
+    const sv = new SortedView<number>();
+    const fv = new FilteredView<number>();
+    const vc = new ViewFunctionChain<number>([sv, fv]);
+
+    const eventHandler = jest.fn();
+    vc.subscribe({}, AbstractViewFunction.shouldRegenerateViewEventName, eventHandler);
+    expect(eventHandler.mock.calls.length).toBe(0);
+
+    expect(vc.view([1, 2, 3, 4, 5])).toEqual([1, 2, 3, 4, 5]);
+    sv.addSortingFunction('desc', (n1, n2) => n2 - n1, 1);
+    expect(eventHandler.mock.calls.length).toBe(1);
+    expect(vc.view([1, 2, 3, 4, 5])).toEqual([5, 4, 3, 2, 1]);
+    sv.deleteSortingFunction('desc');
+    expect(eventHandler.mock.calls.length).toBe(2);
   });
 });
