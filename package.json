@@ -1,9 +1,12 @@
 {
-  "name": "polymu",
+  "name": "@pengzhengyi/polymu",
   "version": "1.0.0",
   "description": "Browser extension to improve reading experience",
   "main": "./dist/polymu.js",
   "module": "./src/View.ts",
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com/"
+  },
   "scripts": {
     "build-dev": "webpack --colors --config webpack.config.js --mode development",
     "build-prod": "webpack --colors --config webpack.config.js --mode production",
