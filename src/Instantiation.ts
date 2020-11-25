@@ -281,41 +281,29 @@ export class DomForwardingInstantiation<
 export class DomFallthroughInstantiation<TDomElement extends HTMLElement = HTMLElement>
   extends DomForwardingInstantiation<TDomElement>
   implements TDomElement {
-  private readonly _instantiation: DomFallthroughInstantiation<TDomElement>;
-
   constructor(forwardingTo: HTMLElement) {
     super({}, forwardingTo);
-    const instantiation: DomFallthroughInstantiation<TDomElement> = this;
-    /**
-     * Stores a reference to the instantiation in a private field. This is useful where an instance method wants to directly operates on the instantiation without proxying. Of course, getting the `_instantiation` field is still proxied.
-     *
-     * The existence of this field can also indicates the completion of base class initialization.
-     */
-    Object.defineProperty(this, '_instantiation', {
-      configurable: false,
-      enumerable: false,
-      value: instantiation,
-      writable: false,
-    });
 
     /**
      * @override
      *
      * Redefines `propNames_` as returning a dynamically computed set containing all enumerable properties from the forwarding element, including inherited enumerable properties.
+     *
+     * Note: since `propNames_` is dynamically computes, retrieving this set is costly and should be used with caution.
      */
     Object.defineProperty(this, 'propNames_', {
       configurable: true,
       enumerable: false,
       get(): Set<Prop> {
         const propNames: Set<Prop> = new Set();
-        for (const propName in instantiation.element_) {
+        for (const propName in this.element_) {
           propNames.add(propName);
         }
         return propNames;
       },
     });
 
-    return new Proxy(instantiation, {
+    return new Proxy(this, {
       /**
        * A trap for {@see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/defineProperty Object.defineProperty}.
        *
