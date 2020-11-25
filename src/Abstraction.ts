@@ -224,40 +224,6 @@ export abstract class Abstraction {
   }
 
   /**
-   * Checks whether current instance has same **shape** with another instance.
-   *
-   * Another instance has the same **shape** with current instance when it has same properties registered.
-   *
-   * Note:
-   *
-   *    + property does not need to be registered as an own property in the other instance, rather it can be a property registered in the prototype chain.
-   *
-   * @public
-   * @param {any} other - The other instance to compare with.
-   * @return {boolean} True if two instances have same shape.
-   *
-   * @example
-   *    Suppose current instance has `foo`, `bar` registered as properties, then it has same shape with
-   *    `{foo: 'some foo value', bar: 'some bar value'}
-   *    or
-   *    `{foo: 'some foo value', bar: 'some bar value', 'zoo': 'some zoo value'}
-   */
-  hasSameShape__(other: any): boolean {
-    if (other instanceof Abstraction) {
-      return isSubset(this.propNames_, other.propNames_);
-    } else {
-      // treat other as an object
-      for (const propName of this.propNames_) {
-        /** use the {@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/in in} operator to look through the prototype chain*/
-        if (!(propName in other)) {
-          return false;
-        }
-      }
-      return true;
-    }
-  }
-
-  /**
    * Checks whether a name satisfy the naming rule for `Abstraction` and its deriving class:
    *
    *    To differentiate from normal property names, property name in `Abstraction` and its deriving class should start or end with underscore.

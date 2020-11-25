@@ -76,38 +76,6 @@ describe('Register and Revoke Props', () => {
   });
 });
 
-describe('Testing Shape', () => {
-  const instantiation = new TestInstantiation({
-    id: {},
-    className: {},
-    textContent: {},
-  });
-  test('Abstraction properties is subset of another object', () => {
-    expect(instantiation.hasSameShape__(document.createElement('div'))).toBe(true);
-    expect(
-      instantiation.hasSameShape__({ id: undefined, className: undefined, textContent: undefined })
-    ).toBe(true);
-  });
-  test('Abstraction properties is subset of another abstraction', () => {
-    expect(instantiation.hasSameShape__(instantiation)).toBe(true);
-    const other = new TestInstantiation({
-      id: {},
-      className: {},
-      textContent: {},
-      contentEditable: {},
-    });
-    expect(instantiation.hasSameShape__(other)).toBe(true);
-  });
-  test('different shape', () => {
-    expect(instantiation.hasSameShape__({})).toBe(false);
-    const other = new TestInstantiation({
-      id: {},
-      children: {},
-    });
-    expect(instantiation.hasSameShape__(other)).toBe(false);
-  });
-});
-
 describe('Testing naming rule', () => {
   expect(Abstraction.satisfyNamingRule__('publicMethod__')).toBe(true);
   expect(Abstraction.satisfyNamingRule__('protectedMethod__')).toBe(true);
