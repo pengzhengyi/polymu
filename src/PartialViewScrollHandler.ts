@@ -352,7 +352,7 @@ export class PartialViewScrollHandler<T> extends EventNotifier {
    *    + If a elementLength is provided, this length will be used directed.
    *    + Otherwise, the elementLength will be measured from first rendered element's length in the appropriate axis `this.scrollAxis`.
    *
-   * @param {number} elementLength - The length of the elemnt in the concerning axis `this.scrollAxis`.
+   * @param {number} elementLength - The length of the element in the concerning axis `this.scrollAxis`.
    */
   private initializeElementLength(elementLength?: number) {
     if (elementLength) {

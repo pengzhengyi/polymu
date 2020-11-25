@@ -28,16 +28,16 @@ enum PatchModeForMatch {
    *    + This mode is most time and space efficient.
    *    + The other view model's element will have `identifier_` overwritten, additional setup is needed to preserve the `identifier_` of other view model's element
    */
-
   CreateAlias,
+
   /**
    * 1. use Node.CloneNode to create a clone of the other view model's element
    * 2. reassign this view model's element to the created clone
    *
    * NOTE: make a clone could be potentially expensive when the node has a large number of descendants
    */
-
   CloneNode,
+
   /**
    * Iterate over all JS properties from the other view model's element (for example, the properties of a `<input>` element including value, readOnly...), assign same property value to current view model's element
    *
@@ -46,7 +46,6 @@ enum PatchModeForMatch {
    *  + reassigning properties is usually expensive as just HTMLElement (the base type for other HTML element types like HTMLInputElement, HTMLSpanElement...) already has a very large number of properties
    *  + reassigning properties will copy over all properties, it could both overwrite existing properties or introduce new properties
    */
-
   ModifyProperties,
 }
 
