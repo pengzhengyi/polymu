@@ -156,8 +156,14 @@ export class FilteredView<T> extends AbstractViewFunction<T> {
       return null;
     }
 
-    const filterFunctions = Array.from(this.filterFunctions.values());
-    return (item) => filterFunctions.every((filterFunction) => filterFunction(item));
+    return (item) => {
+      for (const filterFunction of this.filterFunctions.values()) {
+        if (!filterFunction(item)) {
+          return false;
+        }
+      }
+      return true;
+    };
   }
 
   /**
