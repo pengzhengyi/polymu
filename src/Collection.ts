@@ -30,6 +30,11 @@ export interface Collection<TElement> extends Iterable<TElement> {
    *    collection[0]
    */
   [index: number]: TElement;
+
+  /**
+   * The length of the collection.
+   */
+  length: number;
   /**
    * Returns a slice view of the collection with elements selected from start to end (end not included) where `start` and `end` represent the index of items in that array. The collection will not be modified.
    *
