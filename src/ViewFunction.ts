@@ -302,7 +302,7 @@ export class FilteredView<TViewElement> extends AbstractViewFunction<TViewElemen
 }
 
 /**
- * Selects a window from a view.
+ * Selects a window from a view. More specifically, it returns a continuous selection of elements in source view.
  */
 export class PartialView<TViewElement> extends AbstractViewFunction<TViewElement>
   implements IFeatureProvider {
@@ -341,9 +341,17 @@ export class PartialView<TViewElement> extends AbstractViewFunction<TViewElement
     }
   }
 
-  /** actual window size - number of elements in target view */
+  /** actual window size - number of elements that target view will maximally contain */
   get windowSize(): number {
     return this.partialViewEndIndex - this.partialViewStartIndex + 1;
+  }
+
+  /**
+   * the maximum number of actually rendered elements. `length` is speculative in that it is inferred from window size (how many elements could maximally be rendered in the window) and the number of elements (how many elements that could be potentially be rendered)
+   */
+
+  get length(): number {
+    return Math.min(this.windowSize, this.numElement);
   }
 
   /** number of elements in source view not rendered because they are "before" the window */
