@@ -42,7 +42,7 @@ export interface Collection<TElement> extends Iterable<TElement> {
    *
    * ```Javascript
    * for (let i = start; i < end; i++) }
-   * yield collection[i];
+   *    yield collection[i];
    * }
    * ```
    *
@@ -50,7 +50,7 @@ export interface Collection<TElement> extends Iterable<TElement> {
    * @param {number} end - Zero-based index before which to end extraction. `slice` extracts up to but no including `end`,. If end is greater than the length of the collection, `slice` extracts through to the end of the sequence (`collection.length`)
    * @return {IterableIterator<TElement>} An iterable of elements between specified indices.
    */
-  slice(start: number, end: number): IterableIterator<TElement>;
+  slice(start: number, end: number): Iterable<TElement>;
 }
 
 /**
