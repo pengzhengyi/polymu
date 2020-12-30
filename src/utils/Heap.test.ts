@@ -48,6 +48,40 @@ describe('Heap sort', () => {
     expect(Array.from(heap.popAll())).toEqual(result);
   });
 
+  test('sorting object', () => {
+    interface Cell {
+      row: number;
+      cellIndex: number;
+    }
+    const array: Array<Cell> = [
+      {
+        row: 1,
+        cellIndex: 0,
+      },
+      {
+        row: 1,
+        cellIndex: 1,
+      },
+      {
+        row: 2,
+        cellIndex: 1,
+      },
+    ];
+
+    const comparator = (e1: Cell, e2: Cell) => {
+      const rowdiff = e1.row - e2.row;
+      if (rowdiff !== 0) {
+        return rowdiff;
+      } else {
+        return e1.cellIndex - e2.cellIndex;
+      }
+    };
+    heap = new Heap(comparator, 3);
+    heap.extend(array);
+    const result = array.sort(comparator);
+    expect(Array.from(heap.popAll())).toEqual(result);
+  });
+
   test('random sorting', () => {
     for (let i = 0; i < 10000; i++) {
       heap = new Heap(comparator, 20);

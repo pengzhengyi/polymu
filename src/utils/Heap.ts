@@ -136,19 +136,22 @@ export default class Heap<TElement> implements Iterable<TElement> {
     let toReplaceIndex = 0;
     while (true) {
       const leftChildIndex = this._leftChildIndex(toReplaceIndex);
-      if (leftChildIndex >= lastPlace) {
+      if (leftChildIndex > lastPlace) {
         break;
       }
 
       const rightChildIndex = leftChildIndex + 1;
-      if (rightChildIndex >= lastPlace) {
+      if (rightChildIndex > lastPlace) {
         break;
       }
 
       const leftElement = this._array[leftChildIndex];
       const rightElement = this._array[rightChildIndex];
 
-      if (this._comparator(leftElement, rightElement) < 0) {
+      if (
+        leftChildIndex === lastPlace /* there is no right element */ ||
+        this._comparator(leftElement, rightElement) < 0
+      ) {
         // consider bubbling down the left branch
         if (this._comparator(lastElement, leftElement) <= 0) {
           // bubbling stop here
