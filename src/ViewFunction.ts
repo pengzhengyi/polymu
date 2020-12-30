@@ -1,7 +1,7 @@
 /**
  * @module
  *
- * This module provides functions that transform a source view into a target view, where a view is simply an array of view elements (for example, a `ViewModel`).
+ * This module provides functions that transform a source view into a target view, where a view is simply a collection of view elements (for example, a `ViewModel`).
  *
  * These transformations have following properties:
  *
@@ -11,13 +11,17 @@
  */
 
 import { Prop } from './Abstraction';
+import { Collection, LazyCollectionProvider } from './Collection';
 import { EventNotifier } from './EventNotification';
 import { TaskQueue } from './TaskQueue';
+import { composeFeatures, IFeatureProvider } from './composition/composition';
 import { NotSupported } from './utils/errors';
+import { quickSort } from './utils/ArrayHelper';
+import Heap from './utils/Heap';
 import { bound } from './utils/math';
 
 /**
- * ViewFunction represents an unit that transforms a source view to a target view.
+ * ViewFunction represents a processing unit that transforms a source view to a target view.
  *
  * Some `ViewFunction` implementations in this modules includes:
  *
@@ -25,17 +29,17 @@ import { bound } from './utils/math';
  *    + `PartialView` which renders contiguous elements in a "window"
  *    + `SortedView` which reorders elements according to some criterion
  *
- * @type T: Type for view element, a view is represented as an array of view elements.
+ * @type TViewElement: Type for view element, a view is represented as a collection of view elements.
  */
-export interface ViewFunction<T> {
+export interface ViewFunction<TViewElement> {
   /**
    * The view transformer function which will consume a `source` view and produces a target view of same type.
    *
-   * @param {Array<T>} sourceView - An array of elements of certain type. Represents the source view. The source view will not be modified.
+   * @param {Collection<TViewElement>} sourceView - An Collection of elements of certain type. Represents the source view. The source view will not be modified.
    * @param {boolean} useCache - Whether previous target view (cache) can be reused giving same source view and same transformation.
-   * @return {Array<T>} The transformed view as an array of elements of same type.
+   * @return {Collection<TViewElement>} The transformed view as an Collection of elements of same type.
    */
-  view(sourceView: Array<T>, useCache?: boolean): Array<T>;
+  view(sourceView: Collection<TViewElement>, useCache?: boolean): Collection<TViewElement>;
 }
 
 /**
@@ -51,7 +55,8 @@ export interface ViewFunction<T> {
  * To extend `AbstractViewFunction`, derived classes should override `regenerateView` to create target view efficiently.
  */
 
-export abstract class AbstractViewFunction<T> extends EventNotifier implements ViewFunction<T> {
+export abstract class AbstractViewFunction<TViewElement> extends EventNotifier
+  implements ViewFunction<TViewElement>, IFeatureProvider {
   /** a queue containing tasks executed before view update */
   beforeViewUpdateTaskQueue: TaskQueue = new TaskQueue();
   /** a queue containing tasks executed after view update */
@@ -64,12 +69,13 @@ export abstract class AbstractViewFunction<T> extends EventNotifier implements V
    */
 
   static shouldRegenerateViewEventName: string = 'willRegenerateView';
+
   /**
    * Whether target view should be regenerated even if source view is the same as `lastSourceView`
    *
    * This property is not in effect, but derived classes could make use of this property to devise a way to determine whether a regeneration of target view is necessary.
    *
-   * `_shouldRegenerateView` is true initially since target view must be `regenerated` as there is no meaningful reference to prior target view for first time.
+   * `_shouldRegenerateView` is `true` initially since target view must be `regenerated` as there is no meaningful reference to prior target view for first time.
    */
   protected _shouldRegenerateView: boolean = true;
 
@@ -86,15 +92,15 @@ export abstract class AbstractViewFunction<T> extends EventNotifier implements V
   }
 
   /** previous source view, could be used to determine whether source view is the same */
-  lastSourceView: Array<T>;
+  lastSourceView: Collection<TViewElement>;
 
   /** holds target view */
-  protected _targetView: Array<T>;
+  protected _targetView: Collection<TViewElement>;
 
-  get targetView(): Array<T> {
+  get targetView(): Collection<TViewElement> {
     return this._targetView;
   }
-  set targetView(view: Array<T>) {
+  set targetView(view: Collection<TViewElement>) {
     this.beforeViewUpdateTaskQueue.work(this);
     this._targetView = view;
     this.afterViewUpdateTaskQueue.work(this);
@@ -102,10 +108,18 @@ export abstract class AbstractViewFunction<T> extends EventNotifier implements V
 
   /**
    * @public
+   * @abstract
+   * @description Defines methods that should be exposed.
+   */
+
+  abstract getFeatures(): IterableIterator<string> | Iterable<string>;
+
+  /**
+   * @public
    * @override
    * @description View is lazily generated. In other words, last target view is cached and reused if possible.
    */
-  view(sourceView: Array<T>, useCache: boolean = true): Array<T> {
+  view(sourceView: Collection<TViewElement>, useCache: boolean = true): Collection<TViewElement> {
     this.regenerateView(sourceView, useCache);
     return this.targetView;
   }
@@ -122,10 +136,10 @@ export abstract class AbstractViewFunction<T> extends EventNotifier implements V
    *
    * Consider to reuse the target view from last time if both conditions are false -- same target view will be returned.
    *
-   * @param {Array<T>} sourceView - An array of elements of certain type representing the source view.
-   * @param {boolean} useCache - Whether previous target view (cache) can be reused giving same source view and same transformation.
+   * @param {Collection<TViewElement>} sourceView - An Collection of elements of certain type representing the source view.
+   * @param {boolean} useCache - Whether previous target view (cache) can be reused giving same source view and same transformation. A `true` value for `useCache` should force a view generation.
    */
-  protected regenerateView(sourceView: Array<T>, useCache: boolean) {
+  protected regenerateView(sourceView: Collection<TViewElement>, useCache: boolean) {
     this.shouldRegenerateView = false;
     this.lastSourceView = sourceView;
   }
@@ -134,23 +148,27 @@ export abstract class AbstractViewFunction<T> extends EventNotifier implements V
 /**
  * A function type that determines whether an element from the source view should retain in the target view.
  *
- * @param {T} element - An element to be filtered.
+ * @param {TViewElement} element - An element to be filtered.
  * @returns {boolean} True if this element should be kept in the target view.
  */
-export type FilterFunction<T> = (element: T) => boolean;
+export type FilterFunction<TViewElement> = (element: TViewElement) => boolean;
 
 /**
  * Selects elements meeting certain condition(s).
  */
-export class FilteredView<T> extends AbstractViewFunction<T> {
+export class FilteredView<TViewElement> extends AbstractViewFunction<TViewElement>
+  implements IFeatureProvider {
+  /** methods that should be exposed since they define the API for `FilteredView` */
+  features: Array<string> = ['addFilterFunction', 'deleteFilterFunction', 'clearFilterFunction'];
+
   /** when target view needs to be regenerated, whether it can be regenerated by making refinement (further filtering) to the last target view which is referenced by `this.currentView` */
   private shouldRefineView: boolean = true;
 
   /** A mapping from identifier to filter function */
-  private filterFunctions: Map<any, FilterFunction<T>> = new Map();
+  private filterFunctions: Map<any, FilterFunction<TViewElement>> = new Map();
 
   /** The aggregate filter function -- ANDing all filter functions */
-  get filter(): FilterFunction<T> {
+  get filter(): FilterFunction<TViewElement> {
     const numFilterFunction: number = this.filterFunctions.size;
     if (numFilterFunction === 0) {
       return null;
@@ -167,6 +185,16 @@ export class FilteredView<T> extends AbstractViewFunction<T> {
   }
 
   /**
+   * @public
+   * @override
+   * @description Defines methods that should be exposed.
+   */
+
+  getFeatures(): IterableIterator<string> | Iterable<string> {
+    return this.features;
+  }
+
+  /**
    * Regenerates the target view if any of the following conditions are true:
    *
    *   + `source` view changed
@@ -177,7 +205,7 @@ export class FilteredView<T> extends AbstractViewFunction<T> {
    * If `source` view does not change and only new filter functions have been added, target view will be generated from last target view. In other words, previous target view will be refined to reduce computation.
    * @override
    */
-  protected regenerateView(sourceView: Array<T>, useCache: boolean) {
+  protected regenerateView(sourceView: Collection<TViewElement>, useCache: boolean) {
     if (useCache && sourceView === this.lastSourceView) {
       if (this.shouldRegenerateView) {
         if (this.shouldRefineView) {
@@ -192,9 +220,17 @@ export class FilteredView<T> extends AbstractViewFunction<T> {
 
     const filter = this.filter;
     if (filter) {
-      this.targetView = sourceView.filter(filter);
+      this.targetView = new LazyCollectionProvider(
+        (function* () {
+          for (const viewElement of sourceView) {
+            if (filter(viewElement)) {
+              yield viewElement;
+            }
+          }
+        })()
+      );
     } else {
-      // no filter is applied
+      // no filter is applied, do not modify the source view
       this.targetView = sourceView;
     }
 
@@ -212,11 +248,12 @@ export class FilteredView<T> extends AbstractViewFunction<T> {
    *
    * @public
    * @param {any} key - An identifier.
-   * @param {FilterFunction<T>} filterFunction - A function to determine whether an element in the source view should be kept in the target view.
+   * @param {FilterFunction<TViewElement>} filterFunction - A function to determine whether an element in the source view should be kept in the target view.
    * @returns Whether this operation will cause a regeneration of view. Even this operation does not cause view regeneration, a view regeneration might still happen because of other operations.
    */
-  addFilterFunction(key: any, filterFunction: FilterFunction<T>): boolean {
+  addFilterFunction(key: any, filterFunction: FilterFunction<TViewElement>): boolean {
     if (this.filterFunctions.get(key) === filterFunction) {
+      // no action is taken when same filter function is registered
       return false;
     }
 
@@ -267,7 +304,11 @@ export class FilteredView<T> extends AbstractViewFunction<T> {
 /**
  * Selects a window from a view.
  */
-export class PartialView<T> extends AbstractViewFunction<T> {
+export class PartialView<TViewElement> extends AbstractViewFunction<TViewElement>
+  implements IFeatureProvider {
+  /** methods that should be exposed since they define the API for `PartialView` */
+  features: Array<string> = ['setWindow', 'shiftWindow'];
+
   /** start index of the window, inclusive */
   partialViewStartIndex: number;
   /** end index of the window, inclusive */
@@ -329,14 +370,14 @@ export class PartialView<T> extends AbstractViewFunction<T> {
    * Creates a PartialView instance.
    *
    * @public
-   * @param {Array<T>} [sourceView = []] - initial source view.
+   * @param {Collection<TViewElement>} [sourceView = []] - initial source view.
    * @param {number} [windowStartIndex = -1] - start index of the window.
    * @param {number} [windowEndIndex = -1] - end index of the window.
    * @param {number} [windowSizeUpperBound = Number.POSITIVE_INFINITY] - Maximum window size.
-   * @constructs PartialView<T>
+   * @constructs PartialView<TViewElement>
    */
   constructor(
-    sourceView: Array<T> = [],
+    sourceView: Collection<TViewElement> = new LazyCollectionProvider([]),
     windowStartIndex: number = -1,
     windowEndIndex: number = -1,
     windowSizeUpperBound: number = Number.POSITIVE_INFINITY
@@ -349,6 +390,16 @@ export class PartialView<T> extends AbstractViewFunction<T> {
   }
 
   /**
+   * @public
+   * @override
+   * @description Defines methods that should be exposed.
+   */
+
+  getFeatures(): IterableIterator<string> | Iterable<string> {
+    return this.features;
+  }
+
+  /**
    * @override
    * Regenerates the target view if any of the following conditions are true:
    *
@@ -357,7 +408,7 @@ export class PartialView<T> extends AbstractViewFunction<T> {
    *
    * If both conditions are false, nothing will be done -- same target view will be returned.
    */
-  protected regenerateView(sourceView: Array<T>, useCache: boolean) {
+  protected regenerateView(sourceView: Collection<TViewElement>, useCache: boolean) {
     if (useCache && sourceView === this.lastSourceView && !this.shouldRegenerateView) {
       return;
     }
@@ -372,7 +423,9 @@ export class PartialView<T> extends AbstractViewFunction<T> {
     const adjustment = previousEndIndex - this.partialViewEndIndex;
 
     this.partialViewStartIndex = bound(this.partialViewStartIndex - adjustment, 0, maximumIndex);
-    this.targetView = sourceView.slice(this.partialViewStartIndex, this.partialViewEndIndex + 1);
+    this.targetView = new LazyCollectionProvider(
+      sourceView.slice(this.partialViewStartIndex, this.partialViewEndIndex + 1)
+    );
 
     super.regenerateView(sourceView, useCache);
   }
@@ -479,11 +532,11 @@ export class PartialView<T> extends AbstractViewFunction<T> {
 /**
  * A function type that orders two elements from source view.
  *
- * @param {T} e1 - The first element.
- * @param {T} e2 - The second element.
+ * @param {TViewElement} e1 - The first element.
+ * @param {TViewElement} e2 - The second element.
  * @returns {number} A number indicating the comparison result. {@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/sort}
  */
-export type SortingFunction<T> = (e1: T, e2: T) => number;
+export type SortingFunction<TViewElement> = (e1: TViewElement, e2: TViewElement) => number;
 
 /**
  * This interface groups a sorting function with its priority.
@@ -492,26 +545,96 @@ export type SortingFunction<T> = (e1: T, e2: T) => number;
  *
  * @example Suppose in terms of priority, S1 > S2 > S3. Then S1 will be first used to order elements. If there is a tie (two elements are equivalent according to S1), their order will then be determined by S2, and possibly by S3 if the comparison result is still a tie.
  */
-export interface SortingFunctionWithPriority<T> {
-  sortingFunction: SortingFunction<T>;
+export interface SortingFunctionWithPriority<TViewElement> {
+  sortingFunction: SortingFunction<TViewElement>;
   priority: number;
+}
+
+/**
+ * A customized Heap that exposes the underlying array and supports changing the comparator.
+ */
+
+class SortedViewHeap<TViewElement> extends Heap<TViewElement> {
+  /**
+   * Whether the heap is fully sorted.
+   *
+   * A fully sorted heap will have its array representation equivalent to the breadth first traversal of the heap.
+   *
+   * In other words, a fully sorted heap's array representation is already in sorted order.
+   *
+   * @example
+   *
+   *    `[1, 2, 3, 6, 7, 4, 5]` represents a balanced min heap but not a fully sorted min heap.
+   */
+
+  isFullySorted: boolean = false;
+
+  /**
+   * The underlying array that represents the heap.
+   *
+   * @returns {Array<TViewElement>} The underlying array of the heap.
+   */
+
+  get array(): Array<TViewElement> {
+    return this._array;
+  }
+
+  /**
+   * Changing the comparator of the heap.
+   */
+
+  set comparator(newValue: SortingFunction<TViewElement>) {
+    if (this._comparator !== newValue) {
+      this._comparator = newValue;
+      quickSort(this._array, newValue, 0, this._count);
+      this.isFullySorted = true;
+    }
+  }
+
+  /**
+   * @override
+   */
+
+  push(...elements: Array<TViewElement>) {
+    super.push(...elements);
+    this.isFullySorted = false;
+  }
+
+  /**
+   * @override
+   */
+  pop(): TViewElement {
+    this.isFullySorted = false;
+    return super.pop();
+  }
 }
 
 /**
  * Reorders elements according to certain comparison method(s).
  */
-export class SortedView<T> extends AbstractViewFunction<T> {
+export class SortedView<TViewElement> extends AbstractViewFunction<TViewElement>
+  implements IFeatureProvider {
+  /** methods that should be exposed since they define the API for `SortedView` */
+  features: Array<string> = [
+    'addSortingFunction',
+    'deleteSortingFunction',
+    'clearSortingFunction',
+    'reorderSortingFunction',
+  ];
+
   /** a mapping from identifier to a sorting function and its priority */
-  sortingFunctions: Map<any, SortingFunctionWithPriority<T>> = new Map();
+  sortingFunctions: Map<any, SortingFunctionWithPriority<TViewElement>> = new Map();
 
   /** denotes the current smallest priority associated with sorting function */
   private smallestPriority: number = 0;
+
+  private heap: SortedViewHeap<TViewElement>;
 
   /**
    * Existing sorting functions will be applied in order of priority -- higher priority sorting function will be used first, lower priority sorting function will be used when the higher priority ones result in tie.
    * @returns The aggregate sorting function.
    */
-  get sorter(): SortingFunction<T> {
+  get sorter(): SortingFunction<TViewElement> {
     const numSortingFunction: number = this.sortingFunctions.size;
     if (numSortingFunction === 0) {
       return null;
@@ -537,13 +660,23 @@ export class SortedView<T> extends AbstractViewFunction<T> {
   }
 
   /**
+   * @public
+   * @override
+   * @description Defines methods that should be exposed.
+   */
+
+  getFeatures(): IterableIterator<string> | Iterable<string> {
+    return this.features;
+  }
+
+  /**
    * @override
    * Regenerates the target view if any of the following conditions are true:
    *
    *    + `source` view changed
    *    + target view should be regenerated -- the sorting function changed
    */
-  protected regenerateView(sourceView: Array<T>, useCache: boolean) {
+  protected regenerateView(sourceView: Collection<TViewElement>, useCache: boolean) {
     if (useCache && sourceView === this.lastSourceView && !this.shouldRegenerateView) {
       // source has not change and sorting functions have not changed => we can reuse current view
       return;
@@ -552,9 +685,21 @@ export class SortedView<T> extends AbstractViewFunction<T> {
     const sorter = this.sorter;
 
     if (sorter) {
-      const indices: Array<number> = Array.from(sourceView.keys());
-      indices.sort((index1, index2) => sorter(sourceView[index1], sourceView[index2]));
-      this.targetView = indices.map((index) => sourceView[index]);
+      if (
+        !this.heap || // heap is constructed
+        sourceView !== this.lastSourceView || // source view changed
+        !useCache /* source view is not reuseable */
+      ) {
+        this.heap = new SortedViewHeap<TViewElement>(sorter);
+        this.heap.extend(sourceView);
+      }
+
+      this.heap.comparator = sorter;
+      if (this.heap.isFullySorted) {
+        this.targetView = this.heap.array;
+      } else {
+        this.targetView = new LazyCollectionProvider(this.heap);
+      }
     } else {
       this.targetView = sourceView;
     }
@@ -569,13 +714,13 @@ export class SortedView<T> extends AbstractViewFunction<T> {
    *
    * @public
    * @param {any} key - An identifier.
-   * @param {SortingFunction<T>} sortingFunction - A function to determine how elements from source view should be ordered in the target view.
+   * @param {SortingFunction<TViewElement>} sortingFunction - A function to determine how elements from source view should be ordered in the target view.
    * @param {number} [priority = this.smallestPriority - 1] - The priority of newly-bound sorting function. The higher the priority, the more important the sorting function. Default to add a least important sorting function.
    * @returns Whether this operation will cause a regeneration of view. Even this operation does not cause view regeneration, a view regeneration might still happen because of other operations.
    */
   addSortingFunction(
     key: any,
-    sortingFunction: SortingFunction<T>,
+    sortingFunction: SortingFunction<TViewElement>,
     priority: number = this.smallestPriority - 1
   ): boolean {
     const existingSortingFunction = this.sortingFunctions.get(key);
@@ -659,31 +804,28 @@ export class SortedView<T> extends AbstractViewFunction<T> {
  *
  * When target view needs to be generated from a source view, the source view will be provided to first view function, whose target view will be provided as source view to the second view function, and so on, where the last view function's target view be returned as the final target view.
  */
-export class ViewFunctionChain<T> extends AbstractViewFunction<T> {
+export class ViewFunctionChain<TViewElement> extends AbstractViewFunction<TViewElement>
+  implements IFeatureProvider {
   /** an array of view functions that consist the chain */
-  private _viewFunctions: Array<AbstractViewFunction<T>>;
-  private _viewFunctionsProxy: Array<AbstractViewFunction<T>>;
+  private _viewFunctions: Array<AbstractViewFunction<TViewElement>>;
+  private _viewFunctionsProxy: Array<AbstractViewFunction<TViewElement>>;
 
   /**
    * Obtains a reference to the `_viewFunctions` defining this chain which could be used to add new view function or manipulate existing view function. Since `_viewFunctions` will potentially be changed, this function also conservatively notifies the chain that target view regeneration is necessary for next time (by setting `this.shouldRegenerateView` to `true`.
-   * @returns {Array<AbstractViewFunction<T>>} An array of view functions where each view function's index determines its order in transforming the source view.
+   * @returns {Array<AbstractViewFunction<TViewElement>>} An array of view functions where each view function's index determines its order in transforming the source view.
    */
 
-  get viewFunctions(): Array<AbstractViewFunction<T>> {
+  get viewFunctions(): Array<AbstractViewFunction<TViewElement>> {
     this.shouldRegenerateView = true;
     return this._viewFunctionsProxy;
   }
 
   /**
-   * @constructs {ViewFunctionChain<T>} A pipeline (chain) of view functions.
-   * @param {Array<AbstractViewFunction<T>>} [viewFunctions = []] - An array of view function that transforms source view elements of specified type to target view elements of same type.
-   * @param {boolean} [asAggregateViewFunction = true] - Whether this chain should be outputted as a proxy that provides access to properties defined in registered view functions.
+   * @param {Array<AbstractViewFunction<TViewElement>>} [viewFunctions = []] - An array of view function that transforms source view elements of specified type to target view elements of same type.
+   * @constructs {ViewFunctionChain<TViewElement>} A pipeline (chain) of view functions.
    */
 
-  constructor(
-    viewFunctions: Array<AbstractViewFunction<T>> = [],
-    asAggregateViewFunction: boolean = true
-  ) {
+  constructor(viewFunctions: Array<AbstractViewFunction<TViewElement>> = []) {
     super();
 
     const chain = this;
@@ -700,7 +842,7 @@ export class ViewFunctionChain<T> extends AbstractViewFunction<T> {
        *
        * @see {@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Proxy/Proxy/get}
        */
-      get(target: Array<AbstractViewFunction<T>>, prop: Prop, receiver: any) {
+      get(target: Array<AbstractViewFunction<TViewElement>>, prop: Prop, receiver: any) {
         const numViewFunction: number = target.length;
         switch (prop) {
           case 'copyWithin':
@@ -722,7 +864,7 @@ export class ViewFunctionChain<T> extends AbstractViewFunction<T> {
             break;
           case 'push':
             // return a wrapper function of `Array.push`
-            return function (...items: Array<AbstractViewFunction<T>>) {
+            return function (...items: Array<AbstractViewFunction<TViewElement>>) {
               const newNumViewFunction: number = Reflect.apply(target.push, target, items);
               // for loop is used after a call to `Array.push` to avoid the rare case where a TypeError is thrown because the array will become too large
               for (const item of items) {
@@ -744,7 +886,7 @@ export class ViewFunctionChain<T> extends AbstractViewFunction<T> {
             return function (
               start: number,
               deleteCount: number = numViewFunction - start,
-              ...items: Array<AbstractViewFunction<T>>
+              ...items: Array<AbstractViewFunction<TViewElement>>
             ) {
               const deletedViewFunctions = Reflect.apply(target.splice, target, [
                 start,
@@ -772,7 +914,7 @@ export class ViewFunctionChain<T> extends AbstractViewFunction<T> {
             };
           case 'unshift':
             // return a wrapper function of `Array.unshift`
-            return function (...items: Array<AbstractViewFunction<T>>) {
+            return function (...items: Array<AbstractViewFunction<TViewElement>>) {
               const newNumViewFunction: number = Reflect.apply(target.unshift, target, items);
               // for loop is used after a call to `Array.push` to avoid the rare case where a TypeError is thrown because the array will become too large
               for (const item of items) {
@@ -789,8 +931,18 @@ export class ViewFunctionChain<T> extends AbstractViewFunction<T> {
       },
     });
 
-    if (asAggregateViewFunction) {
-      return this.asAggregateViewFunction();
+    composeFeatures(this, viewFunctions as Array<IFeatureProvider>);
+  }
+
+  /**
+   * @public
+   * @override
+   * @description Defines methods that should be exposed.
+   */
+
+  *getFeatures(): IterableIterator<string> | Iterable<string> {
+    for (const viewFunction of this._viewFunctions) {
+      yield* viewFunction.getFeatures();
     }
   }
 
@@ -801,7 +953,7 @@ export class ViewFunctionChain<T> extends AbstractViewFunction<T> {
    *    + `source` view changed
    *    + target view should be regenerated -- any view function is inserted, modified, removed. In other words, whether the aggregate view function changed.
    */
-  protected regenerateView(sourceView: Array<T>, useCache: boolean) {
+  protected regenerateView(sourceView: Collection<TViewElement>, useCache: boolean) {
     if (useCache && sourceView === this.lastSourceView && !this.shouldRegenerateView) {
       return;
     }
@@ -821,41 +973,5 @@ export class ViewFunctionChain<T> extends AbstractViewFunction<T> {
 
   protected onViewFunctionWillRegenerateView() {
     this.shouldRegenerateView = true;
-  }
-
-  /**
-   * @returns {Proxy} A proxy that can access properties that are either defined on the chain or a view function in the chain. This facilitates quick invocation of methods like `addFilterFunction` on the chain.
-   *                  This proxy only sets a trap for [[get]], so actions like checking whether a property is defined on a registered view function can not be done directly on the chain proxy.
-   *                  The trap for [[get]] will check property defined in the chain first, then search in each registered view function in order. Therefore, properties that are defined in early search targets will shadow same-named properties that are defined in later search targets. For example, since `shouldRegenerateView` is defined in the chain, the `shouldRegenerateView` properties defined in view functions will never be looked up. Similarly, if there are two view function of same type, the earlier view function of such type will shadow properties of later view function of such type. If you want to make sure that you are accessing properties of a particular registered view function, use syntax like `this.viewFunctions[<index>].<property>`.
-   */
-
-  private asAggregateViewFunction() {
-    return new Proxy(this, {
-      /**
-       * A trap for getting a property value.
-       *
-       * First attempts to get the property value defined on the chain, then search inside each view function in order.
-       *
-       * @see {@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Proxy/Proxy/get}
-       */
-      get(target: ViewFunctionChain<T>, prop: Prop, receiver: any) {
-        if (prop in target) {
-          // first searches prop in this chain
-          return Reflect.get(target, prop, receiver);
-        }
-
-        for (const viewFunction of target._viewFunctions) {
-          if (prop in viewFunction) {
-            const result = Reflect.get(viewFunction, prop, receiver);
-
-            if (typeof result === 'function') {
-              // ensure retrieved function has appropriate reference to `this` variable
-              return result.bind(viewFunction);
-            }
-            return result;
-          }
-        }
-      },
-    });
   }
 }
