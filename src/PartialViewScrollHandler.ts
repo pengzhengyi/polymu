@@ -4,6 +4,7 @@
  * This module provides a scroll handler that updates rendering view based on scrolling position.
  */
 
+import { Collection } from './Collection';
 import { EventNotifier } from './EventNotification';
 import { PartialView } from './ViewFunction';
 import { ViewModel } from './ViewModel';
@@ -27,7 +28,7 @@ export interface IntersectionObserverOptions {
 }
 
 /**
- * A enumeration of possible scroll directions.
+ * An enumeration of possible scroll directions.
  */
 enum Direction {
   Up,
@@ -36,6 +37,10 @@ enum Direction {
   Right,
   Stay,
 }
+
+/**
+ * An enumeration of possible rendering axis.
+ */
 
 export enum Axis {
   Horizontal,
@@ -114,6 +119,10 @@ interface PartialViewScrollHandlerOptions<T> {
   /** IntersectionObserverOptions for bottom sentinel */
   endSentinelObserverOptions?: IntersectionObserverOptions;
 }
+
+/**
+ * A scroll handler that lazily render elements from {@link ./ViewFunction.ts:PartialView}.
+ */
 
 export class PartialViewScrollHandler<T> extends EventNotifier {
   /** denotes the event that will be emitted before view update, it will supply the target view */
@@ -360,7 +369,7 @@ export class PartialViewScrollHandler<T> extends EventNotifier {
     } else {
       // measures element directly
       const propName = this.scrollAxis === Axis.Vertical ? 'clientHeight' : 'clientWidth';
-      if (this.partialView.targetView.length > 0) {
+      if (this.partialView.length > 0) {
         const renderedElement = this.convert(this.partialView.targetView[0]);
         this.elementLength = renderedElement[propName];
       }
@@ -381,7 +390,7 @@ export class PartialViewScrollHandler<T> extends EventNotifier {
     if (axis) {
       this.scrollAxis = axis;
     } else {
-      if (this.partialView.targetView.length >= 2) {
+      if (this.partialView.length >= 2) {
         // check element placement relationship
         const firstElement = this.convert(this.partialView.targetView[0]);
         const secondElement = this.convert(this.partialView.targetView[1]);
@@ -596,9 +605,9 @@ export class PartialViewScrollHandler<T> extends EventNotifier {
    *    + invoke afterViewUpdate callback if defined
    *    + activate all IntersectionObserver
    *
-   * @param {() => Array<T>} viewFunction - A callback function to generate the new view.
+   * @param {() => Collection<T>} viewFunction - A callback function to generate the new view.
    */
-  setView(viewFunction: () => Array<T>) {
+  setView(viewFunction: () => Collection<T>) {
     this.deactivateObservers();
 
     // view generation will happen
@@ -617,15 +626,20 @@ export class PartialViewScrollHandler<T> extends EventNotifier {
   /**
    * Syncing the DOM with a new view. In effect, the child nodes in `this.target` will be replaced with current view.
    *
-   * @param {Array<T>} [newView = this.partialView.targetView] - A new view to update the rendered view.
+   * @param {Collection<T>} [newView = this.partialView.targetView] - A new view to update the rendered view.
    */
-  private syncView(newView: Array<T> = this.partialView.targetView) {
-    const numViewElement: number = newView.length;
+  private syncView(newView: Collection<T> = this.partialView.targetView) {
+    const viewIterator = newView[Symbol.iterator]();
     const elements = this.target.children;
     let elementIndex = 0;
-    for (; elementIndex < numViewElement; elementIndex++) {
-      const viewElement = this.convert(newView[elementIndex]);
-      const element = elements[elementIndex];
+    while (true) {
+      let { value, done } = viewIterator.next();
+      if (done) {
+        break;
+      }
+
+      const viewElement = this.convert(value);
+      const element = elements[elementIndex++];
       if (element) {
         if (element === viewElement) {
           continue;
@@ -656,7 +670,8 @@ export class PartialViewScrollHandler<T> extends EventNotifier {
 
     const view = this.partialView.view(this.partialView.lastSourceView);
     const isShiftTowardsEnd = shiftAmount > 0;
-    const numViewElement = view.length;
+    // `length` is retrieved from `this.partialView` since `view` is a Collection and might not have `length` defined
+    const numViewElement = this.partialView.length;
 
     // the number of elements in current view to be removed, upper bounded by the number of existing elements
     const numElementToRemove = Math.min(this.partialView.windowSize, Math.abs(shiftAmount));

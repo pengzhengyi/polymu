@@ -347,7 +347,7 @@ export class PartialView<TViewElement> extends AbstractViewFunction<TViewElement
   }
 
   /**
-   * the maximum number of actually rendered elements. `length` is speculative in that it is inferred from window size (how many elements could maximally be rendered in the window) and the number of elements (how many elements that could be potentially be rendered)
+   * the maximum number of actually rendered elements. `length` is speculative in that it is inferred from window size (how many elements could maximally be rendered in the window) and the number of elements (how many elements that could potentially be rendered)
    */
 
   get length(): number {
