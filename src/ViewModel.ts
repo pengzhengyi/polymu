@@ -401,7 +401,7 @@ export class ViewModel<
   }
 
   /**
-   * Update current view model's elment using the other view model's element. This applies to the Match scenario described in `patchWithViewModel__`.
+   * Update current view model's element using the other view model's element. This applies to the Match scenario described in `patchWithViewModel__`.
    *
    * @param {TDomElement} other - The HTML element of the other view model.
    * @param {PatchModeForMatch} [mode=PatchModeForMatch.CreateAlias] - Determines how to update current view model's HTML element.
@@ -530,7 +530,7 @@ export class ViewModel<
    *    + If the current view model is a partial abstraction of the reference DOM element`other`, then the in-place-patch algorithm might run into live-editing:
    *      @example `other` has two child nodes, current view model is an abstraction of `other` but only has a child view model for the second child node. When calling `this.patchWithDOM__(other)`, second child node will be live edited (because of property forwarding): its registered properties wll be set to those of first child node.
    *
-   * @param {Array<HTMLElement>} elements - An array of DOM elements to patch curent child view models.
+   * @param {Array<HTMLElement>} elements - An array of DOM elements to patch current child view models.
    * @param {PatchModeForMatch} [mode=PatchModeForMatch.CreateAlias] - Determines how to update current view model's HTML element.
    * @param {boolean} [noDetach = true] - Whether surplus DOM elements of `this._children` will be removed from DOM tree.
    * @param {boolean} [noAttach = true] - Whether surplus DOM elements of `other.children` will be appended
