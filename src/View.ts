@@ -1,8 +1,10 @@
 import { Prop } from './Abstraction';
+import { Collection, LazyCollectionProvider } from './Collection';
 import { MutationReporter } from './MutationReporter';
 import { PartialViewScrollHandler, Axis } from './PartialViewScrollHandler';
 import { TaskQueue } from './TaskQueue';
 import { ViewModel } from './ViewModel';
+import { composeFeatures } from './composition/composition';
 import {
   AbstractViewFunction,
   FilterFunction,
@@ -84,9 +86,9 @@ export class BasicView {
   protected useCache: boolean = true;
 
   /**
-   * @returns {Array<ViewModel>} Elements of target view.
+   * @returns {Collection<ViewModel>} Elements of target view.
    */
-  get view(): Array<ViewModel> {
+  get view(): Collection<ViewModel> {
     const useCache = this.useCache;
     this.useCache = true;
     return this.viewFunctionChain.view(this.source, useCache);
@@ -119,23 +121,7 @@ export class BasicView {
     this.initializeResizeHandler();
     this.monitor();
 
-    return new Proxy(this, {
-      /**
-       * A trap for getting a property value.
-       *
-       * First attempts to get the property value defined in this BasicView instance, then search for property defined on the view function chain, including those properties surfaced up from individual view function.
-       *
-       * @see {@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Proxy/Proxy/get}
-       */
-      get(target: BasicView, prop: Prop, receiver: any) {
-        if (prop in target) {
-          // first searches prop in this chain
-          return Reflect.get(target, prop, receiver);
-        }
-
-        return Reflect.get(target.viewFunctionChain, prop, receiver);
-      },
-    });
+    composeFeatures(this, [this.viewFunctionChain]);
   }
 
   /**
