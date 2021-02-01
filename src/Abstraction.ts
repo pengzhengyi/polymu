@@ -8,7 +8,6 @@
  */
 
 import { NotImplemented } from './utils/errors';
-import { isSubset } from './utils/Set';
 
 /**
  * The key name of a property.
@@ -27,7 +26,7 @@ export type Prop = string | number | symbol;
  *    + @public {@link Abstraction#registerProps__} registering/revoking properties
  *    + @public {@link Abstraction#hasSameShape__} detecting whether another object (might be or might noe be an Abstraction) has same properties registered
  *
- * These functionalities can be overriden:
+ * These functionalities can be overridden:
  *    + @protected {@link Abstraction.__createDescriptor} create a descriptor for a property given part of a complete property descriptor (usually just the getter and setter)
  *
  * Its subclasses should follow these naming conventions:
