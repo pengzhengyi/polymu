@@ -11,13 +11,13 @@
  */
 
 import { Prop } from './Abstraction';
-import { Collection, LazyCollectionProvider } from './Collection';
+import { Collection, LazyCollectionProvider } from './collections/Collection';
 import { EventNotifier } from './EventNotification';
 import { TaskQueue } from './TaskQueue';
 import { composeFeatures, IFeatureProvider } from './composition/composition';
 import { NotSupported } from './utils/errors';
 import { quickSort } from './utils/ArrayHelper';
-import Heap from './utils/Heap';
+import Heap from './collections/Heap';
 import { bound } from './utils/math';
 
 /**
@@ -127,7 +127,7 @@ export abstract class AbstractViewFunction<TViewElement> extends EventNotifier
   /**
    * Generates the target view.
    *
-   * This function should be overriden in derived classes to provide actual implementation of target view generation.
+   * This function should be overridden in derived classes to provide actual implementation of target view generation.
    *
    * Usually, consider to regenerate target view if any of the following conditions are true:
    *
@@ -421,8 +421,7 @@ export class PartialView<TViewElement> extends AbstractViewFunction<TViewElement
       return;
     }
 
-    // if the number of elements in source decreased, trying to shift the window
-    // so that same (close) number of elements are rendered
+    // if the number of elements in source decreased, trying to shift the window so that around the same number of elements are rendered
     const numElements = sourceView.length;
     const maximumIndex = numElements - 1;
 

@@ -12,7 +12,7 @@
  *        + materialization is unnecessary as there is no need to index an element -- the collection will only be iterated.
  */
 
-import { Prop } from './Abstraction';
+import { Prop } from '../Abstraction';
 
 /**
  * Represents an iterable of elements. It provides the following properties:

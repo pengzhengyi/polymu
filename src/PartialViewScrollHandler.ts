@@ -4,7 +4,7 @@
  * This module provides a scroll handler that updates rendering view based on scrolling position.
  */
 
-import { Collection } from './Collection';
+import { Collection } from './collections/Collection';
 import { EventNotifier } from './EventNotification';
 import { PartialView } from './ViewFunction';
 import { ViewModel } from './ViewModel';
@@ -58,7 +58,7 @@ interface PartialViewScrollHandlerOptions<T> {
    *
    * There is no need to supply convert function when
    *
-   *    + T is convertable to HTMLElement (for example, T is simply HTMLElement)
+   *    + T is convertible to HTMLElement (for example, T is simply HTMLElement)
    *    + T is `ViewModel`
    */
   convert?: (viewElement: T) => HTMLElement;
