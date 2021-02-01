@@ -13,6 +13,14 @@ function getRandomInt(min: number, difference: number) {
   return Math.floor(Math.random() * difference + min);
 }
 
+/**
+ * Implements a Quick Sort algorithm that sorts in O(n * lg n) expected time where n is the number of elements.
+ * 
+ * @param {Array<T>} array - The array to be sorted.
+ * @param {(element1: T, element2: T) => number} comparator - A comparison function that determines the ordering between two elements.
+ * @param {number} start - The index of first element in the array to be sorted, inclusive.
+ * @param {number} end - The first index after the index of the last element in the array to be sorted, exclusive.
+ */
 export function quickSort<T>(
   array: Array<T>,
   comparator: (element1: T, element2: T) => number,
