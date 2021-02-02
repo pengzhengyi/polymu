@@ -47,7 +47,7 @@ export interface Collection<TElement> extends Iterable<TElement> {
    * ```
    *
    * @param {number} start - Zero-based index at which to start extraction. If `start` is less than 0, 0 will be used as value for `start`.
-   * @param {number} end - Zero-based index before which to end extraction. `slice` extracts up to but no including `end`,. If end is greater than the length of the collection, `slice` extracts through to the end of the sequence (`collection.length`)
+   * @param {number} end - Zero-based index before which to end extraction. `slice` extracts up to but no including `end`. If end is greater than the length of the collection, `slice` extracts through to the end of the sequence (`collection.length`)
    * @return {IterableIterator<TElement>} An iterable of elements between specified indices.
    */
   slice(start: number, end: number): Iterable<TElement>;

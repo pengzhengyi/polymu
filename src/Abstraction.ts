@@ -42,7 +42,7 @@ export type Prop = string | number | symbol;
  *    2. static class attributes {@link #ordering-principle}
  *    3. instance attributes {@link #ordering-principle}
  *    4. constructor
- *    5. overriden Object methods like Symbol.iterator, toString...
+ *    5. overridden Object methods like Symbol.iterator, toString...
  *    6. class static methods {@link #ordering-principle}
  *    7. instance methods {@link #ordering-principle}
  *

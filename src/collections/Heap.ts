@@ -1,5 +1,6 @@
 /**
  * @module
+ * 
  * This module implements a binary heap.
  */
 
