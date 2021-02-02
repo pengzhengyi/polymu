@@ -13,3 +13,10 @@
 export function bound(n: number, lowerBound: number = 0, upperBound: number = Number.POSITIVE_INFINITY): number {
   return Math.min(upperBound, Math.max(lowerBound, n));
 }
+
+/**
+ * @returns {number} Computes the result of `n modulo m`.
+ */
+export function mod(n: number, m: number): number {
+  return ((n % m) + m) % m;
+}
