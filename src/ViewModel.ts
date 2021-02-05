@@ -118,7 +118,7 @@ export class ViewModel<
   /** A mapping from identifier to child view model */
   private _identifierToChild: Map<string, ViewModel>;
 
-  /** @see {@link MutationReporter:MutationReporter */
+  /** @see {@link MutationReporter:MutationReporter} */
   private _mutationReporter: MutationReporter;
 
   /**

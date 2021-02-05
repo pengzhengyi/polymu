@@ -12,7 +12,7 @@ import { NotImplemented } from './utils/errors';
 import { getProperty, hasProperty, setProperty } from './dom/properties';
 
 /**
- * Strips the getter-setter pair of functions from PropertyDescriptor so that access functions type annotations can be overriden.
+ * Strips the getter-setter pair of functions from PropertyDescriptor so that access functions type annotations can be overridden.
  *
  * @see {@link https://microsoft.github.io/PowerBI-JavaScript/interfaces/_node_modules_typedoc_node_modules_typescript_lib_lib_es5_d_.propertydescriptor.html PropertyDescriptor} {@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/defineProperty}
  */
@@ -125,7 +125,7 @@ export class ForwardingInstantiation extends Abstraction {
    * @param {boolean} [reset=false] - Whether existing props will be removed.
    * @description __override__ The overriding function allows access functions in ForwardingPropertyDescriptor to receive two additional arguments: `forwardingTo` and `thisArgument`.
    */
-  registerProps__(props: Record<Prop, Partial<ForwardingPropertyDescriptor>>, reset = false) {
+  registerProps__(props: Record<Prop, Partial<ForwardingPropertyDescriptor>>, reset: boolean = false) {
     /** props will be registered in {@link ./Abstraction.Abstraction} */
     super.registerProps__(
       ForwardingInstantiation.__transformPropertyDescriptors(props, this),
@@ -255,7 +255,7 @@ export class DomForwardingInstantiation<
    * @param {boolean} [reset=false] - Whether existing props will be removed.
    * @description __override__ The overriding function will replace falsy descriptor values in `props` with default property descriptor {@link DomForwardingInstantiation.__fillDefaultDescriptor}.
    */
-  registerProps__(props: Record<string, Partial<ForwardingPropertyDescriptor>>, reset = false) {
+  registerProps__(props: Record<string, Partial<ForwardingPropertyDescriptor>>, reset: boolean = false) {
     // super refers to {@link ForwardingInstantiation}
     super.registerProps__(DomForwardingInstantiation.__fillDefaultDescriptor(props), reset);
   }
