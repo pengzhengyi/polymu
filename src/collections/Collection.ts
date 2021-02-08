@@ -87,7 +87,7 @@ enum MaterializationStrategy {
  *    + a way to iterate the collection
  *    + a way to slice the collection
  */
-abstract class AbstractCollectionProvider<TElement> implements Collection<TElement> {
+export abstract class AbstractCollectionProvider<TElement> implements Collection<TElement> {
   /**
    * A collection should be array-like (indexable by numeric index)
    */
@@ -99,6 +99,11 @@ abstract class AbstractCollectionProvider<TElement> implements Collection<TEleme
    */
 
   protected materializable: boolean;
+
+  /**
+   * @returns The number of materialized elements. These elements can be indexed at constant cost.
+   */
+  abstract get materializationLength(): number;
 
   /**
    * Retrieves the length of the collection.
@@ -166,6 +171,29 @@ abstract class AbstractCollectionProvider<TElement> implements Collection<TEleme
   protected abstract get(index: number): TElement;
 
   abstract slice(start: number, end: number): IterableIterator<TElement>;
+
+  /**
+   * Whether an element is materialized at a specified index. An element is materialized when there is O(1) cost to retrieve it using bracket indexing syntax.
+   * 
+   * @param {number} index - The element index to check.
+   * @returns {boolean} True if the element at specified index is materialized.
+   */
+  abstract isElementMaterialized(index: number): boolean;
+
+  /**
+   * Whether an element is materialized at a specified index of the collection. An element is materialized when there is O(1) cost to retrieve it using bracket indexing syntax.
+   * 
+   * @param {Collection<TElement>} collection - A collection where the element at specified index is checked.
+   * @param {number} index - The element index to check.
+   * @returns {boolean} True if the element at specified index is materialized.
+   */
+  static isElementMaterialized<TElement>(collection: Collection<TElement>, index: number): boolean {
+    if (collection instanceof AbstractCollectionProvider) {
+      return collection.isElementMaterialized(index);
+    }
+    
+    return index in collection;
+  }
 }
 
 /**
@@ -179,6 +207,10 @@ export class UnmaterializableCollectionProvider<TElement> extends AbstractCollec
    */
   protected _length: number;
 
+  get materializationLength(): number {
+    return 0;
+  }
+
   get length(): number {
     return this._length;
   }
@@ -191,6 +223,10 @@ export class UnmaterializableCollectionProvider<TElement> extends AbstractCollec
    */
   constructor(protected readonly iterable: Iterable<TElement>) {
     super(iterable, MaterializationStrategy.Prohibit);
+  }
+
+  isElementMaterialized(index: number): boolean {
+    return false;
   }
 
   *[Symbol.iterator](): IterableIterator<TElement> {
@@ -275,6 +311,10 @@ export class LazyCollectionProvider<TElement> extends AbstractCollectionProvider
 
   protected materializedCollection: Array<TElement>;
 
+  get materializationLength(): number {
+    return this.materializedCollection.length;
+  }
+
   /**
    * If defined, stores the length of the collection
    */
@@ -334,6 +374,10 @@ export class LazyCollectionProvider<TElement> extends AbstractCollectionProvider
     this.materializedCollection[index] = element;
   }
 
+  isElementMaterialized(index: number): boolean {
+    return this.materialized || index in this.materializedCollection;
+  }
+
   *[Symbol.iterator](): IterableIterator<TElement> {
     if (this.materialized) {
       // reuse the materialized collection
@@ -355,7 +399,7 @@ export class LazyCollectionProvider<TElement> extends AbstractCollectionProvider
   }
 
   protected get(index: number): TElement {
-    if (this.materialized || index in this.materializedCollection) {
+    if (this.isElementMaterialized(index)) {
       return this.materializedCollection[index];
     }
 
