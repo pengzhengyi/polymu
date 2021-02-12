@@ -1,21 +1,17 @@
 import { Prop } from './Abstraction';
-import { Collection, LazyCollectionProvider } from './Collection';
+import { Collection, LazyCollectionProvider } from './collections/Collection';
 import { MutationReporter } from './MutationReporter';
 import { PartialViewScrollHandler, Axis } from './PartialViewScrollHandler';
 import { TaskQueue } from './TaskQueue';
 import { ViewModel } from './ViewModel';
 import { composeFeatures } from './composition/composition';
-import {
-  AbstractViewFunction,
-  FilterFunction,
-  FilteredView,
-  PartialView,
-  SortedView,
-  SortingFunction,
-  ViewFunctionChain,
-} from './ViewFunction';
 import { getViewportHeight, getViewportWidth } from './utils/length';
 import { debounceWithCooldown } from './utils/debounce';
+import { AbstractViewFunction } from './view-functions/AbstractViewFunction';
+import { FilteredView } from './view-functions/FilteredView';
+import { PartialView } from './view-functions/PartialView';
+import { SortedView } from './view-functions/SortedView';
+import { AggregateView } from './view-functions/AggregateView';
 
 /**
  * A union type represents the source view.
@@ -56,7 +52,7 @@ export class BasicView {
   /** adjusts the partialView -- updates rendered partial view according to scroll position */
   protected scrollHandler: PartialViewScrollHandler<ViewModel>;
   /** provides an aggregate transformation from source view to final target view */
-  protected viewFunctionChain: ViewFunctionChain<ViewModel>;
+  protected aggregateView: AggregateView<ViewModel>;
 
   /** tasks executed before view update */
   beforeScrollUpdateTaskQueue: TaskQueue = new TaskQueue();
@@ -91,7 +87,7 @@ export class BasicView {
   get view(): Collection<ViewModel> {
     const useCache = this.useCache;
     this.useCache = true;
-    return this.viewFunctionChain.view(this.source, useCache);
+    return this.aggregateView.view(this.source, useCache);
   }
 
   /**
@@ -121,7 +117,7 @@ export class BasicView {
     this.initializeResizeHandler();
     this.monitor();
 
-    composeFeatures(this, [this.viewFunctionChain]);
+    composeFeatures(this, [this.aggregateView]);
   }
 
   /**
@@ -190,13 +186,13 @@ export class BasicView {
     // initially only render one element
     this.partialView = new PartialView<ViewModel>(this.source, 0, 1, 2);
     this.sortedView = new SortedView<ViewModel>();
-    this.viewFunctionChain = new ViewFunctionChain<ViewModel>([
+    this.aggregateView = new AggregateView<ViewModel>([
       this.filteredView,
       this.sortedView,
       this.partialView,
     ]);
     // if the view function chain needs to regenerate target view, refresh and render target view immediately. A potential scenario could be a filter function is added to the `FilteredView`
-    this.viewFunctionChain.subscribe(this, AbstractViewFunction.shouldRegenerateViewEventName, () =>
+    this.aggregateView.subscribe(this, AbstractViewFunction.shouldRegenerateViewEventName, () =>
       this.refreshView()
     );
     // set up the first target view
@@ -256,8 +252,6 @@ export class BasicView {
    */
   protected onMutation(
     mutations: Array<MutationRecord>,
-    observer: MutationObserver,
-    originalMutations: Array<MutationRecord>,
     reporter: MutationReporter
   ) {
     reporter.report(mutations);

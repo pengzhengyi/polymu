@@ -4,7 +4,7 @@
  * This module implements a binary heap.
  */
 
-import { SortingFunction } from '../ViewFunction';
+import { SortingFunction } from '../view-functions/SortedView';
 
 /**
  * Represents a binary heap and implements the iterable interface.

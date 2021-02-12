@@ -1,5 +1,5 @@
 import { PartialViewScrollHandler } from './PartialViewScrollHandler';
-import { PartialView } from './ViewFunction';
+import { PartialView } from './view-functions/PartialView';
 
 function setupIntersectionObserverMock({
   observe = () => null,

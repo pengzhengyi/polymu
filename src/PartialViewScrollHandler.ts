@@ -6,7 +6,7 @@
 
 import { Collection } from './collections/Collection';
 import { EventNotifier } from './EventNotification';
-import { PartialView } from './ViewFunction';
+import { PartialView } from "./view-functions/PartialView";
 import { ViewModel } from './ViewModel';
 import { bound } from './utils/math';
 import { debounceWithCooldown } from './utils/debounce';
