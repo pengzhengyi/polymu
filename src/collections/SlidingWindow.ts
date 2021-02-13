@@ -169,7 +169,7 @@ export class SlidingWindow<TElement> implements Iterable<TElement> {
      * 
      * Window size is defined only when `_startIndex` and `_endIndex` are both defined. It is different from `length` as `windowSize` is not tied to a specific iterable.
      * 
-     * `windowSize` is the not normalized difference between end index and start index. For example, if end index is greater than the iterable length, window size might be larger than the iterable length.
+     * `windowSize` is the difference between end index and start index. This means `windowSize` might not be realistic with respect to the `iterable`. For example, if end index is greater than the iterable length, window size might be larger than the iterable length.
      * 
      * @returns {number} The hypothetical number of elements between start index and end index. Undefined if either start index or end index is undefined.
      */
@@ -231,7 +231,7 @@ export class SlidingWindow<TElement> implements Iterable<TElement> {
      * 
      * @returns {boolean} Whether the window is meaningfully defined.
      */
-    protected get isFullyInitialized(): boolean {
+    protected get _isFullyInitialized(): boolean {
         return this._iterable !== undefined && this._startIndex !== undefined && this._endIndex !== undefined;
     }
 
@@ -239,7 +239,7 @@ export class SlidingWindow<TElement> implements Iterable<TElement> {
      * @returns {boolean} Whether there is any element from the iterable that is available through window. If this predicate is not meaningful (for example when `iterable` is not defined), `undefined` is returned. If the answer is ambiguous (for example, when `iterable` is partially materialized), `null` is returned.
      */
     get isWindowEmpty(): boolean | undefined | null {
-        if (!this.isFullyInitialized) {
+        if (!this._isFullyInitialized) {
             return undefined;
         }
 
@@ -261,7 +261,7 @@ export class SlidingWindow<TElement> implements Iterable<TElement> {
      * @returns {boolean} Whether every index in the window corresponds to an element in the iterable. If this predicate is not meaningful (for example when `iterable` is not defined), `undefined` is returned. If the answer is ambiguous (for example, when `iterable` is partially materialized), `null` is returned.
      */
     get isWindowFull(): boolean | undefined | null {
-        if (!this.isFullyInitialized) {
+        if (!this._isFullyInitialized) {
             return undefined;
         }
 
@@ -292,7 +292,7 @@ export class SlidingWindow<TElement> implements Iterable<TElement> {
      * @returns {number} The number of elements from the iterable currently in the Sliding Window. If `length` is not meaningful (for example when `iterable` is not defined), `undefined` is returned. If the answer is ambiguous (for example, when `iterable` is partially materialized), `null` is returned.
      */
     get length(): number | undefined | null {
-        if (!this.isFullyInitialized) {
+        if (!this._isFullyInitialized) {
             return undefined;
         }
 
@@ -314,7 +314,7 @@ export class SlidingWindow<TElement> implements Iterable<TElement> {
      * @returns {number} Number of elements in `iterable` before the window start index. If this answer is not meaningful (for example when `iterable` is not defined), `undefined` is returned. If the answer is ambiguous (for example, when `iterable` is partially materialized), `null` is returned.
      */
     get numElementBefore(): number | undefined | null {
-        if (!this.isFullyInitialized) {
+        if (!this._isFullyInitialized) {
             return undefined;
         }
 
@@ -339,7 +339,7 @@ export class SlidingWindow<TElement> implements Iterable<TElement> {
      * @returns {number} Number of elements in `iterable` after the window end index. If this answer is not meaningful (for example when `iterable` is not defined), `undefined` is returned. If the answer is ambiguous (for example, when `iterable` is partially materialized), `null` is returned.
      */
     get numElementAfter(): number | undefined | null {
-        if (!this.isFullyInitialized) {
+        if (!this._isFullyInitialized) {
             return undefined;
         }
 
@@ -356,7 +356,7 @@ export class SlidingWindow<TElement> implements Iterable<TElement> {
      * @returns {boolean} If true, then the window cannot shift towards the start anymore. If this answer is not meaningful (for example when `iterable` is not defined), `undefined` is returned.
      */
     get reachedStart(): boolean | undefined {
-        if (!this.isFullyInitialized) {
+        if (!this._isFullyInitialized) {
             return undefined;
         }
 
@@ -364,8 +364,6 @@ export class SlidingWindow<TElement> implements Iterable<TElement> {
     }
  
     /**
-     * When whether end is reached cannot be determined (for example, `iterable` length is not defined), it will assume end is not reached.
-     * 
      * @returns {boolean} If true, then the window cannot shift towards the end (last element of the iterable) anymore. If this answer is not meaningful (for example when `iterable` is not defined), `undefined` is returned. If the answer is ambiguous (for example, when `iterable` is partially materialized), `null` is returned.
      */
     get reachedEnd(): boolean | undefined | null {
@@ -531,7 +529,7 @@ export class SlidingWindow<TElement> implements Iterable<TElement> {
      * Due to resize strategy, the actual index value might be different.
      * 
      * @param {number} [startIndex=this._startIndex] - The start index of the window. Will be lower bounded by 0. Default to current start index.
-     * @param {number} endIndex - The end index of the window. Will be lower bounded by startIndex. Default to current end index.
+     * @param {number} [endIndex=this._endIndex] - The end index of the window. Will be lower bounded by startIndex. Default to current end index.
      */
     setWindow(
         startIndex: number  = this._startIndex, 

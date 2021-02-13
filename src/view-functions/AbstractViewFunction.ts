@@ -65,7 +65,14 @@ export abstract class AbstractViewFunction<TViewElement> extends EventNotifier
   }
 
   /** previous source view, could be used to determine whether source view is the same */
-  lastSourceView: Collection<TViewElement>;
+  protected _lastSourceView: Collection<TViewElement>;
+
+  /**
+   * @returns {Collection<TViewElement>} The last source view that has been passed in for view generation.
+   */
+  get lastSourceView(): Collection<TViewElement> {
+    return this._lastSourceView;
+  }
 
   /** holds target view */
   protected _targetView: Collection<TViewElement>;
@@ -114,6 +121,6 @@ export abstract class AbstractViewFunction<TViewElement> extends EventNotifier
    */
   protected regenerateView(sourceView: Collection<TViewElement>, useCache: boolean) {
     this.shouldRegenerateView = false;
-    this.lastSourceView = sourceView;
+    this._lastSourceView = sourceView;
   }
 }

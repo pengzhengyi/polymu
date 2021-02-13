@@ -74,7 +74,7 @@ describe('AggregateView', () => {
     const sv = new SortedView<number>();
     const fv = new FilteredView<number>();
     const array = Array.from(Array(100).keys());
-    const pv = new PartialView<number>(array, 0, 4, 5);
+    const pv = new PartialView<number>(0, 4);
     const vc = new AggregateView<number>([fv, sv, pv]);
     const featureSet: Set<string> = new Set(
       (sv.getFeatures() as Array<string>).concat(

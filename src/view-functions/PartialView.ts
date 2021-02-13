@@ -5,105 +5,132 @@
  */
 
 import { Collection, LazyCollectionProvider } from "../collections/Collection";
+import { ResizeStrategy, SlidingWindow } from "../collections/SlidingWindow";
 import { IFeatureProvider } from "../composition/composition";
-import { bound } from "../utils/math";
 import { AbstractViewFunction } from "./AbstractViewFunction";
 
 
 /**
- * Selects a window from a view. More specifically, it returns a continuous selection of elements in source view.
+ * Selects a window from the source view. More specifically, it returns a slice, defined by start index and end index, of source view.
+ * 
+ * The defined window can be adjusted by changing the window indices (`setWindow`) or shifting both indices by some amount (`shiftWindow`).
+ * 
+ * Besides transforming source view to target view, PartialView also supports indexing the source view using a window index relative to the window start index (`get`), after the source view is defined.
  */
 export class PartialView<TViewElement> extends AbstractViewFunction<TViewElement>
   implements IFeatureProvider {
   /** methods that should be exposed since they define the API for `PartialView` */
   features: Array<string> = ['setWindow', 'shiftWindow'];
 
-  /** start index of the window, inclusive */
-  partialViewStartIndex: number;
-  /** end index of the window, inclusive */
-  partialViewEndIndex: number;
+  /**
+   * The `SlidingWindow` instance member of this `PartialView`, responsible for window-related logic.
+   */
+  protected _slidingWindow: SlidingWindow<TViewElement>;
 
-  /** a hard limit on the length of the window */
-  private windowSizeUpperBound: number;
-
-  /** number of elements in source view. */
-  get numElement(): number {
-    return this.lastSourceView.length;
-  }
-
-  /** maximum window size -- maximum number of elements in the window */
-  get maximumWindowSize(): number {
-    return Math.min(this.numElement, this.windowSizeUpperBound);
+  /** 
+   * Alias to `this._slidingWindow.iterable` as both should hold last source view for view generation.
+   * @see {@link SlidingWindow#iterable}
+   * @override
+   */
+  get lastSourceView(): Collection<TViewElement> {
+    return this._slidingWindow.iterable;
   }
 
   /**
-   * Changes the maximum window size by providing an upper bound. If this upper bound causes the maximum window size to change (more or less elements can be rendered), try to expand the window to be maximum window size.
-   *
-   * @param {number} windowSizeUpperBound - Similar to `this.windowSizeUpperBound`, a hard fixed (compared to the number of elements upper bound which changes when elements are removed or added) upper bound for window size.
+   * @returns {number} The start index of the `PartialWindow`. This index is inclusive.
    */
-  set maximumWindowSize(windowSizeUpperBound: number) {
-    const maximumWindowSize = this.maximumWindowSize;
-    this.windowSizeUpperBound = windowSizeUpperBound;
-    if (maximumWindowSize !== this.maximumWindowSize) {
-      // maximum window size changes
-      this.setWindow(this.partialViewStartIndex);
-    }
+  get startIndex(): number {
+    return this._slidingWindow.startIndex;
+  }
+  /**
+   * @returns {number} The end index of the `PartialWindow`. This index is inclusive.
+   */
+  get endIndex(): number {
+    return this._slidingWindow.endIndex;
   }
 
   /** actual window size - number of elements that target view will maximally contain */
+  /**
+   * Window size reflects how many elements from the source view might be included in the `PartialWindow`. It is defined as the difference between start index and end index. Therefore, it is not tied to the source view length.
+   * 
+   * @returns {number} The number of elements that could be included in the range defined by the start index and end index. Undefined if either start index or end index is undefined.
+   */
   get windowSize(): number {
-    return this.partialViewEndIndex - this.partialViewStartIndex + 1;
+    return this._slidingWindow.windowSize;
   }
 
   /**
-   * the maximum number of actually rendered elements. `length` is speculative in that it is inferred from window size (how many elements could maximally be rendered in the window) and the number of elements (how many elements that could potentially be rendered)
+   * @returns {boolean} Whether there is any element from the source view that is available through window. If this predicate is not meaningful (for example, before first view generation when source view is not defined), `undefined` is returned. If the answer is ambiguous (for example, when source view is a partially materialized collection), `null` is returned.
    */
+  get isWindowEmpty(): boolean | undefined | null {
+    return this._slidingWindow.isWindowEmpty;
+  }
 
+  /**
+   * @returns {boolean} Whether every index in the window corresponds to an element in the source view. If this predicate is not meaningful (for example, before first view generation when source view is not defined), `undefined` is returned. If the answer is ambiguous (for example, when source view is a partially materialized collection), `null` is returned.
+   */
+  get isWindowFull(): boolean | undefined | null {
+    return this._slidingWindow.isWindowFull;
+  }
+
+  /**
+   * Length is defined only when 
+   * 
+   * + `lastSourceView` is defined
+   * + `_startIndex` and `_endIndex` are both defined
+   * 
+   * It reflects the number of elements from the iterable that is in the window.
+   * 
+   * Different from `windowSize`, `length` is tied to the `iterable`.
+   * 
+   * @returns {number} The number of elements from the iterable currently in the Sliding Window. If `length` is not meaningful (for example, before first view generation when source view is not defined), `undefined` is returned. If the answer is ambiguous (for example, when source view is a partially materialized collection), `null` is returned.
+   */
   get length(): number {
-    return Math.min(this.windowSize, this.numElement);
+    return this._slidingWindow.length;
   }
 
-  /** number of elements in source view not rendered because they are "before" the window */
-  get numElementNotRenderedBefore(): number {
-    return this.partialViewStartIndex;
+  /**
+   * @returns {number} Number of elements in source view before the window start index. If this answer is not meaningful (for example, before first view generation when source view is not defined), `undefined` is returned. If the answer is ambiguous (for example, when source view is a partially materialized collection), `null` is returned.
+   */
+  get numElementBefore(): number {
+    return this._slidingWindow.numElementBefore;
   }
 
-  /** number of elements in source view not rendered because they are "after" the window */
-  get numElementNotRenderedAfter(): number {
-    return this.numElement - this.numElementNotRenderedBefore - this.windowSize;
+  /**
+   * @returns {number} Number of elements in `iterable` after the window end index. If this answer is not meaningful (for example, before first view generation when source view is not defined), `undefined` is returned. If the answer is ambiguous (for example, when source view is a partially materialized collection), `null` is returned.
+   */
+  get numElementAfter(): number {
+    return this._slidingWindow.numElementAfter;
   }
 
-  /** whether the window has reached the left boundary -- it cannot be shifted leftward without shrinking the window length */
+  /**
+   * @returns {boolean} If true, then the window cannot shift towards the start anymore. If this answer is not meaningful (for example, before first view generation when source view is not defined), `undefined` is returned.
+   */
   get reachedStart(): boolean {
-    return this.numElementNotRenderedBefore === 0;
+    return this._slidingWindow.reachedStart;
   }
 
-  /** whether the window has reached the right boundary -- it cannot be shifted rightward without shrinking the window length */
+  /**
+   * @returns {boolean} If true, then the window cannot shift towards the end (last element of the source view) anymore. If this answer is not meaningful (for example, before first view generation when source view is not defined), `undefined` is returned. If the answer is ambiguous (for example, when source view is a partially materialized collection), `null` is returned.
+   */
   get reachedEnd(): boolean {
-    return this.numElementNotRenderedAfter === 0;
+    return this._slidingWindow.reachedEnd;
   }
 
   /**
    * Creates a PartialView instance.
    *
    * @public
-   * @param {Collection<TViewElement>} [sourceView = []] - initial source view.
-   * @param {number} [windowStartIndex = -1] - start index of the window.
-   * @param {number} [windowEndIndex = -1] - end index of the window.
-   * @param {number} [windowSizeUpperBound = Number.POSITIVE_INFINITY] - Maximum window size.
+   * @param {number} [startIndex] - The start index of the SlidingWindow that defines the first element in the iterable available through the window, should be nonnegative. 
+   * @param {number} [endIndex] - The end index of the SlidingWindow that defines the last element in the iterable available through the window, should be lower bounded by the start index. 
    * @constructs PartialView<TViewElement>
    */
   constructor(
-    sourceView: Collection<TViewElement> = new LazyCollectionProvider([]),
-    windowStartIndex: number = -1,
-    windowEndIndex: number = -1,
-    windowSizeUpperBound: number = Number.POSITIVE_INFINITY
+    startIndex: number = undefined,
+    endIndex: number = undefined
   ) {
     super();
-    this.windowSizeUpperBound = windowSizeUpperBound;
-    this.lastSourceView = sourceView;
-    this.setWindow(windowStartIndex, windowEndIndex);
-    this.regenerateView(sourceView, false);
+    this._slidingWindow = new SlidingWindow(startIndex, endIndex, undefined, ResizeStrategy.Shift);
   }
 
   /**
@@ -111,9 +138,22 @@ export class PartialView<TViewElement> extends AbstractViewFunction<TViewElement
    * @override
    * @description Defines methods that should be exposed.
    */
-
   getFeatures(): IterableIterator<string> | Iterable<string> {
     return this.features;
+  }
+
+  /**
+   * Retrieves an element at specified index in the Window. 
+   * 
+   * @example 
+   * 
+   * get(0) is equivalent with retrieving the source view element at window start index.
+   * 
+   * @param {number} windowIndex - The relative window index. A meaningful index should be   between zero and element count (0 <= index < `this.length`).
+   * @returns {TElement} The element at specified index.
+   */
+  get(windowIndex: number): TViewElement {
+    return this._slidingWindow.get(windowIndex);
   }
 
   /**
@@ -130,20 +170,11 @@ export class PartialView<TViewElement> extends AbstractViewFunction<TViewElement
       return;
     }
 
-    // if the number of elements in source decreased, trying to shift the window so that around the same number of elements are rendered
-    const numElements = sourceView.length;
-    const maximumIndex = numElements - 1;
+    this._slidingWindow.iterable = sourceView;
+    // `SlidingWindow` is a lazy generator of window elements, by wrapping the `SlidingWindow` in a `LazyCollectionProvider`, the elements are cached
+    this._targetView_ = new LazyCollectionProvider(this._slidingWindow);
 
-    const previousEndIndex = this.partialViewEndIndex;
-    this.partialViewEndIndex = bound(this.partialViewEndIndex, 0, maximumIndex);
-    const adjustment = previousEndIndex - this.partialViewEndIndex;
-
-    this.partialViewStartIndex = bound(this.partialViewStartIndex - adjustment, 0, maximumIndex);
-    this._targetView_ = new LazyCollectionProvider(
-      sourceView.slice(this.partialViewStartIndex, this.partialViewEndIndex + 1)
-    );
-
-    super.regenerateView(sourceView, useCache);
+    this.shouldRegenerateView = false;
   }
 
   /**
@@ -151,32 +182,30 @@ export class PartialView<TViewElement> extends AbstractViewFunction<TViewElement
    *
    * The indices are safe as they will be properly bounded:
    *
-   *    + `startIndex` will be lowerbounded by 0 and upperbounded by last index in source view.
-   *    + `endIndex` will be lowerbounded by bounded `startIndex` and upperbounded by last index in source view.
+   *    + `startIndex` will be lower-bounded by 0
+   *    + `endIndex` will be lower-bounded by bounded `startIndex`
    *
    * Will trigger a regeneration of view if window boundaries are changed.
    *
    * @public
-   * @param {number} [startIndex = 0] - The start index of the window.
-   * @param {number} [endIndex = startIndex + this.maximumWindowSize - 1] - The end index of the window.
+   * @param {number} [startIndex = this.startIndex] - The start index of the window. Default to current window start index.
+   * @param {number} [endIndex = this.endIndex] - The end index of the window. Default to current window end index.
    * @param {boolean} [noEventNotification = false] - This determines whether setting view window will trigger a {@link AbstractViewFunction.shouldRegenerateViewEventName} event. Leaving this value as `false` or passing `false` to this parameter means this event will be triggered and might be handled by subscribers. For example, the `ViewFunctionChain` subscribes to this event which invokes a same-named event which is then subscribed by the `BasicView` (if registered) which handles this event by actually rendering the changed view. Setting this value to `true` is useful when `setWindow` is triggered by an instance which handles this event. For example, `BasicView` handles this event by calling `refreshView` which will call the `setWindow` function. Therefore, to prevent double re-rendering, the `setWindow` call from `refreshView` should have this parameter set to `true`. This applies to other scenario where the caller of `setWindow` is responsible for actually rendering the view.
-   * @returns Whether this operation will cause a regeneration of view. Even this operation does not cause view regeneration, a view regeneration might still happen because of other operations.
+   * @returns {boolean} Whether this operation will be responsible for a regeneration of view. Even this operation does not cause view regeneration, a view regeneration might still happen because of other view generation triggering events.
    */
   setWindow(
-    startIndex: number = 0,
-    endIndex: number = startIndex + this.maximumWindowSize - 1,
+    startIndex: number = this.startIndex,
+    endIndex: number = this.endIndex,
     noEventNotification: boolean = false
   ): boolean {
-    const newStartIndex = bound(startIndex, 0, this.numElement - 1);
-    const newEndIndex = bound(endIndex, newStartIndex, this.numElement - 1);
-
-    if (newStartIndex === this.partialViewStartIndex && newEndIndex === this.partialViewEndIndex) {
-      // new window is identical to old window, no change
+    const oldStartIndex = this.startIndex;
+    const oldEndIndex = this.endIndex;
+    
+    this._slidingWindow.setWindow(startIndex, endIndex);
+    if (this.startIndex === oldStartIndex && this.endIndex === oldEndIndex) {
+      // window does not actually changed
       return false;
     }
-
-    this.partialViewStartIndex = newStartIndex;
-    this.partialViewEndIndex = newEndIndex;
 
     if (noEventNotification) {
       // not triggering {@link AbstractViewFunction.shouldRegenerateViewEventName} event
@@ -189,58 +218,37 @@ export class PartialView<TViewElement> extends AbstractViewFunction<TViewElement
   /**
    * Shifts the current window towards the end by some amount.
    *
-   * + if `preserveWindowSize === true`
-   *     Window size will not change even when it might cause no shifting happens.
-   *     @example Originally, 3 elements are in the window. After trying to shift right by 3 elements, the window still has 3 elements: in order to preserve window size, the window is actually only shifted right 2 elements.
-   *        0 1 2 3 4
-   *       [- - -]- -
-   *        - -[- - -]
-   * + if `preserveWindowSize === false`
-   *     Window size will not change unless there is not enough elements to include in the window after shifting.
-   *
-   *     @example Originally, 3 elements are in the window. After shifting right by 3 elements, only 2 elements will be in the window.
-   *        0 1 2 3 4
-   *       [- - -]- -
-   *        - - -[- -]
+   * Window size will be preserved during shifting {@link SlidingWindow:ResizeStrategy#Shift}.
+   * 
+   * @example Originally, 3 elements are in the window. After trying to shift right by 3 elements, the window still has 3 elements: in order to preserve window size, the window is actually only shifted right 2 elements.
+   *    0 1 2 3 4
+   *   [- - -]- -
+   *    - -[- - -]
    *
    * @public
-   * @param {number} shiftAmount - The amount to shift the window rightward. If negative, the window will actually be shifted leftward.
-   * @param {boolean} preserveWindowSize - Whether the window size should be preserved even if doing so will result in not shifting sufficiently or no shifting at all.
+   * @param {number} shiftAmount - The amount to shift the window towards the last element of the source view. If negative, the window will actually be shifted towards the first element of the source view.
    * @param {boolean } noEventNotification - @see {@link PartialView#setWindow}. This determines whether the call to `setWindow` can result in event notification.
-   * @returns {number} The actual amount of shifting. This number also indicates whether this operation will cause a regeneration of view: 0 means no regeneration while non-zero means regeneration needed. Even this operation does not cause view regeneration, a view regeneration might still happen because of other operations.
+   * @returns {boolean} Whether this operation will be responsible for a regeneration of view. Even this operation does not cause view regeneration, a view regeneration might still happen because of other view generation triggering events.
    */
   shiftWindow(
     shiftAmount: number,
-    preserveWindowSize: boolean,
     noEventNotification: boolean = false
-  ): number {
-    if (shiftAmount === 0) {
-      return 0;
+  ): boolean {
+    const oldStartIndex = this.startIndex;
+    const oldEndIndex = this.endIndex;
+
+    this._slidingWindow.shiftWindow(shiftAmount);
+
+    if (this.startIndex === oldStartIndex && this.endIndex === oldEndIndex) {
+      // window does not actually changed
+      return false;
     }
 
-    const shiftTowardsEnd: boolean = shiftAmount >= 0;
-    if ((shiftTowardsEnd && this.reachedEnd) || (!shiftTowardsEnd && this.reachedStart)) {
-      return 0;
-    }
-
-    let startIndex, endIndex;
-    if (preserveWindowSize) {
-      if (shiftTowardsEnd) {
-        endIndex = Math.min(this.numElement - 1, this.partialViewEndIndex + shiftAmount);
-        startIndex = Math.max(0, endIndex - this.windowSize + 1);
-      } else {
-        startIndex = Math.max(0, this.partialViewStartIndex + shiftAmount);
-        endIndex = Math.min(this.numElement - 1, startIndex + this.windowSize - 1);
-      }
+    if (noEventNotification) {
+      // not triggering {@link AbstractViewFunction.shouldRegenerateViewEventName} event
+      return (this._shouldRegenerateView = true);
     } else {
-      startIndex = this.partialViewStartIndex + shiftAmount;
-      endIndex = startIndex + this.windowSize - 1;
-    }
-    const previousStartIndex = this.partialViewStartIndex;
-    if (this.setWindow(startIndex, endIndex, noEventNotification)) {
-      return this.partialViewStartIndex - previousStartIndex;
-    } else {
-      return 0;
+      return (this.shouldRegenerateView = true);
     }
   }
 }
