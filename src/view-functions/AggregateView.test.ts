@@ -1,10 +1,8 @@
-import { AbstractViewFunction } from "./AbstractViewFunction";
-import { AggregateView } from "./AggregateView";
-import { FilteredView } from "./FilteredView";
-import { PartialView } from "./PartialView";
-import { SortedView } from "./SortedView";
-
-
+import { AbstractViewFunction } from './AbstractViewFunction';
+import { AggregateView } from './AggregateView';
+import { FilteredView } from './FilteredView';
+import { PartialView } from './PartialView';
+import { SortedView } from './SortedView';
 
 describe('AggregateView', () => {
   test('empty', () => {

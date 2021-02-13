@@ -15,7 +15,7 @@ function getRandomInt(min: number, difference: number) {
 
 /**
  * Implements a Quick Sort algorithm that sorts in O(n * lg n) expected time where n is the number of elements.
- * 
+ *
  * @param {Array<T>} array - The array to be sorted.
  * @param {(element1: T, element2: T) => number} comparator - A comparison function that determines the ordering between two elements.
  * @param {number} start - The index of first element in the array to be sorted, inclusive.

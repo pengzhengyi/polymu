@@ -1,14 +1,14 @@
 /**
  * @module
- * 
+ *
  * This module provide a `SortedView` which represents a view transformation that reorders elements in source view according to its existing sorting functions.
  */
 
-import { Collection, LazyCollectionProvider } from "../collections/Collection";
-import Heap from "../collections/Heap";
-import { IFeatureProvider } from "../composition/composition";
-import { quickSort } from "../utils/ArrayHelper";
-import { AbstractViewFunction } from "./AbstractViewFunction";
+import { Collection, LazyCollectionProvider } from '../collections/Collection';
+import Heap from '../collections/Heap';
+import { IFeatureProvider } from '../composition/composition';
+import { quickSort } from '../utils/ArrayHelper';
+import { AbstractViewFunction } from './AbstractViewFunction';
 
 /**
  * A function type that orders two elements from source view.

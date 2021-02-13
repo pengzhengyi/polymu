@@ -1,14 +1,14 @@
 /**
  * @module
- * 
+ *
  * This module provides an `AggregateView` which represents a view transformation that combines other view functions together. In other words, `AggregateView` can be seen as a grouping or boxing of view functions.
  */
 
-import { Prop } from "../Abstraction";
-import { Collection } from "../collections/Collection";
-import { IFeatureProvider, composeFeatures } from "../composition/composition";
-import { NotSupported } from "../utils/errors";
-import { AbstractViewFunction } from "./AbstractViewFunction";
+import { Prop } from '../Abstraction';
+import { Collection } from '../collections/Collection';
+import { IFeatureProvider, composeFeatures } from '../composition/composition';
+import { NotSupported } from '../utils/errors';
+import { AbstractViewFunction } from './AbstractViewFunction';
 
 /**
  * Combines several view functions into an aggregate view function.

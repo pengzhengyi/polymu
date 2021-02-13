@@ -33,4 +33,3 @@ export interface ViewFunction<TViewElement> {
    */
   view(sourceView: Collection<TViewElement>, useCache?: boolean): Collection<TViewElement>;
 }
-

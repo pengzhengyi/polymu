@@ -1,20 +1,19 @@
 /**
  * @module
- * 
- * This module provides a `PartialView` which represents a view transformation which selects a "window" of the source view. 
+ *
+ * This module provides a `PartialView` which represents a view transformation which selects a "window" of the source view.
  */
 
-import { Collection, LazyCollectionProvider } from "../collections/Collection";
-import { ResizeStrategy, SlidingWindow } from "../collections/SlidingWindow";
-import { IFeatureProvider } from "../composition/composition";
-import { AbstractViewFunction } from "./AbstractViewFunction";
-
+import { Collection, LazyCollectionProvider } from '../collections/Collection';
+import { ResizeStrategy, SlidingWindow } from '../collections/SlidingWindow';
+import { IFeatureProvider } from '../composition/composition';
+import { AbstractViewFunction } from './AbstractViewFunction';
 
 /**
  * Selects a window from the source view. More specifically, it returns a slice, defined by start index and end index, of source view.
- * 
+ *
  * The defined window can be adjusted by changing the window indices (`setWindow`) or shifting both indices by some amount (`shiftWindow`).
- * 
+ *
  * Besides transforming source view to target view, PartialView also supports indexing the source view using a window index relative to the window start index (`get`), after the source view is defined.
  */
 export class PartialView<TViewElement> extends AbstractViewFunction<TViewElement>
@@ -27,7 +26,7 @@ export class PartialView<TViewElement> extends AbstractViewFunction<TViewElement
    */
   protected _slidingWindow: SlidingWindow<TViewElement>;
 
-  /** 
+  /**
    * Alias to `this._slidingWindow.iterable` as both should hold last source view for view generation.
    * @see {@link SlidingWindow#iterable}
    * @override
@@ -52,7 +51,7 @@ export class PartialView<TViewElement> extends AbstractViewFunction<TViewElement
   /** actual window size - number of elements that target view will maximally contain */
   /**
    * Window size reflects how many elements from the source view might be included in the `PartialWindow`. It is defined as the difference between start index and end index. Therefore, it is not tied to the source view length.
-   * 
+   *
    * @returns {number} The number of elements that could be included in the range defined by the start index and end index. Undefined if either start index or end index is undefined.
    */
   get windowSize(): number {
@@ -74,15 +73,15 @@ export class PartialView<TViewElement> extends AbstractViewFunction<TViewElement
   }
 
   /**
-   * Length is defined only when 
-   * 
+   * Length is defined only when
+   *
    * + `lastSourceView` is defined
    * + `_startIndex` and `_endIndex` are both defined
-   * 
+   *
    * It reflects the number of elements from the iterable that is in the window.
-   * 
+   *
    * Different from `windowSize`, `length` is tied to the `iterable`.
-   * 
+   *
    * @returns {number} The number of elements from the iterable currently in the Sliding Window. If `length` is not meaningful (for example, before first view generation when source view is not defined), `undefined` is returned. If the answer is ambiguous (for example, when source view is a partially materialized collection), `null` is returned.
    */
   get length(): number {
@@ -121,14 +120,11 @@ export class PartialView<TViewElement> extends AbstractViewFunction<TViewElement
    * Creates a PartialView instance.
    *
    * @public
-   * @param {number} [startIndex] - The start index of the SlidingWindow that defines the first element in the iterable available through the window, should be nonnegative. 
-   * @param {number} [endIndex] - The end index of the SlidingWindow that defines the last element in the iterable available through the window, should be lower bounded by the start index. 
+   * @param {number} [startIndex] - The start index of the SlidingWindow that defines the first element in the iterable available through the window, should be nonnegative.
+   * @param {number} [endIndex] - The end index of the SlidingWindow that defines the last element in the iterable available through the window, should be lower bounded by the start index.
    * @constructs PartialView<TViewElement>
    */
-  constructor(
-    startIndex: number = undefined,
-    endIndex: number = undefined
-  ) {
+  constructor(startIndex: number = undefined, endIndex: number = undefined) {
     super();
     this._slidingWindow = new SlidingWindow(startIndex, endIndex, undefined, ResizeStrategy.Shift);
   }
@@ -143,12 +139,12 @@ export class PartialView<TViewElement> extends AbstractViewFunction<TViewElement
   }
 
   /**
-   * Retrieves an element at specified index in the Window. 
-   * 
-   * @example 
-   * 
+   * Retrieves an element at specified index in the Window.
+   *
+   * @example
+   *
    * get(0) is equivalent with retrieving the source view element at window start index.
-   * 
+   *
    * @param {number} windowIndex - The relative window index. A meaningful index should be   between zero and element count (0 <= index < `this.length`).
    * @returns {TElement} The element at specified index.
    */
@@ -200,7 +196,7 @@ export class PartialView<TViewElement> extends AbstractViewFunction<TViewElement
   ): boolean {
     const oldStartIndex = this.startIndex;
     const oldEndIndex = this.endIndex;
-    
+
     this._slidingWindow.setWindow(startIndex, endIndex);
     if (this.startIndex === oldStartIndex && this.endIndex === oldEndIndex) {
       // window does not actually changed
@@ -219,7 +215,7 @@ export class PartialView<TViewElement> extends AbstractViewFunction<TViewElement
    * Shifts the current window towards the end by some amount.
    *
    * Window size will be preserved during shifting {@link SlidingWindow:ResizeStrategy#Shift}.
-   * 
+   *
    * @example Originally, 3 elements are in the window. After trying to shift right by 3 elements, the window still has 3 elements: in order to preserve window size, the window is actually only shifted right 2 elements.
    *    0 1 2 3 4
    *   [- - -]- -
@@ -230,10 +226,7 @@ export class PartialView<TViewElement> extends AbstractViewFunction<TViewElement
    * @param {boolean } noEventNotification - @see {@link PartialView#setWindow}. This determines whether the call to `setWindow` can result in event notification.
    * @returns {boolean} Whether this operation will be responsible for a regeneration of view. Even this operation does not cause view regeneration, a view regeneration might still happen because of other view generation triggering events.
    */
-  shiftWindow(
-    shiftAmount: number,
-    noEventNotification: boolean = false
-  ): boolean {
+  shiftWindow(shiftAmount: number, noEventNotification: boolean = false): boolean {
     const oldStartIndex = this.startIndex;
     const oldEndIndex = this.endIndex;
 

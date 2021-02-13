@@ -10,7 +10,11 @@
  * @param {number} [upperBound = Number.POSITIVE_INFINITY] - The upper bound.
  * @returns {number} The bounded number.
  */
-export function bound(n: number, lowerBound: number = 0, upperBound: number = Number.POSITIVE_INFINITY): number {
+export function bound(
+  n: number,
+  lowerBound: number = 0,
+  upperBound: number = Number.POSITIVE_INFINITY
+): number {
   return Math.min(upperBound, Math.max(lowerBound, n));
 }
 

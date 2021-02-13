@@ -174,7 +174,7 @@ export abstract class AbstractCollectionProvider<TElement> implements Collection
 
   /**
    * Whether an element is materialized at a specified index. An element is materialized when there is O(1) cost to retrieve it using bracket indexing syntax.
-   * 
+   *
    * @param {number} index - The element index to check.
    * @returns {boolean} True if the element at specified index is materialized.
    */
@@ -182,7 +182,7 @@ export abstract class AbstractCollectionProvider<TElement> implements Collection
 
   /**
    * Whether an element is materialized at a specified index of the collection. An element is materialized when there is O(1) cost to retrieve it using bracket indexing syntax.
-   * 
+   *
    * @param {Collection<TElement>} collection - A collection where the element at specified index is checked.
    * @param {number} index - The element index to check.
    * @returns {boolean} True if the element at specified index is materialized.
@@ -191,7 +191,7 @@ export abstract class AbstractCollectionProvider<TElement> implements Collection
     if (collection instanceof AbstractCollectionProvider) {
       return collection.isElementMaterialized(index);
     }
-    
+
     return index in collection;
   }
 }

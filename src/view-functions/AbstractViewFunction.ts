@@ -1,10 +1,10 @@
 /**
  * @module
- * 
+ *
  * This module provides a basic abstract class `AbstractViewFunction` that is useful in implementing ViewFunction interface.
- * 
+ *
  * It provides the following features:
- * 
+ *
  *      + contains `beforeViewUpdateTaskQueue` and `afterViewUpdateTaskQueue` that can be used to add one-time/recurring tasks to execute before and after view update.
  *      + requires an implementation of `getFeatures` that exposes features that should be surfaced
  *      + will post `shouldRegenerateViewEventName` events when a view generation is necessary
