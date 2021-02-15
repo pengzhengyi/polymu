@@ -91,7 +91,7 @@ describe('AStarSearch', () => {
     );
     expect(result).toBeUndefined();
 
-    // nonexisting node
+    // existing node
     const result2 = AStarSearch(
       nodeA,
       (node) => node.nodeToDistance.keys(),
