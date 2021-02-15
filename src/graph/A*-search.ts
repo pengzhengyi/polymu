@@ -8,14 +8,7 @@
 
 import Heap from '../collections/Heap';
 import { SortingFunction } from '../view-functions/SortedView';
-
-/**
- * A callback function used to get child nodes from a node.
- * @callback TGetChildren
- * @param {TNode} node - A node to get child nodes of.
- * @returns {IterableIterator<TNode>} An iterable of child nodes.
- */
-type TGetChildren<TNode> = (node: TNode) => IterableIterator<TNode>;
+import { TGetChildren } from './types';
 
 /**
  * Implement the A* Search algorithm.

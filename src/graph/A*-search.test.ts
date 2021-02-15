@@ -1,4 +1,4 @@
-import { AStarSearch } from './AStarSearch';
+import { AStarSearch } from './A*-search';
 
 describe('AStarSearch', () => {
   /**
