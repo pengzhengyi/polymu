@@ -10,4 +10,4 @@
  * @param {TNode} node - A node to get child nodes of.
  * @returns {IterableIterator<TNode>} An iterable of child nodes.
  */
-export type TGetChildren<TNode> = (node: TNode) => IterableIterator<TNode>;
+export type TGetChildren<TNode> = (node: TNode) => IterableIterator<TNode> | Iterable<TNode>;
