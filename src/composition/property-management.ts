@@ -402,7 +402,6 @@ export class PropertyManager {
   ): Set<Property<any>> {
     const prerequisiteProperties: Set<Property<any>> = new Set();
 
-    // @ts-ignore
     const matches = property.__getValue.toString().matchAll(PropertyManager.PREREQUISITE_REGEX);
 
     // the second capture group of each match contain an property that participates in this property's value computation (a "prerequisite")
