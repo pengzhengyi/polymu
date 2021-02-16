@@ -393,9 +393,13 @@ export class PropertyManager {
    * In more detail, this function will parse the source code of property's `__getValue` method (the method used to compute up-to-date property value internally) to find all unique properties managed by this property manager that directly participates the computation of this property's value.
    *
    * @param {Property} property - A property to get its "prerequisites" -- other properties that this property directly rely on to compute its value.
+   * @param {boolean} _propagateImmediateUpdateBehavior - This is an internal property used to decide whether propagation of `Immediate` update behavior should happen. This should be set to `true` during first depth first search and `false` at later depth first searches (if any) as for later searches, propagation is handled in `getAllPrerequisitesButExcludeExploredActivePrerequisite`.
    * @returns {Set<Property<any>>} A set of properties that are this property's "prerequisites".
    */
-  __analyzePropertyPrerequisites(property: Property<any>): Set<Property<any>> {
+  __analyzePropertyPrerequisites(
+    property: Property<any>,
+    _propagateImmediateUpdateBehavior: boolean = true
+  ): Set<Property<any>> {
     const prerequisiteProperties: Set<Property<any>> = new Set();
 
     // @ts-ignore
@@ -410,7 +414,9 @@ export class PropertyManager {
         prerequisiteProperties.add(prerequisiteProperty);
 
         if (property.updateBehavior === UpdateBehavior.Immediate) {
-          prerequisiteProperty.updateBehavior = UpdateBehavior.Immediate;
+          if (_propagateImmediateUpdateBehavior) {
+            prerequisiteProperty.updateBehavior = UpdateBehavior.Immediate;
+          }
 
           // record current property as a active dependency for "prerequisite". It is an active dependency as this property immediately recomputes its property value when its prerequisites have value change
           getOrInsertDefault(
@@ -442,7 +448,10 @@ export class PropertyManager {
      * @param property - Current property. This is the current node for current depth first search and also the parent of `prerequisiteProperty` in prerequisite graph (child in dependency graph).
      * @param prerequisiteProperty - A property that is prerequisite for `property`. In other words, this property influences `property`'s value computation. Also when this callback is executed, the subtree rooted by this node in the prerequisite graph has been explored.
      */
-    const afterSubtreeExplored = (property: Property<any>, prerequisiteProperty: Property<any>) => {
+    const updateDependencyTierAfterSubtreeExplored = (
+      property: Property<any>,
+      prerequisiteProperty: Property<any>
+    ) => {
       /**
        * Dependency tier is equivalent to the maximum subtree depth. A property at dependency tier x might have an outdated value if any properties at prior dependency tier (x - 1, x - 2, ..., 0) has its value updated.
        *
@@ -468,7 +477,7 @@ export class PropertyManager {
          * @param property - A property to find its prerequisites -- properties it rely on to compute its value.
          */
         const getAllPrerequisites = (property: Property<any>) => {
-          const prerequisites = this.__analyzePropertyPrerequisites(property);
+          const prerequisites = this.__analyzePropertyPrerequisites(property, true);
           propertyToPrerequisites.set(property, prerequisites);
           return prerequisites;
         };
@@ -479,7 +488,7 @@ export class PropertyManager {
           undefined,
           undefined,
           exploredProperties,
-          afterSubtreeExplored
+          updateDependencyTierAfterSubtreeExplored
         );
 
         first = false;
@@ -501,7 +510,7 @@ export class PropertyManager {
             // we have to compute "prerequisites"
             propertyToPrerequisites.set(
               property,
-              (prerequisites = that.__analyzePropertyPrerequisites(property))
+              (prerequisites = that.__analyzePropertyPrerequisites(property, false))
             );
           }
 
@@ -515,6 +524,9 @@ export class PropertyManager {
                 prerequisite.updateBehavior = UpdateBehavior.Immediate;
                 // explore prerequisite again in case for recursive update
                 yield prerequisite;
+              } else {
+                // even though we can avoid exploring the subtree, we still need to consider this prerequisite in computing this property's dependency tier because this relationship has not yet been included in dependency tier calculation
+                updateDependencyTierAfterSubtreeExplored(property, prerequisite);
               }
             } else {
               yield prerequisite;
@@ -536,15 +548,16 @@ export class PropertyManager {
           addToExploredProperties,
           undefined,
           undefined,
-          afterSubtreeExplored
+          updateDependencyTierAfterSubtreeExplored
         );
       }
     }
   }
 
   /**
+   * Notify the active "descendants" of this property in dependency graph that the value of this property has changed, a recomputation of value might be needed.
    *
-   * @param name
+   * @param property - A property whose value has changed.
    */
   notifyValueChange(property: Property<any>) {
     if (this.__notifyValueChangeLock === false) {
