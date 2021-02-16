@@ -6,7 +6,7 @@
  * An important classification criterion for Collection is its materializability. A Collection can be classified into one of the following three categories based on its materializability:
  *
  *    + materialized: there is constant cost O(1) in indexing an element (@example when the collection is realized through an array of elements)
- *    + materializable: there is linear cost O(n) in indexing an element before the Collection is materialized. However, after the Collection is materialzable, the cost of indexing an element will be constant O(1). Usually the materialization process happens lazily *on-need*: for example, when last element needs to be accessed, the Collection will materialize since it only knows to reach the last element through iterating the whole collection. (@example when the collection is initially represented by an Iterable that fits in memory)
+ *    + materializable: there is linear cost O(n) in indexing an element before the Collection is materialized. However, after the Collection is materializable, the cost of indexing an element will be constant O(1). Usually the materialization process happens lazily *on-need*: for example, when last element needs to be accessed, the Collection will materialize since it only knows to reach the last element through iterating the whole collection. (@example when the collection is initially represented by an Iterable that fits in memory)
  *    + unmaterializable: there will always be a linear cost O(n) in indexing an element. The Collection can be unmaterializable when
  *        + the materialized Collection will be too large to fit in memory
  *        + materialization is unnecessary as there is no need to index an element -- the collection will only be iterated.
