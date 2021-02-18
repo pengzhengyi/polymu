@@ -58,7 +58,7 @@ type TPropertyName = string;
  *
  * This function might make use of `manager` when this property is a computed property whose value depends on other properties.
  *
- * @param {Property<TPropertyValue>} thisValue - A reference to the property where the getter function is associated. Usually equals to `this` during function execution. However, `thisValue` should be used instead of `this` to avoid `this` binding to different value when this getter function is exposed in some other way.
+ * @param {Property<TPropertyValue>} thisValue - A reference to the property where the getter function is associated. Note `thisValue` is different from `this` as `thisValue` refers to current property instance while `this` refers to the object (usually where this property is bound) where this function is invoked in.
  * @param {PropertyManager} manager - A reference to the property manager. Useful when it is necessary to retrieve other properties' value during computation of this property's value.
  * @returns {TPropertyValue} Most updated version of property value. The canonical current property value.
  */
@@ -70,7 +70,7 @@ type PropertyGetter<TPropertyValue> = (
 /**
  * A predicate that determines when a property's last computed value can be reused, thereby reducing unnecessary expensive computation. If true, then last computed value can be reused.
  *
- * @param {Property<TPropertyValue>} thisValue - A reference to the property where this predicate / last computed value is associated. Usually equals to `this` during function execution. However, `thisValue` should be used instead of `this` to avoid `this` binding to different value when this predicate is exposed in some other way.
+ * @param {Property<TPropertyValue>} thisValue - A reference to the property where this predicate / last computed value is associated. Note `thisValue` is different from `this` as `thisValue` refers to current property instance while `this` refers to the object (usually where this property is bound) where this function is invoked in.
  * @param {PropertyManager} manager - A reference to the property manager. Useful when it is necessary to retrieve other properties' value to determine whether reuse if possible.
  * @returns {boolean} If true, then last computed value for this property is still up-to-date. Otherwise, a recomputation of property value is necessary.
  */
@@ -90,7 +90,7 @@ type ReusePredicate<TPropertyValue> = (
  *
  * @param {TPropertyValue} oldValue - The property value before the update.
  * @param {TPropertyValue} newValue - The property value after the update. This is also the value currently stored in property manager's cache for this property.
- * @param {Property<TPropertyValue>} thisValue - A reference to the property where these values are associated. Usually equals to `this` during function execution. However, `thisValue` should be used instead of `this` to avoid `this` binding to different value when this callback is exposed in some other way.
+ * @param {Property<TPropertyValue>} thisValue - A reference to the property where these values are associated. Note `thisValue` is different from `this` as `thisValue` refers to current property instance while `this` refers to the object (usually where this property is bound) where this function is invoked in.
  * @param {PropertyManager} manager - A reference to the property manager. Useful when it is necessary to interact with other properties.
  */
 type ValueUpdateCallback<TPropertyValue> = (
@@ -121,7 +121,7 @@ export class Property<TPropertyValue> {
    *
    * @param {TPropertyValue} - The property value before the update.
    * @param {TPropertyValue} - The property value after the update, also the value currently stored in property manager's cache for this property.
-   * @param {Property<TPropertyValue>} thisValue - A reference to the property where these values are associated. Usually equals to `this` during function execution. However, `thisValue` should be used instead of `this` to avoid `this` binding to different value when this callback is exposed in some other way.
+   * @param {Property<TPropertyValue>} thisValue - A reference to the property where these values are associated. Note `thisValue` is different from `this` as `thisValue` refers to current property instance while `this` refers to the object (usually where this property is bound) where this function is invoked in.
    * @param {PropertyManager} manager - A reference to the property manager. Useful when it is necessary to interact with other properties.
    */
   static onValueUpdate<TPropertyValue>(
@@ -216,7 +216,7 @@ export class Property<TPropertyValue> {
    *
    * This method might trigger a value update for all properties that potentially depend on this property -- descendants in the dependency graph.
    *
-   * @param {Property<TPropertyValue>} thisValue - A reference to the property where the getter function is associated. Usually equals to `this` during function execution. However, `thisValue` should be used instead of `this` to avoid `this` binding to different value when this getter function is exposed in some other way.
+   * @param {Property<TPropertyValue>} thisValue - A reference to the property where the getter function is associated. Note `thisValue` is different from `this` as `thisValue` refers to current property instance while `this` refers to the object (usually where this property is bound) where this function is invoked in.
    * @param {PropertyManager} manager - A reference to the property manager. Useful when it is necessary to retrieve other properties' value during computation of this property's value.
    * @returns {TPropertyValue} Most updated version of property value. The canonical current property value.
    */
@@ -238,7 +238,7 @@ export class Property<TPropertyValue> {
    * This method might trigger a value update for all properties that potentially depend on this property -- descendants in the dependency graph.
    *
    * @param {TPropertyValue} value - New value for this property. If different from last computed property value, will trigger a value update.
-   * @param {Property<TPropertyValue>} thisValue - A reference to the property where the setter function is associated. Usually equals to `this` during function execution. However, `thisValue` should be used instead of `this` to avoid `this` binding to different value when this setter function is exposed in some other way.
+   * @param {Property<TPropertyValue>} thisValue - A reference to the property where the setter function is associated. Note `thisValue` is different from `this` as `thisValue` refers to current property instance while `this` refers to the object (usually where this property is bound) where this function is invoked in.
    * @param {PropertyManager} manager - A reference to the property manager. Used to update this property's value in manager's cache.
    */
   setValue(value: TPropertyValue, thisValue: Property<TPropertyValue>, manager: PropertyManager) {
@@ -358,6 +358,11 @@ export class PropertyManager {
    */
   getPropertyValueSnapshot(property: Property<any>): any {
     return this.propertyValueSnapshot.get(property);
+  }
+
+  getPropertyValueSnapshotWithName(propertyName: TPropertyName): any {
+    const property = this.nameToProperty.get(propertyName);
+    return property && this.propertyValueSnapshot.get(property);
   }
 
   /**
