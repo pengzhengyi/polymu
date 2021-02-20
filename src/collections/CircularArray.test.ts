@@ -125,4 +125,119 @@ describe('CircularArray test', () => {
     expect(circularArray.capacity).toEqual(3);
     expect(Array.from(circularArray)).toEqual([4, 5, 6]);
   });
+
+  test('shift towards start', () => {
+    const circularArray: CircularArray<string> = new CircularArray(5);
+    circularArray.add('v');
+    circularArray.add('w');
+    circularArray.add('x');
+    circularArray.add('y');
+    circularArray.add('z');
+    expect(circularArray.isFull).toBe(true);
+
+    let onEnter = jest.fn();
+    let onExit = jest.fn();
+    circularArray.shift(-3, ['s', 't', 'u'], onExit, onEnter);
+    expect(circularArray.get(0)).toEqual('s');
+    expect(circularArray.get(1)).toEqual('t');
+    expect(circularArray.get(2)).toEqual('u');
+    expect(circularArray.get(3)).toEqual('v');
+    expect(circularArray.get(4)).toEqual('w');
+    expect(onEnter.mock.calls.length).toBe(3);
+    expect(onExit.mock.calls.length).toBe(3);
+    expect(onEnter.mock.calls[0]).toEqual(['s', 0]);
+    expect(onEnter.mock.calls[1]).toEqual(['t', 1]);
+    expect(onEnter.mock.calls[2]).toEqual(['u', 2]);
+    expect(onExit.mock.calls[0]).toEqual(['x', 2]);
+    expect(onExit.mock.calls[1]).toEqual(['y', 3]);
+    expect(onExit.mock.calls[2]).toEqual(['z', 4]);
+
+    onEnter = jest.fn();
+    onExit = jest.fn();
+    circularArray.shift(
+      -4,
+      (function* () {
+        yield 'o';
+        yield 'p';
+        yield 'q';
+        yield 'r';
+      })(),
+      onExit,
+      onEnter
+    );
+
+    expect(circularArray.get(0)).toEqual('o');
+    expect(circularArray.get(1)).toEqual('p');
+    expect(circularArray.get(2)).toEqual('q');
+    expect(circularArray.get(3)).toEqual('r');
+    expect(circularArray.get(4)).toEqual('s');
+
+    expect(onEnter.mock.calls.length).toBe(4);
+    expect(onExit.mock.calls.length).toBe(4);
+    expect(onEnter.mock.calls[0]).toEqual(['o', 0]);
+    expect(onEnter.mock.calls[1]).toEqual(['p', 1]);
+    expect(onEnter.mock.calls[2]).toEqual(['q', 2]);
+    expect(onEnter.mock.calls[3]).toEqual(['r', 3]);
+    expect(onExit.mock.calls[0]).toEqual(['t', 1]);
+    expect(onExit.mock.calls[1]).toEqual(['u', 2]);
+    expect(onExit.mock.calls[2]).toEqual(['v', 3]);
+    expect(onExit.mock.calls[3]).toEqual(['w', 4]);
+  });
+
+  test('shift towards end', () => {
+    const circularArray: CircularArray<string> = new CircularArray(5);
+    circularArray.add('a');
+    circularArray.add('b');
+    circularArray.add('c');
+    circularArray.add('d');
+    circularArray.add('e');
+    expect(circularArray.isFull).toBe(true);
+
+    let onEnter = jest.fn();
+    let onExit = jest.fn();
+    circularArray.shift(2, ['f', 'g'], onExit, onEnter);
+    expect(circularArray.get(0)).toEqual('c');
+    expect(circularArray.get(1)).toEqual('d');
+    expect(circularArray.get(2)).toEqual('e');
+    expect(circularArray.get(3)).toEqual('f');
+    expect(circularArray.get(4)).toEqual('g');
+
+    expect(onEnter.mock.calls.length).toBe(2);
+    expect(onExit.mock.calls.length).toBe(2);
+    expect(onEnter.mock.calls[0]).toEqual(['f', 3]);
+    expect(onEnter.mock.calls[1]).toEqual(['g', 4]);
+    expect(onExit.mock.calls[0]).toEqual(['a', 0]);
+    expect(onExit.mock.calls[1]).toEqual(['b', 1]);
+
+    onEnter = jest.fn();
+    onExit = jest.fn();
+    circularArray.shift(
+      4,
+      (function* () {
+        yield 'h';
+        yield 'i';
+        yield 'j';
+        yield 'k';
+      })(),
+      onExit,
+      onEnter
+    );
+
+    expect(circularArray.get(0)).toEqual('g');
+    expect(circularArray.get(1)).toEqual('h');
+    expect(circularArray.get(2)).toEqual('i');
+    expect(circularArray.get(3)).toEqual('j');
+    expect(circularArray.get(4)).toEqual('k');
+
+    expect(onEnter.mock.calls.length).toBe(4);
+    expect(onExit.mock.calls.length).toBe(4);
+    expect(onEnter.mock.calls[0]).toEqual(['h', 1]);
+    expect(onEnter.mock.calls[1]).toEqual(['i', 2]);
+    expect(onEnter.mock.calls[2]).toEqual(['j', 3]);
+    expect(onEnter.mock.calls[3]).toEqual(['k', 4]);
+    expect(onExit.mock.calls[0]).toEqual(['c', 0]);
+    expect(onExit.mock.calls[1]).toEqual(['d', 1]);
+    expect(onExit.mock.calls[2]).toEqual(['e', 2]);
+    expect(onExit.mock.calls[3]).toEqual(['f', 3]);
+  });
 });

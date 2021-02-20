@@ -235,7 +235,7 @@ export class CircularArray<TElement> implements Iterable<TElement> {
         newStart -= this._capacity;
 
         const iterator = replacement[Symbol.iterator]();
-        for (let i = this._start; i < this.capacity; i++) {
+        for (let i = this._start; i < this._capacity; i++) {
           let { value: replaceElement } = iterator.next();
           onExit(this._array[i], exitWindowIndex++);
           this._array[i] = replaceElement;
@@ -252,9 +252,9 @@ export class CircularArray<TElement> implements Iterable<TElement> {
     } else if (shiftAmount === 0) {
       return;
     } else {
-      let newStart = this._start + shiftAmount;
+      // shift window towards start
       let enterWindowIndex = 0;
-      let exitWindowIndex = this._capacity - shiftAmount;
+      let exitWindowIndex = this._capacity + shiftAmount;
 
       if (newStart >= 0) {
         let i = newStart;
@@ -267,7 +267,7 @@ export class CircularArray<TElement> implements Iterable<TElement> {
         newStart += this._capacity;
 
         const iterator = replacement[Symbol.iterator]();
-        for (let i = newStart; i < this.capacity; i++) {
+        for (let i = newStart; i < this._capacity; i++) {
           let { value: replaceElement } = iterator.next();
           onExit(this._array[i], exitWindowIndex++);
           this._array[i] = replaceElement;
