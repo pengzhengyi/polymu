@@ -175,4 +175,114 @@ export class CircularArray<TElement> implements Iterable<TElement> {
       yield this.get(i);
     }
   }
+
+  /**
+   * Shift can be used to achieve two workflows:
+   *
+   * + `shiftAmount > 0`: delete some amount (`shiftAmount`) of elements from the start of the circular array and append same amount of elements to the end of the circular array. Imagine circular array is a segment of a straight line, this workflow pushes the circular array towards the end direction.
+   * + `shiftAmount < 0`: delete some amount (absolute value of `shiftAmount`) of elements from the end of the circular array and prepend some amount of elements to the start of the circular array. Imagine circular array is a segment of a straight line, this workflow pushes the circular array towards the start direction.
+   *
+   * ! The circular array must be full to apply shift operation
+   *
+   * Example: shiftAmount = 4, **x** represent a deleted element and **+** represent an inserted element, **↑** represent circular array start position
+   *
+   * ```
+   * Before Shift
+   * [ * * x x x x * * * *]
+   *       ↑
+   * After Shift
+   * [ * * + + + + * * * *]
+   *               ↑
+   * ```
+   *
+   * Example: shiftAmount = -4, **x** represent a deleted element and **+** represent an inserted element, **↑** represent circular array start position
+   *
+   * ```
+   * Before Shift
+   * [ - - * * * * * * - -]
+   *       ↑
+   * After Shift
+   * [ + + * * * * * * + +]
+   *                 ↑
+   * ```
+   *
+   * @param shiftAmount - A nonzero shift amount, see above description. In short, negative shift amount will insert elements at the start while remove elements from the end while the positive shift does the reverse.
+   * @param replacement - The elements to be inserted in order. Its length should equal to the absolute value of `shiftAmount`. In order means that the first element of `replacement` will be at the smallest window index.
+   * @param onExit - A callback to apply to each removed element. This callback will receive the element about to be removed and its window index. Elements are removed in order, meaning first element removed will have the smallest window index.
+   * @param onEnter - A callback to apply to each inserted element. This callback will receive the element just inserted and its window index. Elements are inserted in order, meaning first element inserted will have the smallest window index.
+   */
+  shift(
+    shiftAmount: number,
+    replacement: Iterable<TElement>,
+    onExit: (element: TElement, windowIndex: number) => void = () => undefined,
+    onEnter: (element: TElement, windowIndex: number) => void = () => undefined
+  ) {
+    let newStart = this._start + shiftAmount;
+    if (shiftAmount > 0) {
+      // shift towards end
+      let enterWindowIndex = this._capacity - shiftAmount;
+      let exitWindowIndex = 0;
+
+      if (newStart < this._capacity) {
+        for (const replaceElement of replacement) {
+          onExit(this._array[this._start], exitWindowIndex++);
+          this._array[this._start++] = replaceElement;
+          onEnter(replaceElement, enterWindowIndex++);
+        }
+        return;
+      } else {
+        // wrap around
+        newStart -= this._capacity;
+
+        const iterator = replacement[Symbol.iterator]();
+        for (let i = this._start; i < this.capacity; i++) {
+          let { value: replaceElement } = iterator.next();
+          onExit(this._array[i], exitWindowIndex++);
+          this._array[i] = replaceElement;
+          onEnter(replaceElement, enterWindowIndex++);
+        }
+
+        for (let i = 0; i < newStart; i++) {
+          let { value: replaceElement } = iterator.next();
+          onExit(this._array[i], exitWindowIndex++);
+          this._array[i] = replaceElement;
+          onEnter(replaceElement, enterWindowIndex++);
+        }
+      }
+    } else if (shiftAmount === 0) {
+      return;
+    } else {
+      let newStart = this._start + shiftAmount;
+      let enterWindowIndex = 0;
+      let exitWindowIndex = this._capacity - shiftAmount;
+
+      if (newStart >= 0) {
+        let i = newStart;
+        for (const replaceElement of replacement) {
+          onExit(this._array[i], exitWindowIndex++);
+          this._array[i++] = replaceElement;
+          onEnter(replaceElement, enterWindowIndex++);
+        }
+      } else {
+        newStart += this._capacity;
+
+        const iterator = replacement[Symbol.iterator]();
+        for (let i = newStart; i < this.capacity; i++) {
+          let { value: replaceElement } = iterator.next();
+          onExit(this._array[i], exitWindowIndex++);
+          this._array[i] = replaceElement;
+          onEnter(replaceElement, enterWindowIndex++);
+        }
+
+        for (let i = 0; i < this._start; i++) {
+          let { value: replaceElement } = iterator.next();
+          onExit(this._array[i], exitWindowIndex++);
+          this._array[i] = replaceElement;
+          onEnter(replaceElement, enterWindowIndex++);
+        }
+      }
+    }
+
+    this._start = newStart;
+  }
 }
