@@ -240,4 +240,75 @@ describe('CircularArray test', () => {
     expect(onExit.mock.calls[2]).toEqual(['e', 2]);
     expect(onExit.mock.calls[3]).toEqual(['f', 3]);
   });
+
+  test('fit', () => {
+    const circularArray: CircularArray<string> = new CircularArray(5);
+    let onEnter = jest.fn();
+    let onExit = jest.fn();
+    circularArray.fit(['a', 'b', 'c', 'd', 'e'], onExit, onEnter);
+
+    expect(circularArray.get(0)).toEqual('a');
+    expect(circularArray.get(1)).toEqual('b');
+    expect(circularArray.get(2)).toEqual('c');
+    expect(circularArray.get(3)).toEqual('d');
+    expect(circularArray.get(4)).toEqual('e');
+
+    expect(circularArray.isFull).toBe(true);
+    expect(circularArray.length).toBe(5);
+    expect(onEnter.mock.calls.length).toBe(5);
+    expect(onExit.mock.calls.length).toBe(0);
+    expect(onEnter.mock.calls[0]).toEqual(['a', 0]);
+    expect(onEnter.mock.calls[1]).toEqual(['b', 1]);
+    expect(onEnter.mock.calls[2]).toEqual(['c', 2]);
+    expect(onEnter.mock.calls[3]).toEqual(['d', 3]);
+    expect(onEnter.mock.calls[4]).toEqual(['e', 4]);
+
+    onEnter = jest.fn();
+    onExit = jest.fn();
+
+    circularArray.fit(
+      (function* () {
+        yield 'D';
+        yield 'E';
+        yield 'F';
+      })(),
+      onExit,
+      onEnter
+    );
+
+    expect(circularArray.get(0)).toEqual('D');
+    expect(circularArray.get(1)).toEqual('E');
+    expect(circularArray.get(2)).toEqual('F');
+
+    expect(circularArray.isFull).toBe(false);
+    expect(circularArray.length).toBe(3);
+    expect(onEnter.mock.calls.length).toBe(3);
+    expect(onExit.mock.calls.length).toBe(5);
+    expect(onEnter.mock.calls[0]).toEqual(['D', 0]);
+    expect(onEnter.mock.calls[1]).toEqual(['E', 1]);
+    expect(onEnter.mock.calls[2]).toEqual(['F', 2]);
+    expect(new Set(onExit.mock.calls.map((call) => call[0]))).toEqual(
+      new Set(['a', 'b', 'c', 'd', 'e'])
+    );
+
+    const numRandomAdd = Math.floor(Math.random() * (30 - 20) + 20);
+    for (let i = 0; i < numRandomAdd; i++) {
+      circularArray.add('RANDOM');
+    }
+
+    expect(circularArray.isFull).toBe(true);
+    expect(circularArray.length).toBe(5);
+    onEnter = jest.fn();
+    onExit = jest.fn();
+    const iterable = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j'];
+    circularArray.fit(iterable, onExit, onEnter);
+
+    expect(circularArray.isFull).toBe(true);
+    expect(circularArray.length).toBe(10);
+    expect([...circularArray.slice(2, 6)]).toEqual(['c', 'd', 'e', 'f']);
+    expect(onEnter.mock.calls.length).toBe(10);
+    expect(onExit.mock.calls.length).toBe(5);
+    expect(onEnter.mock.calls.map((call) => call[0])).toEqual(iterable);
+    expect(new Set(onExit.mock.calls.map((call) => call[0]))).toEqual(new Set(['RANDOM']));
+  });
 });

@@ -195,6 +195,8 @@ export class CircularArray<TElement> implements Iterable<TElement> {
    * + there are same number of elements than this circular array's capacity: in this case, this existing elements are "replaced" by the new elements.
    * + there are less elements than this circular array can contain: in this case, this circular array will fit the iterable and claim the remaining capacity as available space (not reclaim empty space)
    *
+   * This method can also be useful to quickly initialize a circular array from an existing iterable.
+   *
    * @param iterable - An iterable to be fit inside this circular array. After this call, the elements from this iterable will all reside in this circular array in order. For example, `this.get(0)` will return the first element in the iterable.
    * @param onExit - A callback to apply to each removed element. This callback will receive the element about to be removed and its window index. Elements are NOT removed in order, meaning first element removed does not necessarily have the smallest window index.
    * @param onEnter - A callback to apply to each inserted element. This callback will receive the element just inserted and its window index. Elements are inserted in order, meaning first element inserted will have the smallest window index.
@@ -202,9 +204,10 @@ export class CircularArray<TElement> implements Iterable<TElement> {
   fit(
     iterable: Iterable<TElement>,
     onExit: (element: TElement, windowIndex: number) => void = undefined,
-    onEnter: (element: TElement, windowIndex: number) => void = () => undefined
+    onEnter: (element: TElement, windowIndex: number) => void = undefined
   ) {
     const capacity = this._capacity;
+    const numExistingElements = this.length;
 
     let i = 0;
     const toInsert = [];
@@ -212,14 +215,14 @@ export class CircularArray<TElement> implements Iterable<TElement> {
       if (i < capacity) {
         if (onExit) {
           const deletedElementWindowIndex = this._translateIndex(i);
-          if (deletedElementWindowIndex < capacity) {
+          if (deletedElementWindowIndex < numExistingElements) {
             // an element actually will be replaced
             onExit(this._array[i], deletedElementWindowIndex);
           }
         }
 
         this._array[i] = element;
-        onEnter(element, i);
+        onEnter && onEnter(element, i);
       } else {
         toInsert.push(element);
       }
@@ -227,22 +230,24 @@ export class CircularArray<TElement> implements Iterable<TElement> {
     }
 
     if (i < capacity) {
+      this._slots = capacity - i;
+
       if (onExit) {
         // if `onExit` is defined, also call onExit on elements that are effectively deleted
-        for (; i < capacity; i++) {
+        for (; i < numExistingElements; i++) {
           onExit(this._array[i], this._translateIndex(i));
         }
       }
-      this._capacity = i;
-      this._slots = capacity - i;
     } else if (i > capacity) {
       let windowIndex = capacity;
       for (const element of toInsert) {
         this._array.push(element);
-        onEnter(element, windowIndex++);
+        onEnter && onEnter(element, windowIndex++);
       }
 
       this._capacity += toInsert.length;
+      this._slots = 0;
+    } else {
       this._slots = 0;
     }
 
