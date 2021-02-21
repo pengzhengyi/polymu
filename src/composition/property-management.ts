@@ -301,6 +301,13 @@ export class PropertyManager {
   readonly propertyValueSnapshot: Map<Property<any>, any> = new Map();
 
   /**
+   * A map contains mapping from property to its snapshot version.
+   *
+   * Snapshot version is stored as an integer, it can be used to tell whether a property's snapshot value changed or not since every snapshot update will increment the recorded version.
+   */
+  readonly propertyValueSnapshotVersion: Map<Property<any>, number> = new Map();
+
+  /**
    * This set contains properties for which this property's value change will be a direct cause of value update in those properties. In other words, this set contains those "active" (`updateBehavior.Immediate`) properties that are direct children of this property in dependency graph.
    *
    * For example, for the following dependency graph where an arrow from A to B means A participates in computing B's property value:
@@ -354,15 +361,72 @@ export class PropertyManager {
    * Return previous computed property value.
    *
    * @param {Property<any>} property - The property to get last computed value of.
-   * @returns Last computed value for specified property. `undefined` if there has not been any stored computed value for specified property. The stored value is always up-to-date unless the value of a property that is ancestor of a passive property, a property whose update behavior is `Lazy`, in the dependency graph has its value updated.
+   * @returns Last computed value for specified property. `undefined` if there has not been any stored computed value for specified property. The stored value is always up-to-date unless the value belongs to an property which has an ancestor in the dependency graph that is a passive property -- a property whose update behavior is `Lazy and had its value updated.
    */
   getPropertyValueSnapshot(property: Property<any>): any {
     return this.propertyValueSnapshot.get(property);
   }
 
+  /**
+   *  Return previous computed property value.
+   *
+   * @param propertyName - The name of a property to get last computed value of.
+   * @returns Last computed value for specified property. `undefined` if there has not been any stored computed value for specified property.
+   */
   getPropertyValueSnapshotWithName(propertyName: TPropertyName): any {
     const property = this.nameToProperty.get(propertyName);
     return property && this.propertyValueSnapshot.get(property);
+  }
+
+  /**
+   * Get the version number of the current stored value snapshot for specified property.
+   *
+   * ! Note: Since a property might have `Lazy` update behavior, version number is only up to date after `getPropertyValue` has been called. Additionally, one cannot assume version has only incremented once for a property if they have only changed its value once -- it might be affected by other properties.
+   *
+   * @param property - A property to get snapshot version number of.
+   * @returns Version number for stored snapshot of that property. Can be used to test whether a property has value updated.
+   */
+  getPropertyValueSnapshotVersion(property: Property<any>): number {
+    return getOrInsertDefault(this.propertyValueSnapshotVersion, property, 0);
+  }
+
+  /**
+   * Get the version number of the current stored value snapshot for specified property.
+   *
+   * ! Note: Since a property might have `Lazy` update behavior, version number is only up to date after `getPropertyValue` has been called. Additionally, one cannot assume version has only incremented once for a property if they have only changed its value once -- it might be affected by other properties.
+   *
+   * @param propertyName - The name of a property to get snapshot version number of.
+   * @returns Version number for stored snapshot of that property. Can be used to test whether a property has value updated.
+   */
+  getPropertyValueSnapshotVersionWithName(propertyName: string): number {
+    const property = this.nameToProperty.get(propertyName);
+    return this.getPropertyValueSnapshotVersion(property);
+  }
+
+  /**
+   * Increment a property's version number by one.
+   *
+   * This will implicitly be called by `setPropertyValueSnapshot` when property value does not equal to its snapshot version. However, it can be useful to explicitly calling this method externally when a property's value is not changed through reassigning but through internal modification. For example, if an element was inserted into an array, the array's reference would not have changed but its snapshot version should be updated to reflect it no longer holds the same piece of data.
+   *
+   * @param property - The property whose version number should be incremented.
+   * @returns The previous version number of specified property.
+   */
+  incrementPropertyValueSnapshotVersion(property: Property<any>): number {
+    const existingVersion = this.getPropertyValueSnapshotVersion(property);
+    this.propertyValueSnapshotVersion.set(property, existingVersion + 1);
+    return existingVersion;
+  }
+
+  /**
+   *  Increment a property's version number by one.
+   *
+   * This will implicitly be called by `setPropertyValueSnapshot` when property value does not equal to its snapshot version. However, it can be useful to explicitly calling this method externally when a property's value is not changed through reassigning but through internal modification. For example, if an element was inserted into an array, the array's reference would not have changed but its snapshot version should be updated to reflect it no longer holds the same piece of data.
+   * @param propertyName - The name of a property whose version number should be incremented.
+   * @returns The previous version number of specified property.
+   */
+  incrementPropertyValueSnapshotVersionWithName(propertyName: string): number {
+    const property = this.nameToProperty.get(propertyName);
+    return this.incrementPropertyValueSnapshotVersion(property);
   }
 
   /**
@@ -387,6 +451,7 @@ export class PropertyManager {
     const oldValue = this.getPropertyValueSnapshot(property);
     if (oldValue !== value) {
       this.propertyValueSnapshot.set(property, value);
+      this.incrementPropertyValueSnapshotVersion(property);
       property.onValueUpdate(oldValue, value, property, this);
     }
     return oldValue;

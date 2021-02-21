@@ -137,6 +137,8 @@ describe('Property Management Basic Scenario', () => {
     expect(obj.D).toBe(AValue + 1);
     expect(obj.E).toBe(AValue + 1 + 1);
 
+    const initialVersion = propertyManager.getPropertyValueSnapshotVersionWithName('A');
+
     AValue = 100;
     expect(AValue).toEqual(100);
     expect(obj.A).toBe(AValue);
@@ -144,6 +146,11 @@ describe('Property Management Basic Scenario', () => {
     expect(obj.C).toBe((AValue + 1) * 2 + 1);
     expect(obj.D).toBe(AValue + 1);
     expect(obj.E).toBe(AValue + 1 + 1);
+
+    const newVersion = propertyManager.getPropertyValueSnapshotVersionWithName('A');
+    expect(initialVersion).toBeLessThan(newVersion);
+
+    expect(newVersion).toEqual(propertyManager.getPropertyValueSnapshotVersionWithName('A'));
   });
 
   test('lazy properties', () => {
