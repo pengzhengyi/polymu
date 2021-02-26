@@ -9,7 +9,9 @@
  *      + When the window is updated, rendered elements will be replaced accordingly
  */
 
+import { CircularArray } from '../collections/CircularArray';
 import { Collection, LazyCollectionProvider } from '../collections/Collection';
+import { Property, PropertyManager, UpdateBehavior } from '../composition/property-management';
 import { fillerClass, startFillerClass, endFillerClass } from '../constants/css-classes';
 import { IntersectionObserverOptions } from '../dom/IntersectionObserver';
 import { getScrollParent } from '../dom/scroll';
@@ -73,6 +75,17 @@ interface ScrollViewConfiguration<TViewElement, TDomElement extends HTMLElement>
   endSentinelObserverOptions?: IntersectionObserverOptions;
 }
 
+enum RenderingStrategy {
+  Shift,
+  Replace,
+  NoAction,
+}
+
+interface RenderingHelper {
+  renderingStrategy: RenderingStrategy;
+  shiftAmount?: number;
+}
+
 /**
  * A `ScrollView` renders a partial window of source view while making other region of the source view accessible through scrolling. The rendering window can also be adjusted programmatically through `setWindow` and `shiftWindow`.
  *
@@ -88,15 +101,180 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
   /** denotes the event that will be emitted after view update, it will supply the target view */
   static readonly afterViewUpdateEventName = 'afterViewUpdate';
 
+  protected static readonly renderingViewPropertyName = '_renderingView';
+  protected static readonly targetPropertyName = '_target';
+  protected static readonly startFillerElementPropertyName = '_startFillerElement';
+  protected static readonly endFillerElementPropertyName = '_endFillerElement';
+  protected static readonly scrollAxisPropertyName = '_scrollAxis';
+  protected static readonly elementLengthPropertyName = '_elementLength';
+  protected static readonly scrollTargetPropertyName = '_scrollTarget';
+
+  protected _propertyManager: PropertyManager;
+
+  protected _targetViewProperty: Property<Collection<TViewElement>> = new Property(
+    '_targetView',
+    (thisValue, manager) => manager.getPropertyValueSnapshot(thisValue),
+    UpdateBehavior.Lazy,
+    // when target view changes, the rendering view need to be replaced
+    () => (this._renderingHelper.renderingStrategy = RenderingStrategy.Replace)
+  );
+
+  protected _renderingHelper: RenderingHelper = {
+    renderingStrategy: RenderingStrategy.NoAction,
+    shiftAmount: 0,
+  };
+
+  private __circularArray: CircularArray<TDomElement>;
+  protected _renderingView: CircularArray<TDomElement>;
+  protected _renderingViewProperty: Property<CircularArray<TDomElement>> = new Property(
+    '_renderingView',
+    (thisValue, manager) => {
+      let targetView: Collection<TViewElement>;
+      const convert = this._convert;
+
+      switch (this._renderingHelper.renderingStrategy) {
+        case RenderingStrategy.NoAction:
+          // current rendering view will be preserved when rendering strategy is NoAction
+          thisValue.shouldReuseLastValue = undefined;
+          break;
+        case RenderingStrategy.Replace:
+          this.deactivateObservers();
+          this.invoke(ScrollView.beforeViewUpdateEventName, this);
+
+          targetView = manager.getPropertyValue('_targetView');
+          const scrollPosition = this._scrollPosition;
+
+          if (this.__circularArray === undefined) {
+            // a heuristic to set the initial capacity for circular array
+            const capacity = targetView.length || (targetView as any).materializationLength || 1000;
+            this.__circularArray = new CircularArray(capacity);
+          }
+
+          this.__circularArray.fit(
+            (function* () {
+              for (const viewElement of targetView) {
+                yield convert(viewElement);
+              }
+            })()
+          );
+
+          this._replaceView(this.__circularArray);
+
+          this._scrollPosition = scrollPosition;
+          // allow current rendering view to be reused when RenderingStrategy has remained `NoAction`
+          this._renderingHelper.renderingStrategy = RenderingStrategy.NoAction;
+          manager.incrementPropertyValueSnapshotVersion(thisValue);
+          this.invoke(ScrollView.afterViewUpdateEventName, this);
+          this.activateObservers();
+
+          break;
+        case RenderingStrategy.Shift:
+          this.deactivateObservers();
+          this.invoke(ScrollView.beforeViewUpdateEventName, this);
+
+          targetView = manager.getPropertyValue('_targetView');
+          const shiftAmount: number = this._renderingHelper.shiftAmount;
+          const target: HTMLElement = manager.getPropertyValue('_target');
+
+          console.assert(
+            this.__circularArray === undefined || !this.__circularArray.isFull,
+            'invalid circular array state when performing shift in target view'
+          );
+
+          const shiftTowardsEnd = shiftAmount > 0;
+          let onEnter: (element: TDomElement, windowIndex: number) => void;
+          if (shiftTowardsEnd) {
+            onEnter = (element) => target.appendChild(element);
+          } else {
+            let lastInsertedElement: TDomElement;
+            onEnter = (element, windowIndex) => {
+              if (windowIndex === 0) {
+                // inserting first element
+                target.prepend(element);
+              } else {
+                // inserting other element
+                lastInsertedElement.after(element);
+              }
+              lastInsertedElement = element;
+            };
+          }
+          // update circular array based on `shiftAmount`
+          this.__circularArray.shift(
+            shiftAmount,
+            (function* () {
+              if (shiftTowardsEnd) {
+                // shift towards end
+                let numViewElement = targetView.length;
+                if (numViewElement === undefined) {
+                  const viewElements = Array.from(targetView);
+                  numViewElement = viewElements.length;
+                  for (let i = numViewElement - shiftAmount; i < numViewElement; i++) {
+                    yield convert(viewElements[i]);
+                  }
+                } else {
+                  for (const viewElement of targetView.slice(
+                    numViewElement - shiftAmount,
+                    numViewElement
+                  )) {
+                    yield convert(viewElement);
+                  }
+                }
+              } else {
+                // shift towards start, first `shiftAmount` elements of `targetView` will be inserted
+                for (const viewElement of targetView.slice(0, -shiftAmount)) {
+                  yield convert(viewElement);
+                }
+              }
+            })(),
+            (element) => element.remove(),
+            onEnter
+          );
+
+          // allow current rendering view to be reused when RenderingStrategy has remained `NoAction`
+          this._renderingHelper.renderingStrategy = RenderingStrategy.NoAction;
+          manager.incrementPropertyValueSnapshotVersion(thisValue);
+          this.invoke(ScrollView.afterViewUpdateEventName, this);
+          this.activateObservers();
+          break;
+      }
+      return this.__circularArray;
+    },
+    UpdateBehavior.Immediate
+  );
+
   /**
    * The DOM container that holds the rendered view elements.
    *
    * @see {@link ScrollViewConfiguration#target}
    */
   protected _target: HTMLElement;
+  protected _targetProperty: Property<HTMLElement> = new Property(
+    '_target',
+    // `_target` is "prerequisite free": it is a leaf node in prerequisite graph as its value is modified through exposed setter
+    (_, manager) => manager.getPropertyValueSnapshotWithName('_target'),
+    UpdateBehavior.Lazy
+  );
 
   /** A HTMLElement that constitutes the scrolling area, inside which the scroll bar will be rendered */
   protected _scrollTarget: HTMLElement;
+  protected _scrollTargetProperty: Property<HTMLElement> = new Property(
+    '_scrollTarget',
+    (thisValue, manager) => {
+      const target: HTMLElement = manager.getPropertyValue('_target');
+      const targetVersion = manager.getPropertyValueSnapshotVersionWithName(
+        ScrollView.targetPropertyName
+      );
+      thisValue.shouldReuseLastValue = (_, manager) =>
+        manager.isSnapshotUpToDate(ScrollView.targetPropertyName, target, targetVersion);
+
+      if (target === undefined) {
+        return undefined;
+      }
+
+      return getScrollParent(target) as HTMLElement;
+    },
+    UpdateBehavior.Immediate
+  );
 
   /**
    * An axis to monitor for scrolling alongside which elements will be rendered
@@ -130,54 +308,97 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
    */
   protected _scrollAxis: ScreenAxis;
   /**
-   * A version of `this.targetView` kept for `_scrollAxis`. When `_elementLength__targetView` disagrees with `targetView`, `_scrollAxis` will be recalculated.
-   * @see {@link ScrollView#targetView}
-   */
-  private _scrollAxis__targetView: Collection<TViewElement>;
-  /**
    * @returns {ScreenAxis} The monitoring axis of current scroll handler. It is computed from the coordinate alignment of first rendered element and second rendered element or the direction of scrollbar.
    */
-  get scrollAxis(): ScreenAxis {
-    const targetView = this.targetView;
-    if (Object.is(targetView, this._scrollAxis__targetView)) {
-      // reuse `_scrollAxis` as target view have not changed
-      return this._scrollAxis;
-    } else {
-      this._scrollAxis__targetView = targetView;
-      if (this.length >= 2) {
-        // TODO retrieve rendered element from CircularArray cache
+  protected _scrollAxisProperty: Property<ScreenAxis> = new Property(
+    '_scrollAxis',
+    (thisValue, manager) => {
+      let screenAxis: ScreenAxis;
+      const renderingView: CircularArray<TDomElement> = manager.getPropertyValue('_renderingView');
+      const renderingViewVersion = manager.getPropertyValueSnapshotVersionWithName(
+        ScrollView.renderingViewPropertyName
+      );
+
+      if (renderingView && renderingView.length >= 2) {
         // check element placement relationship
-        const firstElement = this._convert(this.targetView[0]);
-        const secondElement = this._convert(this.targetView[1]);
+        const firstElement: TDomElement = renderingView.get(0);
+        const secondElement: TDomElement = renderingView.get(1);
+
         const { x: firstX, y: firstY } = firstElement.getBoundingClientRect();
         const { x: secondX, y: secondY } = secondElement.getBoundingClientRect();
 
         if (firstX === secondX && firstY < secondY) {
-          return (this._scrollAxis = ScreenAxis.Vertical);
+          screenAxis = ScreenAxis.Vertical;
         } else if (firstX < secondX && firstY === secondY) {
-          return (this._scrollAxis = ScreenAxis.Horizontal);
+          screenAxis = ScreenAxis.Horizontal;
         }
+
+        thisValue.shouldReuseLastValue = (_, manager) =>
+          manager.isSnapshotUpToDate(
+            ScrollView.renderingViewPropertyName,
+            renderingView,
+            renderingViewVersion
+          );
+        return screenAxis;
       }
 
+      const scrollTarget: HTMLElement = manager.getPropertyValue('_scrollTarget');
+      const scrollTargetVersion = manager.getPropertyValueSnapshotVersionWithName(
+        ScrollView.scrollTargetPropertyName
+      );
+
       // check existence of scrollbar
-      if (this._scrollTarget.scrollHeight > this._scrollTarget.clientHeight) {
-        return (this._scrollAxis = ScreenAxis.Vertical);
-      } else if (this._scrollTarget.scrollWidth > this._scrollTarget.clientWidth) {
-        return (this._scrollAxis = ScreenAxis.Horizontal);
+      if (scrollTarget.scrollHeight > scrollTarget.clientHeight) {
+        screenAxis = ScreenAxis.Vertical;
+      } else if (scrollTarget.scrollWidth > scrollTarget.clientWidth) {
+        screenAxis = ScreenAxis.Horizontal;
       } else {
         // default vertical
-        return (this._scrollAxis = ScreenAxis.Vertical);
+        screenAxis = ScreenAxis.Vertical;
       }
-    }
-  }
+      thisValue.shouldReuseLastValue = (_, manager) =>
+        manager.isSnapshotUpToDate(
+          ScrollView.renderingViewPropertyName,
+          renderingView,
+          renderingViewVersion
+        ) &&
+        manager.isSnapshotUpToDate(
+          ScrollView.scrollTargetPropertyName,
+          scrollTarget,
+          scrollTargetVersion
+        );
+      return screenAxis;
+    },
+    UpdateBehavior.Immediate
+  );
 
   /** previous scroll position, used to determine the scroll direction */
   protected _lastScrollPosition: number = 0;
+  protected _lastScrollPositionProperty: Property<number> = new Property(
+    '_lastScrollPosition',
+    (thisValue, manager) => {
+      // `__getValue` will be called for first-time retrieval and every time scroll axis has changed to reset scroll position. In other cases, `shouldReuseLastValue` should evaluate to true and set value from `_scrollDirection` will be used
+      const scrollAxis: ScreenAxis = manager.getPropertyValue('_scrollAxis');
+      const scrollAxisVersion = manager.getPropertyValueSnapshotVersionWithName(
+        ScrollView.scrollAxisPropertyName
+      );
+
+      thisValue.shouldReuseLastValue = (_, manager) =>
+        manager.isSnapshotUpToDate(
+          ScrollView.scrollAxisPropertyName,
+          scrollAxis,
+          scrollAxisVersion
+        );
+      return 0;
+    },
+    UpdateBehavior.Immediate
+  );
+
   /**
    * @returns {number} The current scroll position.
    */
   protected get _scrollPosition(): number {
-    if (this.scrollAxis === ScreenAxis.Vertical) {
+    if (this._scrollAxis === ScreenAxis.Vertical) {
       return this._scrollTarget.scrollTop;
     } else {
       /* horizontal */
@@ -185,7 +406,7 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
     }
   }
   protected set _scrollPosition(position: number) {
-    if (this.scrollAxis === ScreenAxis.Vertical) {
+    if (this._scrollAxis === ScreenAxis.Vertical) {
       this._scrollTarget.scrollTop = position;
     } else {
       /* horizontal */
@@ -194,11 +415,6 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
   }
 
   /**
-   * A version of `this.scrollAxis` kept for `_scrollDirection`. When `_scrollDirection__scrollAxis` disagrees with `this.scrollAxis`, `this._lastSourcePosition` will be set to zero.
-   * @see {@link ScrollView#targetView}
-   */
-  private _scrollDirection__scrollAxis: ScreenAxis;
-  /**
    * Reports the direction of current scroll.
    *
    * As a side effect, `this.lastScrollPosition` will be updated to current scroll position.
@@ -206,13 +422,7 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
    * @return {ScrollDirection} The direction of current scroll.
    */
   protected get _scrollDirection(): ScrollDirection {
-    const scrollAxis = this.scrollAxis;
-    if (!Object.is(scrollAxis, this._scrollDirection__scrollAxis)) {
-      // axis change, reset recorded scroll position
-      this._scrollDirection__scrollAxis = scrollAxis;
-      this._lastScrollPosition = 0;
-    }
-
+    const scrollAxis = this._scrollAxis;
     const scrollPosition = this._scrollPosition;
     let scrollDirection;
     if (scrollPosition > this._lastScrollPosition) {
@@ -267,31 +477,35 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
    */
   protected _elementLength: number;
   /**
-   * A version of `this.targetView` kept for `_elementLength`. When `_elementLength__targetView` disagrees with `this.targetView`, `_elementLength` will be recalculated.
-   * @see {@link ScrollView#targetView}
-   */
-  private _elementLength__targetView: Collection<TViewElement>;
-  /**
    * @returns {number} How many pixels an element occupies in the rendering axis. It is measured as the first rendered view element's `clientWidth` or `clientHeight` depending on `scrollAxis`.
    */
-  get elementLength(): number {
-    const targetView = this.targetView;
-    if (Object.is(targetView, this._elementLength__targetView)) {
-      // reuse `_elementLength` as target view have not changed
-      return this._elementLength;
-    } else {
-      this._elementLength__targetView = targetView;
-      if (this.isWindowEmpty === false) {
-        // measure first rendered view element length
-        // TODO firstRenderedElement should come from CircularArray cache
-        const firstRenderedElement: TDomElement = this._target.firstElementChild as TDomElement;
-        const propName = this.scrollAxis === ScreenAxis.Vertical ? 'clientHeight' : 'clientWidth';
-        return (this._elementLength = firstRenderedElement[propName]);
+  protected _elementLengthProperty: Property<number> = new Property(
+    '_elementLength',
+    (thisValue, manager) => {
+      const renderingView: CircularArray<TDomElement> = manager.getPropertyValue('_renderingView');
+      const scrollAxis: ScreenAxis = manager.getPropertyValue('_scrollAxis');
+      const scrollAxisVersion = manager.getPropertyValueSnapshotVersionWithName(
+        ScrollView.scrollAxisPropertyName
+      );
+
+      if (scrollAxis === undefined || renderingView.isEmpty) {
+        return undefined;
       } else {
-        return (this._elementLength = undefined);
+        const firstRenderedElement: TDomElement = renderingView.get(0);
+        const propName = scrollAxis === ScreenAxis.Vertical ? 'clientHeight' : 'clientWidth';
+        const elementLength = firstRenderedElement[propName];
+        // reuse same element length unless scroll axis has changed
+        thisValue.shouldReuseLastValue = (_, manager) =>
+          manager.isSnapshotUpToDate(
+            ScrollView.scrollAxisPropertyName,
+            scrollAxis,
+            scrollAxisVersion
+          );
+        return elementLength;
       }
-    }
-  }
+    },
+    UpdateBehavior.Lazy
+  );
 
   /**
    * Whether the source view should be partially rendered -- a fixed window of the source view is rendered while other regions of the source view is accessible through scrolling.
@@ -300,43 +514,25 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
    *
    * @returns {boolean} Whether partial rendering should be performed. If this predicate is not meaningful (for example, no source view has been passed in for view generation), `undefined` will be returned. Otherwise, partial rendering will happen unless the source view is known to fit in the window. That is, if `_shouldPartialRender` returns `false`, then the source view can be entirely rendered in the window and scrolling will not result in replacement of window.
    */
-  protected get _shouldPartialRender(): boolean | undefined {
-    const windowSize = this.windowSize;
-    const lastSourceView = this.lastSourceView;
-    if (windowSize === undefined || lastSourceView) {
-      return undefined;
-    }
+  protected _shouldPartialRender: boolean;
+  protected _shouldPartialRenderProperty: Property<boolean> = new Property(
+    '_shouldPartialRender',
+    (thisValue, manager) => {
+      const renderingView: CircularArray<TDomElement> = manager.getPropertyValue('_renderingView');
+      const renderingViewVersion = manager.getPropertyValueSnapshotVersionWithName(
+        ScrollView.renderingViewPropertyName
+      );
+      thisValue.shouldReuseLastValue = (_, manager) =>
+        manager.isSnapshotUpToDate(
+          ScrollView.renderingViewPropertyName,
+          renderingView,
+          renderingViewVersion
+        );
 
-    const sourceViewLength = lastSourceView.length;
-    if (sourceViewLength === undefined) {
-      /**
-       * Assumptions:
-       *      + if an index is defined in source view, it will not be `undefined`
-       *
-       * If `this._lastSourceView.length is `undefined`, then the collection is either a `LazyCollectionProvider` or a `UnmaterializableCollectionProvider`.
-       *
-       * Element at `this.windowSize - 1` is accessed rather than `this.endIndex` since for a partially materialized collection, there can be a scenario where collection's actual length is greater than the window size but because window start index is larger than 0, end index is greater than the actual length as resize does not happen for partially materialized collection even when shifting the window can make the window fully filled.
-       *
-       * + `LazyCollectionProvider` has a cache for materialized element. If its length is not defined, then this collection is partially materialized. We can directly fetching the element at index at `this.windowSize - 1` (equivalent to `this.endIndex` when `this.startIndex === 0).
-       *      + If the element at this index is already materialized, fetching it takes O(1) time.
-       *      + If the element at this index is not materialized, accessing it will force the collection to materialize up to this index. This is efficient since
-       *          + window size is by nature small
-       *          + if collection real length is smaller than the index, it will stop when real length is figured out
-       *          + iterated elements will be cached and they are always needed for rendering
-       * + For `UnmaterializableCollectionProvider`, fetching the element at this index incurs a higher but acceptable cost since
-       *      + window size is by nature small
-       *      + if collection real length is smaller than the index, it will stop when real length is figured out
-       */
-      const lastElement = lastSourceView[this.windowSize - 1];
-      if (lastSourceView instanceof LazyCollectionProvider) {
-        return lastSourceView.materializationLength >= windowSize;
-      } else {
-        return lastElement !== undefined;
-      }
-    } else {
-      return sourceViewLength >= windowSize;
-    }
-  }
+      return renderingView.isFull;
+    },
+    UpdateBehavior.Lazy
+  );
 
   /**
    * A filler element to
@@ -347,17 +543,105 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
    * As the start filler (first, topmost or leftmost), it will emulate the length of elements not rendered before the target view.
    */
   protected _startFillerElement: HTMLElement;
+
   /**
    * @returns {HTMLElement} The inserted start filler element which is used to emulate full height.
    */
-  get startFillerElement(): HTMLElement {
-    return this._startFillerElement;
-  }
+  protected _startFillerElementProperty: Property<HTMLElement> = new Property(
+    '_startFillerElement',
+    (thisValue, manager) => {
+      const target: HTMLElement = manager.getPropertyValue('_target');
+      const targetVersion = manager.getPropertyValueSnapshotVersionWithName(
+        ScrollView.targetPropertyName
+      );
+
+      thisValue.shouldReuseLastValue = (_, manager) =>
+        manager.isSnapshotUpToDate(ScrollView.targetPropertyName, target, targetVersion);
+
+      if (target === undefined) {
+        return undefined;
+      }
+
+      const tagName = this.__guessFillerTagName(target.parentElement.tagName);
+      const startFillerElement = document.createElement(tagName);
+      startFillerElement.classList.add(fillerClass, startFillerClass);
+      target.before(this._startFillerElement);
+      return startFillerElement;
+    },
+    UpdateBehavior.Immediate,
+    (oldValue, _, thisValue, manager) => {
+      // cleanup
+      if (oldValue !== undefined) {
+        oldValue.remove();
+      }
+
+      manager.notifyValueChange(thisValue);
+    }
+  );
+
+  protected _startFillerLength: number;
+
   /**
-   * A version of `this.scrollAxis` kept for `_startFillerOffset`. When `_startFillerOffset__scrollAxis` disagrees with `this.scrollAxis`, `this._startFillerOffset` will be re-computed.
-   * @see {@link ScrollView#targetView}
+   * @returns {number} The length of the start filler in `this.scrollAxis`.
    */
-  private _startFillerOffset__scrollAxis: ScreenAxis;
+  protected _startFillerLengthProperty: Property<number> = new Property(
+    '_startFillerLength',
+    (thisValue, manager) => {
+      const startFillerElement: HTMLElement = manager.getPropertyValue('_startFillerElement');
+      const startFillerElementVersion = manager.getPropertyValueSnapshotVersionWithName(
+        ScrollView.startFillerElementPropertyName
+      );
+
+      const scrollAxis: ScreenAxis = manager.getPropertyValue('_scrollAxis');
+      const scrollAxisVersion = manager.getPropertyValueSnapshotVersionWithName(
+        ScrollView.scrollAxisPropertyName
+      );
+
+      const renderingView: CircularArray<TDomElement> = manager.getPropertyValue('_renderingView');
+      const renderingViewVersion = manager.getPropertyValueSnapshotVersionWithName(
+        ScrollView.renderingViewPropertyName
+      );
+
+      const elementLength: number = manager.getPropertyValue('_elementLength');
+      const elementLengthVersion = manager.getPropertyValueSnapshotVersionWithName(
+        ScrollView.elementLengthPropertyName
+      );
+
+      thisValue.shouldReuseLastValue = (_, manager) =>
+        manager.isSnapshotUpToDate(
+          ScrollView.startFillerElementPropertyName,
+          startFillerElement,
+          startFillerElementVersion
+        ) &&
+        manager.isSnapshotUpToDate(
+          ScrollView.scrollAxisPropertyName,
+          scrollAxis,
+          scrollAxisVersion
+        ) &&
+        manager.isSnapshotUpToDate(
+          ScrollView.renderingViewPropertyName,
+          renderingView,
+          renderingViewVersion
+        ) &&
+        manager.isSnapshotUpToDate(
+          ScrollView.elementLengthPropertyName,
+          elementLength,
+          elementLengthVersion
+        );
+
+      return (this.numElementBefore || 0) * elementLength;
+    },
+    UpdateBehavior.Immediate,
+    (_, newValue, thisValue, manager) => {
+      if (newValue !== undefined && newValue !== null) {
+        const propName = this._scrollAxis === ScreenAxis.Vertical ? 'height' : 'width';
+        this._startFillerElement.style[propName] = `${newValue}px`;
+      }
+
+      manager.notifyValueChange(thisValue);
+    }
+  );
+
   /**
    * How far the start filler is from the beginning of the `this.scrollTarget` in `this.ScrollAxis`.
    *
@@ -367,24 +651,56 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
   /**
    * @returns {number} The offset by which the start filler is separated from the beginning of the `this.scrollTarget` in the axis indicated by `this.scrollAxis`.
    */
-  get startFillerOffset(): number | undefined {
-    if (Object.is(this._startFillerOffset__scrollAxis, this.scrollAxis)) {
-      return this._startFillerOffset;
-    }
+  protected _startFillerOffsetProperty: Property<number> = new Property(
+    '_startFillerOffset',
+    (thisValue, manager) => {
+      const scrollAxis: ScreenAxis = manager.getPropertyValue('_scrollAxis');
+      const scrollAxisVersion = manager.getPropertyValueSnapshotVersionWithName(
+        ScrollView.scrollAxisPropertyName
+      );
+      const startFillerElement: HTMLElement = manager.getPropertyValue('_startFillerElement');
+      const startFillerElementVersion = manager.getPropertyValueSnapshotVersionWithName(
+        ScrollView.startFillerElementPropertyName
+      );
+      const scrollTarget: HTMLElement = manager.getPropertyValue('_scrollTarget');
+      const scrollTargetVersion = manager.getPropertyValueSnapshotVersionWithName(
+        ScrollView.scrollTargetPropertyName
+      );
 
-    this._startFillerOffset__scrollAxis = this.scrollAxis;
+      thisValue.shouldReuseLastValue = (_, manager) =>
+        manager.isSnapshotUpToDate(
+          ScrollView.scrollAxisPropertyName,
+          scrollAxis,
+          scrollAxisVersion
+        ) &&
+        manager.isSnapshotUpToDate(
+          ScrollView.startFillerElementPropertyName,
+          startFillerElement,
+          startFillerElementVersion
+        ) &&
+        manager.isSnapshotUpToDate(
+          ScrollView.scrollTargetPropertyName,
+          scrollTarget,
+          scrollTargetVersion
+        );
 
-    const getOffset = (element: HTMLElement) =>
-      this.scrollAxis === ScreenAxis.Horizontal ? element.offsetLeft : element.offsetTop;
+      if (startFillerElement === undefined || scrollTarget === undefined) {
+        return undefined;
+      }
 
-    let offset: number = getOffset(this._startFillerElement);
-    let offsetParent = this._startFillerElement.offsetParent as HTMLElement;
-    while (offsetParent && offsetParent !== this._scrollTarget) {
-      offset += getOffset(offsetParent);
-      offsetParent = offsetParent.offsetParent as HTMLElement;
-    }
-    this._startFillerOffset = offset;
-  }
+      const getOffset = (element: HTMLElement) =>
+        scrollAxis === ScreenAxis.Horizontal ? element.offsetLeft : element.offsetTop;
+
+      let offset: number = getOffset(startFillerElement);
+      let offsetParent = startFillerElement.offsetParent as HTMLElement;
+      while (offsetParent && offsetParent !== this._scrollTarget) {
+        offset += getOffset(offsetParent);
+        offsetParent = offsetParent.offsetParent as HTMLElement;
+      }
+      return offset;
+    },
+    UpdateBehavior.Lazy
+  );
 
   /**
    * A filler element to
@@ -398,9 +714,116 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
   /**
    * @returns {HTMLElement} The inserted end filler element used to emulate full height.
    */
-  get endFillerElement(): HTMLElement {
-    return this._endFillerElement;
-  }
+
+  /**
+   * Initializes the filler elements.
+   *
+   * Filler elements serves as special guard nodes: when they appear in view -- blank section is appearing in the viewport, a target view update is necessary to refill the viewport with content.
+   */
+
+  protected _endFillerElementProperty: Property<HTMLElement> = new Property(
+    '_endFillerElement',
+    (thisValue, manager) => {
+      const target: HTMLElement = manager.getPropertyValue('_target');
+      const targetVersion = manager.getPropertyValueSnapshotVersionWithName(
+        ScrollView.targetPropertyName
+      );
+
+      thisValue.shouldReuseLastValue = (_, manager) =>
+        manager.isSnapshotUpToDate(ScrollView.targetPropertyName, target, targetVersion);
+
+      if (target === undefined) {
+        return undefined;
+      }
+
+      const tagName = this.__guessFillerTagName(target.parentElement.tagName);
+      const endFillerElement = document.createElement(tagName);
+      endFillerElement.classList.add(fillerClass, endFillerClass);
+      return endFillerElement;
+    },
+    UpdateBehavior.Immediate,
+    (oldValue, _, thisValue, manager) => {
+      // cleanup
+      if (oldValue !== undefined) {
+        oldValue.remove();
+      }
+
+      manager.notifyValueChange(thisValue);
+    }
+  );
+
+  protected _endFillerLength: number;
+  /**
+   * @returns {number} The length of the end filler in `this.scrollAxis`.
+   */
+  protected _endFillerLengthProperty: Property<number> = new Property(
+    '_endFillerLength',
+    (thisValue, manager) => {
+      const endFillerElement: HTMLElement = manager.getPropertyValue('_endFillerElement');
+      const endFillerElementVersion = manager.getPropertyValueSnapshotVersionWithName(
+        ScrollView.endFillerElementPropertyName
+      );
+      const scrollAxis: ScreenAxis = manager.getPropertyValue('_scrollAxis');
+      const scrollAxisVersion = manager.getPropertyValueSnapshotVersionWithName(
+        ScrollView.scrollAxisPropertyName
+      );
+      const renderingView: CircularArray<TDomElement> = manager.getPropertyValue('_renderingView');
+      const renderingViewVersion = manager.getPropertyValueSnapshotVersionWithName(
+        ScrollView.renderingViewPropertyName
+      );
+      const elementLength: number = manager.getPropertyValue('_elementLength');
+      const elementLengthVersion = manager.getPropertyValueSnapshotVersionWithName(
+        ScrollView.elementLengthPropertyName
+      );
+
+      thisValue.shouldReuseLastValue = (thisValue, manager) =>
+        manager.isSnapshotUpToDate(
+          ScrollView.endFillerElementPropertyName,
+          endFillerElement,
+          endFillerElementVersion
+        ) &&
+        manager.isSnapshotUpToDate(
+          ScrollView.scrollAxisPropertyName,
+          scrollAxis,
+          scrollAxisVersion
+        ) &&
+        manager.isSnapshotUpToDate(
+          ScrollView.renderingViewPropertyName,
+          renderingView,
+          renderingViewVersion
+        ) &&
+        manager.isSnapshotUpToDate(
+          ScrollView.elementLengthPropertyName,
+          elementLength,
+          elementLengthVersion
+        );
+
+      let numElementAfter = this.numElementAfter;
+      if (numElementAfter === undefined) {
+        return undefined;
+      } else if (numElementAfter === null) {
+        const lastSourceView = this.lastSourceView;
+        if (lastSourceView instanceof LazyCollectionProvider) {
+          numElementAfter = lastSourceView.materializationLength - this.endIndex - 1;
+        } else {
+          numElementAfter = null;
+        }
+      }
+      return numElementAfter * elementLength;
+    },
+    UpdateBehavior.Immediate,
+    (oldValue, newValue, thisValue, manager) => {
+      if (newValue !== undefined) {
+        if (newValue === null) {
+          // TODO use a magic number
+          newValue = 1000;
+        }
+
+        const propName = this._scrollAxis === ScreenAxis.Vertical ? 'height' : 'width';
+        this._endFillerElement.style[propName] = `${newValue}px`;
+      }
+    }
+  );
   /**
    * An intersection observer to watch whether `this.startFillerElement` entered into view
    */
@@ -409,33 +832,6 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
    * An intersection observer to watch whether `this.endFillerElement` entered into view
    */
   protected _endFillerObserver: IntersectionObserver;
-  /**
-   * @returns {number} The length of the start filler in `this.scrollAxis`.
-   */
-  get startFillerLength(): number | undefined | null {
-    let numElementBefore = this.numElementBefore;
-    if (numElementBefore === undefined) {
-      return undefined;
-    } else if (numElementBefore === null) {
-      const firstWindowElement = this.targetView[0];
-      if (firstWindowElement === undefined) {
-        return null;
-      } else {
-        numElementBefore = this.startIndex;
-      }
-    }
-    return numElementBefore * this.elementLength;
-  }
-  /**
-   * @returns {number} The length of the end filler in `this.scrollAxis`.
-   */
-  get endFillerLength(): number | undefined {
-    const numElementAfter = this.numElementAfter;
-    if (numElementAfter === undefined || numElementAfter === null) {
-      return numElementAfter;
-    }
-    return this.numElementAfter * this.elementLength;
-  }
 
   /**
    * Current formula chooses the start sentinel nears the 1/4 of the target window.
@@ -443,19 +839,21 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
    * @returns {number} The index of the start sentinel in the target window.
    */
   get startSentinelIndex(): number {
+    if (this.windowSize === undefined) {
+      return undefined;
+    }
+
     return bound(Math.floor(this.windowSize / 4) - 1, 0, this.windowSize);
-  }
-  /**
-   * @returns {TViewElement} The view element of the start sentinel in the target window.
-   */
-  get startSentinel(): TViewElement {
-    return this.targetView[this.startSentinelIndex];
   }
   /**
    * @returns {TDomElement} A start sentinel is a DOM element in the target window that signals a landmark: a earlier view should be loaded.
    */
-  get startSentinelElement(): TDomElement {
-    return this._convert(this.startSentinel);
+  protected get _startSentinelElement(): TDomElement {
+    const renderingView = this._renderingView;
+    if (!renderingView) {
+      return undefined;
+    }
+    return renderingView.get(this.startSentinelIndex);
   }
   /**
    * Current formula chooses the end sentinel nears the 3/4 of the target window.
@@ -463,19 +861,21 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
    * @returns {number} The index of the end sentinel in the target window.
    */
   get endSentinelIndex(): number {
+    if (this.windowSize === undefined) {
+      return undefined;
+    }
+
     return bound(Math.floor(this.windowSize / 4) * 3 - 1, 0, this.windowSize);
-  }
-  /**
-   * @returns {TViewElement} The view element of the end sentinel in the target window.
-   */
-  get endSentinel(): TViewElement {
-    return this.targetView[this.endSentinelIndex];
   }
   /**
    * @returns {TDomElement} A end sentinel is a DOM element in the target window that signals a landmark: a later view should be loaded.
    */
-  get endSentinelElement(): TDomElement {
-    return this._convert(this.endSentinel);
+  protected get _endSentinelElement(): TDomElement {
+    const renderingView = this._renderingView;
+    if (!renderingView) {
+      return undefined;
+    }
+    return renderingView.get(this.endSentinelIndex);
   }
   /**
    * An intersection observer to watch `this.startSentinelElement`: if it enters into view
@@ -503,9 +903,26 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
     super();
     this._convert_ = options.convert;
     this._target = options.target;
-    this._initializeScrollTarget();
+
+    this._propertyManager = new PropertyManager([
+      this._targetViewProperty,
+      this._renderingViewProperty,
+      this._targetProperty,
+      this._scrollTargetProperty,
+      this._scrollAxisProperty,
+      this._lastScrollPositionProperty,
+      this._elementLengthProperty,
+      this._shouldPartialRenderProperty,
+      this._startFillerElementProperty,
+      this._startFillerLengthProperty,
+      this._startFillerOffsetProperty,
+      this._endFillerElementProperty,
+      this._endFillerLengthProperty,
+    ]);
+
+    this._propertyManager.bind(this);
+
     this.initializeScrollEventListener();
-    this._initializeFillers();
     this._initializeFillerObservers(
       options.startFillerObserverOptions,
       options.endFillerObserverOptions
@@ -515,14 +932,7 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
       options.endSentinelObserverOptions
     );
 
-    this.syncView();
-    // depends on `this.scrollAxis` and `this.elementLength`
-    this._setFillerLengths();
     this.activateObservers();
-  }
-
-  protected _initializeScrollTarget() {
-    this._scrollTarget = getScrollParent(this._target) as HTMLElement;
   }
 
   /**
@@ -555,14 +965,9 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
     );
   }
 
-  /**
-   * Initializes the filler elements.
-   *
-   * Filler elements serves as special guard nodes: when they appear in view -- blank section is appearing in the viewport, a target view update is necessary to refill the viewport with content.
-   */
-  protected _initializeFillers() {
+  protected __guessFillerTagName(containerTagName: string) {
     let tagName: string = 'div';
-    switch (this._target.parentElement.tagName) {
+    switch (containerTagName) {
       case 'ol':
       case 'ul':
         tagName = 'li';
@@ -578,29 +983,7 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
         tagName = 'td';
         break;
     }
-
-    this._startFillerElement = document.createElement(tagName);
-    this._startFillerElement.classList.add(fillerClass, startFillerClass);
-    this._target.before(this._startFillerElement);
-
-    this._endFillerElement = document.createElement(tagName);
-    this._endFillerElement.classList.add(fillerClass, endFillerClass);
-    this._target.after(this._endFillerElement);
-  }
-
-  /**
-   * Sets the display length (width or height depending on `this.scrollAxis`) of filler elements.
-   *
-   * @param {number} [startFillerLength = this.startFillerLength] - The length for start filler.
-   * @param {number} [endFillerLength = this.endFillerLength] - The length for end filler.
-   */
-  protected _setFillerLengths(
-    startFillerLength: number = this.startFillerLength,
-    endFillerLength: number = this.endFillerLength
-  ) {
-    const propName = this.scrollAxis === ScreenAxis.Vertical ? 'height' : 'width';
-    this._startFillerElement.style[propName] = `${startFillerLength}px`;
-    this._endFillerElement.style[propName] = `${endFillerLength}px`;
+    return tagName;
   }
 
   /**
@@ -653,8 +1036,8 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
     if (this._shouldPartialRender) {
       this._startFillerObserver.observe(this._startFillerElement);
       this._endFillerObserver.observe(this._endFillerElement);
-      this._startSentinelObserver.observe(this.startSentinelElement);
-      this._endSentinelObserver.observe(this.endSentinelElement);
+      this._startSentinelObserver.observe(this._startSentinelElement);
+      this._endSentinelObserver.observe(this._endSentinelElement);
     }
   }
 
@@ -702,41 +1085,10 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
     endIndex: number = this.endIndex,
     noEventNotification: boolean = false
   ): boolean {
-    if (super.setWindow(startIndex, endIndex)) {
-      this.setView(() => this.view(this.lastSourceView));
+    if (super.setWindow(startIndex, endIndex, noEventNotification)) {
       return true;
     }
     return false;
-  }
-
-  /**
-   * Updates the rendered view.
-   *
-   * The following steps will be taken in order:
-   *
-   *    + deactivate all IntersectionObserver
-   *    + invoke beforeViewUpdate callback if defined
-   *    + update the view
-   *    + update the DOM
-   *    + invoke afterViewUpdate callback if defined
-   *    + activate all IntersectionObserver
-   *
-   * @param {() => Collection<T>} viewFunction - A callback function to generate the new view.
-   */
-  setView(viewFunction: () => Collection<TViewElement>) {
-    this.deactivateObservers();
-
-    // view generation will happen
-    this.invoke(ScrollView.beforeViewUpdateEventName, this.targetView);
-
-    const newView = viewFunction();
-    const scrollPosition = this._scrollPosition;
-    this._setFillerLengths();
-    this.syncView(newView);
-    this._scrollPosition = scrollPosition;
-    this.invoke(ScrollView.afterViewUpdateEventName, this.targetView);
-
-    this.activateObservers();
   }
 
   /**
@@ -744,17 +1096,17 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
    *
    * @param {Collection<T>} [newView = this.partialView.targetView] - A new view to update the rendered view.
    */
-  private syncView(newView: Collection<TViewElement> = this.targetView) {
+  protected _replaceView(newView: Iterable<TDomElement>) {
+    // TODO optimize with yield and return
     const viewIterator = newView[Symbol.iterator]();
     const elements = this._target.children;
     let elementIndex = 0;
     while (true) {
-      let { value, done } = viewIterator.next();
+      let { value: viewElement, done } = viewIterator.next();
       if (done) {
         break;
       }
 
-      const viewElement = this._convert(value);
       const element = elements[elementIndex++];
       if (element) {
         if (element === viewElement) {
@@ -795,7 +1147,6 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
       for (let i = 0; i < numElementToRemove; i++) {
         this._target.firstElementChild.remove();
       }
-      this._setFillerLengths();
       // use 0 as lower bound since there can be at most 0 overlapping elements (windowSize distinct elements)
       for (
         let viewElementIndex = Math.max(0, numViewElement - shiftAmount);
@@ -817,7 +1168,6 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
         const viewElement = this._convert(view[viewElementIndex]);
         this._target.insertBefore(viewElement, referenceNode);
       }
-      this._setFillerLengths();
     }
 
     this.invoke(ScrollView.afterViewUpdateEventName, this.targetView);
@@ -831,9 +1181,9 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
    *
    * @param {number} [scrollAmount = this.scrollPosition] - How far scrolled from page top.
    */
-  private getElementIndexFromScrollAmount(scrollAmount: number = this._scrollPosition) {
-    const position = Math.max(scrollAmount - this.startFillerOffset, 0);
-    return bound(Math.floor(position / this.elementLength), 0, this.targetView.length - 1);
+  protected getElementIndexFromScrollAmount(scrollAmount: number = this._scrollPosition) {
+    const position = Math.max(scrollAmount - this._startFillerOffset, 0);
+    return bound(Math.floor(position / this._elementLength), 0, this._renderingView.length - 1);
   }
 
   /**
@@ -849,7 +1199,7 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
    * @param {number} offset - The amount to adjust the final scroll position. See the formula.
    */
   scrollToElementIndex(elementIndex: number, offset: number = 0) {
-    this._scrollPosition = this.elementLength * elementIndex + this.startFillerOffset + offset;
+    this._scrollPosition = this._elementLength * elementIndex + this._startFillerOffset + offset;
   }
 
   /**
@@ -880,7 +1230,7 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
 
     entries.forEach((entry) => {
       const desiredDirection: ScrollDirection =
-        this.startSentinelElement === entry.target ? ScrollDirection.Up : ScrollDirection.Down;
+        this._startSentinelElement === entry.target ? ScrollDirection.Up : ScrollDirection.Down;
       if (
         entry.isIntersecting &&
         entry.intersectionRect.height > 0 &&
