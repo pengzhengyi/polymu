@@ -430,6 +430,37 @@ export class PropertyManager {
   }
 
   /**
+   * Checks whether provided snapshot for specified property is outdated compared to current stored snapshot.
+   *
+   * @param propertyName - The name of a property whose snapshot will be checked.
+   * @param {any} [value = null] - Provided snapshot value of property. If not provided, will not compare value across snapshots.
+   * @param {number} [version] - Provided snapshot version of property. If not provided, will not compare version across snapshots.
+   * @returns {boolean} True if two snapshots are identical. False if otherwise, Note if both value and version are not specified, default return value will be true.
+   */
+  isSnapshotUpToDate(
+    propertyName: string,
+    value: any = null,
+    version: number = undefined
+  ): boolean {
+    const currentValue = this.getPropertyValue(propertyName);
+    const property = this.nameToProperty.get(propertyName);
+    const currentVersion = this.getPropertyValueSnapshotVersion(property);
+    if (value !== null) {
+      if (currentValue !== value) {
+        return false;
+      }
+    }
+
+    if (version !== undefined) {
+      if (currentVersion !== version) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  /**
    * Get the up-to-date value of specified property.
    *
    * @param propertyName - The name of a property managed by this property manager. The name of a property whose value is fetched.
