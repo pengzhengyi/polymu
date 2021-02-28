@@ -481,11 +481,21 @@ export class PropertyManager {
   setPropertyValueSnapshot(property: Property<any>, value: any): any {
     const oldValue = this.getPropertyValueSnapshot(property);
     if (oldValue !== value) {
-      this.propertyValueSnapshot.set(property, value);
-      this.incrementPropertyValueSnapshotVersion(property);
+      this.setPropertyValueSnapshotSilently(property, value);
       property.onValueUpdate(oldValue, value, property, this);
     }
     return oldValue;
+  }
+
+  /**
+   * Update the property value stored in this property manager without causing chained update.
+   *
+   * @param {Property<any>} property - The name of the property whose value will be changed.
+   * @param value - A new value for this property.
+   */
+  setPropertyValueSnapshotSilently(property: Property<any>, value: any) {
+    this.propertyValueSnapshot.set(property, value);
+    this.incrementPropertyValueSnapshotVersion(property);
   }
 
   /**

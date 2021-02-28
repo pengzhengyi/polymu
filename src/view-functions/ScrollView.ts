@@ -32,6 +32,26 @@ enum ScrollDirection {
   Stay,
 }
 
+function isScrollDirectionTowardsStart(scrollDirection: ScrollDirection) {
+  switch (scrollDirection) {
+    case ScrollDirection.Up:
+    case ScrollDirection.Left:
+      return true;
+    default:
+      false;
+  }
+}
+
+function isScrollDirectionTowardsEnd(scrollDirection: ScrollDirection) {
+  switch (scrollDirection) {
+    case ScrollDirection.Down:
+    case ScrollDirection.Right:
+      return true;
+    default:
+      return false;
+  }
+}
+
 /**
  * An enumeration of possible screen axis.
  */
@@ -89,8 +109,6 @@ interface RenderingHelper {
 /**
  * A `ScrollView` renders a partial window of source view while making other region of the source view accessible through scrolling. The rendering window can also be adjusted programmatically through `setWindow` and `shiftWindow`.
  *
- * TODO @todo use CircularArray to hold a temporary cache
- *
  * @typedef TDomElement - A element type that should subclass {@link https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement HTMLElement}.
  */
 export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends PartialView<
@@ -108,6 +126,8 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
   protected static readonly scrollAxisPropertyName = '_scrollAxis';
   protected static readonly elementLengthPropertyName = '_elementLength';
   protected static readonly scrollTargetPropertyName = '_scrollTarget';
+  protected static readonly renderingStrategyPropertyName = '_renderingStrategy';
+  protected static readonly shiftAmountPropertyName = '_shiftAmount';
 
   protected _propertyManager: PropertyManager;
 
@@ -116,26 +136,56 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
     (thisValue, manager) => manager.getPropertyValueSnapshot(thisValue),
     UpdateBehavior.Lazy,
     // when target view changes, the rendering view need to be replaced
-    () => (this._renderingHelper.renderingStrategy = RenderingStrategy.Replace)
+    (oldValue, newValue, thisValue, manager) => {
+      this._renderingStrategy = RenderingStrategy.Replace;
+      manager.notifyValueChange(thisValue);
+    }
   );
 
-  protected _renderingHelper: RenderingHelper = {
-    renderingStrategy: RenderingStrategy.NoAction,
-    shiftAmount: 0,
-  };
+  protected _renderingStrategy: RenderingStrategy;
+  protected _renderingStrategyProperty: Property<RenderingStrategy> = new Property(
+    ScrollView.renderingStrategyPropertyName,
+    (thisValue, manager) => {
+      const snapshotValue: RenderingStrategy = manager.getPropertyValueSnapshot(thisValue);
+      if (snapshotValue === undefined) {
+        // lazily initializes `RenderingStrategy` to `NoAction`
+        manager.propertyValueSnapshot.set(thisValue, RenderingStrategy.NoAction);
+        return RenderingStrategy.NoAction;
+      } else {
+        return snapshotValue;
+      }
+    },
+    UpdateBehavior.Lazy
+  );
+
+  protected _shiftAmount: number;
+  protected _shiftAmountProperty: Property<number> = new Property(
+    ScrollView.shiftAmountPropertyName,
+    (thisValue, manager) => manager.getPropertyValueSnapshot(thisValue),
+    UpdateBehavior.Lazy,
+    (oldValue, newValue, thisValue, manager) => {
+      if (newValue) {
+        // `newValue !== undefined && newValue !== 0`
+        if (this._renderingStrategy === RenderingStrategy.NoAction) {
+          this._renderingStrategy = RenderingStrategy.Shift;
+        }
+      }
+
+      manager.notifyValueChange(thisValue);
+    }
+  );
 
   private __circularArray: CircularArray<TDomElement>;
   protected _renderingView: CircularArray<TDomElement>;
   protected _renderingViewProperty: Property<CircularArray<TDomElement>> = new Property(
-    '_renderingView',
+    ScrollView.renderingViewPropertyName,
     (thisValue, manager) => {
       let targetView: Collection<TViewElement>;
       const convert = this._convert;
+      const renderingStrategy: RenderingStrategy = manager.getPropertyValue('_renderingStrategy');
 
-      switch (this._renderingHelper.renderingStrategy) {
+      switch (renderingStrategy) {
         case RenderingStrategy.NoAction:
-          // current rendering view will be preserved when rendering strategy is NoAction
-          thisValue.shouldReuseLastValue = undefined;
           break;
         case RenderingStrategy.Replace:
           this.deactivateObservers();
@@ -162,7 +212,10 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
 
           this._scrollPosition = scrollPosition;
           // allow current rendering view to be reused when RenderingStrategy has remained `NoAction`
-          this._renderingHelper.renderingStrategy = RenderingStrategy.NoAction;
+          manager.setPropertyValueSnapshotSilently(
+            this._renderingStrategyProperty,
+            RenderingStrategy.NoAction
+          );
           manager.incrementPropertyValueSnapshotVersion(thisValue);
           this.invoke(ScrollView.afterViewUpdateEventName, this);
           this.activateObservers();
@@ -173,7 +226,7 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
           this.invoke(ScrollView.beforeViewUpdateEventName, this);
 
           targetView = manager.getPropertyValue('_targetView');
-          const shiftAmount: number = this._renderingHelper.shiftAmount;
+          const shiftAmount: number = manager.getPropertyValue('_shiftAmount');
           const target: HTMLElement = manager.getPropertyValue('_target');
 
           console.assert(
@@ -231,7 +284,11 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
           );
 
           // allow current rendering view to be reused when RenderingStrategy has remained `NoAction`
-          this._renderingHelper.renderingStrategy = RenderingStrategy.NoAction;
+          manager.setPropertyValueSnapshotSilently(
+            this._renderingStrategyProperty,
+            RenderingStrategy.NoAction
+          );
+          manager.setPropertyValueSnapshotSilently(this._shiftAmountProperty, 0);
           manager.incrementPropertyValueSnapshotVersion(thisValue);
           this.invoke(ScrollView.afterViewUpdateEventName, this);
           this.activateObservers();
@@ -776,7 +833,7 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
         ScrollView.elementLengthPropertyName
       );
 
-      thisValue.shouldReuseLastValue = (thisValue, manager) =>
+      thisValue.shouldReuseLastValue = (_thisValue, manager) =>
         manager.isSnapshotUpToDate(
           ScrollView.endFillerElementPropertyName,
           endFillerElement,
@@ -812,7 +869,7 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
       return numElementAfter * elementLength;
     },
     UpdateBehavior.Immediate,
-    (oldValue, newValue, thisValue, manager) => {
+    (_oldValue, newValue, _thisValue, _manager) => {
       if (newValue !== undefined) {
         if (newValue === null) {
           // TODO use a magic number
@@ -906,6 +963,7 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
 
     this._propertyManager = new PropertyManager([
       this._targetViewProperty,
+      this._renderingStrategyProperty,
       this._renderingViewProperty,
       this._targetProperty,
       this._scrollTargetProperty,
@@ -1074,24 +1132,6 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
   }
 
   /**
-   * Invokes `this.partialView.setWindow` to change the section of source view that enters into the target view. Window is defined by two indices -- a start index and an end index. The elements with indices between (inclusive) these two window boundaries will be included in the target view.
-   *
-   * @public
-   * @param {number} startIndex - The start index of the new window.
-   * @param {number} [endIndex = startIndex + this.partialView.maximumWindowSize] - The end index of the window.
-   */
-  setWindow(
-    startIndex: number = this.startIndex,
-    endIndex: number = this.endIndex,
-    noEventNotification: boolean = false
-  ): boolean {
-    if (super.setWindow(startIndex, endIndex, noEventNotification)) {
-      return true;
-    }
-    return false;
-  }
-
-  /**
    * Syncing the DOM with a new view. In effect, the child nodes in `this.target` will be replaced with current view.
    *
    * @param {Collection<T>} [newView = this.partialView.targetView] - A new view to update the rendered view.
@@ -1125,53 +1165,6 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
       // element has corresponding view element: detach element from DOM
       this._target.lastElementChild.remove();
     }
-  }
-
-  private shiftView(shiftAmount: number) {
-    // shiftAmount will be rectified to the actual window shift amount
-    if (this.shiftWindow(shiftAmount, true)) {
-      return;
-    }
-
-    this.deactivateObservers();
-    this.invoke(ScrollView.beforeViewUpdateEventName, this.targetView);
-
-    const view = this.view(this.lastSourceView);
-    const isShiftTowardsEnd = shiftAmount > 0;
-    // `length` is retrieved from `this.partialView` since `view` is a Collection and might not have `length` defined
-    const numViewElement = this.length;
-
-    // the number of elements in current view to be removed, upper bounded by the number of existing elements
-    const numElementToRemove = Math.min(this.windowSize, Math.abs(shiftAmount));
-    if (isShiftTowardsEnd) {
-      for (let i = 0; i < numElementToRemove; i++) {
-        this._target.firstElementChild.remove();
-      }
-      // use 0 as lower bound since there can be at most 0 overlapping elements (windowSize distinct elements)
-      for (
-        let viewElementIndex = Math.max(0, numViewElement - shiftAmount);
-        viewElementIndex < numViewElement;
-        viewElementIndex++
-      ) {
-        const viewElement = this._convert(view[viewElementIndex]);
-        this._target.appendChild(viewElement);
-      }
-    } else {
-      shiftAmount = -shiftAmount;
-      for (let i = 0; i < numElementToRemove; i++) {
-        this._target.lastElementChild.remove();
-      }
-      const referenceNode = this._target.firstElementChild;
-      // at most there can be 0 overlapping elements (windowSize distinct elements)
-      const numViewElementToAdd = Math.min(numViewElement, shiftAmount);
-      for (let viewElementIndex = 0; viewElementIndex < numViewElementToAdd; viewElementIndex++) {
-        const viewElement = this._convert(view[viewElementIndex]);
-        this._target.insertBefore(viewElement, referenceNode);
-      }
-    }
-
-    this.invoke(ScrollView.afterViewUpdateEventName, this.targetView);
-    this.activateObservers();
   }
 
   /**
@@ -1212,8 +1205,7 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
     entries.forEach((entry) => {
       if (entry.isIntersecting && entry.intersectionRect.height > 0) {
         const newStartIndex = this.getElementIndexFromScrollAmount();
-        const shiftAmount = newStartIndex - this.startIndex;
-        this.shiftView(shiftAmount);
+        this._shiftAmount = newStartIndex - this.startIndex;
       }
     });
   }
@@ -1229,16 +1221,16 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
     const scrollDirection: ScrollDirection = this._scrollDirection;
 
     entries.forEach((entry) => {
-      const desiredDirection: ScrollDirection =
-        this._startSentinelElement === entry.target ? ScrollDirection.Up : ScrollDirection.Down;
+      const shiftTowardsStart: boolean = this._startSentinelElement === entry.target;
       if (
         entry.isIntersecting &&
         entry.intersectionRect.height > 0 &&
-        scrollDirection === desiredDirection
+        (shiftTowardsStart
+          ? isScrollDirectionTowardsStart(scrollDirection)
+          : isScrollDirectionTowardsEnd(scrollDirection))
       ) {
         // the last element of the first data section is appearing into view
-        const shift = scrollDirection === ScrollDirection.Up ? -shiftAmount : shiftAmount;
-        this.shiftView(shift);
+        this._shiftAmount = shiftTowardsStart ? -shiftAmount : shiftAmount;
       }
     });
   }

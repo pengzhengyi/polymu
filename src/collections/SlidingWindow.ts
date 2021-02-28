@@ -414,7 +414,7 @@ export class SlidingWindow<TElement> implements Iterable<TElement> {
    * @param {number} [tentativeStartIndex = this._startIndex] - A tentative start index to set to. Should be nonnegative.
    * @param {number} [tentativeEndIndex = this._endIndex] - A tentative end index to set to. Should be greater than or equal to the tentative start index.
    */
-  protected _resizeAndSetWindow(
+  _resizeAndSetWindow(
     tentativeStartIndex: number = this._startIndex,
     tentativeEndIndex: number = this._endIndex
   ) {
