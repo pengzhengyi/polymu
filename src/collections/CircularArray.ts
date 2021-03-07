@@ -128,7 +128,7 @@ export class CircularArray<TElement> implements Iterable<TElement> {
    * @returns The corresponding window index.
    */
   protected _translateIndex(index: number): number {
-    return index < this._start ? this._capacity - this._start + index + 1 : index - this._start;
+    return index < this._start ? this._capacity - this._start + index : index - this._start;
   }
 
   /**
