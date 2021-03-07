@@ -32,7 +32,13 @@ enum ScrollDirection {
   Stay,
 }
 
-function isScrollDirectionTowardsStart(scrollDirection: ScrollDirection) {
+/**
+ * Whether provided scroll direction is towards the first element of the potential view. In other words, whether current displayed elements will be substituted by elements with smaller indices in the potential view.
+ *
+ * @param scrollDirection - A scroll direction.
+ * @returns `true` if the scroll direction is towards start, `false` otherwise.
+ */
+function isScrollDirectionTowardsStart(scrollDirection: ScrollDirection): boolean {
   switch (scrollDirection) {
     case ScrollDirection.Up:
     case ScrollDirection.Left:
@@ -42,6 +48,12 @@ function isScrollDirectionTowardsStart(scrollDirection: ScrollDirection) {
   }
 }
 
+/**
+ * Whether provided scroll direction is towards the last element of the potential view. In other words, whether current displayed elements will be substituted by elements with larger indices in the potential view.
+ *
+ * @param scrollDirection - A scroll direction.
+ * @returns `true` if the scroll direction is towards end, `false` otherwise.
+ */
 function isScrollDirectionTowardsEnd(scrollDirection: ScrollDirection) {
   switch (scrollDirection) {
     case ScrollDirection.Down:
@@ -57,10 +69,12 @@ function isScrollDirectionTowardsEnd(scrollDirection: ScrollDirection) {
  */
 export enum ScreenAxis {
   /**
-   * Elements on horizontal axis will only have x value difference..
+   * Elements on horizontal axis will only have x value differed.
    */
   Horizontal,
-  /** Elements on vertical axis will only have y value difference */
+  /**
+   * Elements on vertical axis will only have y value differed.
+   */
   Vertical,
 }
 
@@ -75,8 +89,8 @@ interface ScrollViewConfiguration<TViewElement, TDomElement extends HTMLElement>
    *
    * There is no need to supply convert function when
    *
-   *    + T is convertible to HTMLElement (for example, T is `HTMLLIElement`)
-   *    + T is `ViewModel`
+   *    + T is derived type of HTMLElement (for example, T is `HTMLLIElement`)
+   *    + T is implicitly convertible to HTMLElement (for example, T is a proxy for a `HTMLElement`)
    */
   convert?: (viewElement: TViewElement) => TDomElement;
   /**
@@ -95,15 +109,35 @@ interface ScrollViewConfiguration<TViewElement, TDomElement extends HTMLElement>
   endSentinelObserverOptions?: IntersectionObserverOptions;
 }
 
+/**
+ * An enumeration of possible strategies of updating rendering view.
+ */
 enum RenderingStrategy {
+  /**
+   * The new and existing rendering view have the following relationships:
+   *
+   * + they have same number of elements `|newView| === |existingView| `
+   * + denote the number of elements by `n`, for any pair of element in the new view and element in the existing view at the same index (`0 <= i < n`) in their respective rendering view, they have a same index difference in potential view.
+   *
+   * Shift rendering strategy often implies room for elements reuse through clever partial updating.
+   *
+   * For example
+   *
+   * ```
+   * [ X X X X X ]  -- potential view
+   *   ↑ - ↥        -- existing rendering view
+   *       ↑ - ↥    -- new rendering view
+   * ```
+   */
   Shift,
+  /**
+   * The existing rendering view should be substituted by a new rendering view. There is no guaranteed relationship between these two views.
+   */
   Replace,
+  /**
+   * The existing rendering view does not need to be modified.
+   */
   NoAction,
-}
-
-interface RenderingHelper {
-  renderingStrategy: RenderingStrategy;
-  shiftAmount?: number;
 }
 
 /**
@@ -114,11 +148,12 @@ interface RenderingHelper {
 export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends PartialView<
   TViewElement
 > {
-  /** denotes the event that will be emitted before view update, it will supply the target view */
-  static readonly beforeViewUpdateEventName = 'beforeViewUpdate';
-  /** denotes the event that will be emitted after view update, it will supply the target view */
-  static readonly afterViewUpdateEventName = 'afterViewUpdate';
+  /** denotes the event that will be emitted before rendering view update, it will supply the current `ScrollView` */
+  static readonly beforeRenderingViewUpdateEventName = 'beforeRenderingViewUpdate';
+  /** denotes the event that will be emitted after rendering view update, it will supply the current `ScrollView` */
+  static readonly afterRenderingViewUpdateEventName = 'afterRenderingViewUpdate';
 
+  // a collection of property names to facilitate renaming by reducing raw string appearances
   protected static readonly _targetViewPropertyName = '_targetView';
   protected static readonly _renderingViewPropertyName = '_renderingView';
   protected static readonly _targetPropertyName = '_target';
@@ -135,6 +170,11 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
   protected static readonly _lastScrollPositionPropertyName = '_lastScrollPosition';
   protected static readonly _shouldPartialRenderPropertyName = '_shouldPartialRender';
 
+  /**
+   * A ` PropertyManager` that manages the interdependencies of ScrollView properties.
+   *
+   * For example, it updates rendering view when the target view changes.
+   */
   protected _propertyManager: PropertyManager;
 
   protected _targetViewProperty: Property<Collection<TViewElement>> = new Property(
@@ -195,7 +235,7 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
           break;
         case RenderingStrategy.Replace:
           this.deactivateObservers();
-          this.invoke(ScrollView.beforeViewUpdateEventName, this);
+          this.invoke(ScrollView.beforeRenderingViewUpdateEventName, this);
 
           targetView = manager.getPropertyValue('_targetView');
           const scrollPosition = this._scrollPosition;
@@ -223,13 +263,13 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
             RenderingStrategy.NoAction
           );
           manager.incrementPropertyValueSnapshotVersion(thisValue);
-          this.invoke(ScrollView.afterViewUpdateEventName, this);
+          this.invoke(ScrollView.afterRenderingViewUpdateEventName, this);
           this.activateObservers();
 
           break;
         case RenderingStrategy.Shift:
           this.deactivateObservers();
-          this.invoke(ScrollView.beforeViewUpdateEventName, this);
+          this.invoke(ScrollView.beforeRenderingViewUpdateEventName, this);
 
           targetView = manager.getPropertyValue('_targetView');
           const shiftAmount: number = manager.getPropertyValue('_shiftAmount');
@@ -296,7 +336,7 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
           );
           manager.setPropertyValueSnapshotSilently(this._shiftAmountProperty, 0);
           manager.incrementPropertyValueSnapshotVersion(thisValue);
-          this.invoke(ScrollView.afterViewUpdateEventName, this);
+          this.invoke(ScrollView.afterRenderingViewUpdateEventName, this);
           this.activateObservers();
           break;
       }
@@ -1117,24 +1157,43 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
   }
 
   /**
-   * @override
-   * Regenerates the target view if any of the following conditions are true:
+   * Called when a filler is reached, which indicates a view update might be necessary as the user has scrolled past all rendered view elements.
    *
-   *    + `source` view changed
-   *    + target view should be regenerated -- window changed
-   *
-   * If both conditions are false, nothing will be done -- same target view will be returned.
+   * @callback
+   * @param {Array<IntersectionObserverEntry>} entries - An array of IntersectionObserver entries.
    */
-  protected regenerateView(sourceView: Collection<TViewElement>, useCache: boolean) {
-    if (useCache && sourceView === this.lastSourceView && !this.shouldRegenerateView) {
-      return;
-    }
+  protected fillerReachedHandler(entries: Array<IntersectionObserverEntry>) {
+    entries.forEach((entry) => {
+      if (entry.isIntersecting && entry.intersectionRect.height > 0) {
+        const newStartIndex = this.getElementIndexFromScrollAmount();
+        this._shiftAmount = newStartIndex - this.startIndex;
+      }
+    });
+  }
 
-    this._slidingWindow.iterable = sourceView;
-    // `SlidingWindow` is a lazy generator of window elements, by wrapping the `SlidingWindow` in a `LazyCollectionProvider`, the elements are cached
-    this._targetView_ = new LazyCollectionProvider(this._slidingWindow);
+  /**
+   * Called when a sentinel is reached, which indicates a view update might be necessary as the user has scrolled past most of rendered view elements.
+   *
+   * @callback
+   * @param {Array<IntersectionObserverEntry>} entries - An array of IntersectionObserver entries.
+   */
+  protected sentinelReachedHandler(entries: Array<IntersectionObserverEntry>) {
+    const shiftAmount = Math.floor(this.windowSize / 2);
+    const scrollDirection: ScrollDirection = this._scrollDirection;
 
-    this.shouldRegenerateView = false;
+    entries.forEach((entry) => {
+      const shiftTowardsStart: boolean = this._startSentinelElement === entry.target;
+      if (
+        entry.isIntersecting &&
+        entry.intersectionRect.height > 0 &&
+        (shiftTowardsStart
+          ? isScrollDirectionTowardsStart(scrollDirection)
+          : isScrollDirectionTowardsEnd(scrollDirection))
+      ) {
+        // the last element of the first data section is appearing into view
+        this._shiftAmount = shiftTowardsStart ? -shiftAmount : shiftAmount;
+      }
+    });
   }
 
   /**
@@ -1173,6 +1232,57 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
     }
   }
 
+  protected _regenerateViewIfNeeded(oldStartIndex: number, oldEndIndex: number) {
+    const startIndexShiftAmount: number = this.startIndex - oldStartIndex;
+    if (this.endIndex - oldEndIndex === startIndexShiftAmount) {
+      // can be considered a shift operation
+      this._propertyManager.setPropertyValueSnapshotSilently(
+        this._renderingStrategyProperty,
+        RenderingStrategy.Shift
+      );
+      this._propertyManager.setPropertyValueSnapshotSilently(
+        this._shiftAmountProperty,
+        startIndexShiftAmount
+      );
+    } else {
+      this._propertyManager.setPropertyValueSnapshotSilently(
+        this._renderingStrategyProperty,
+        RenderingStrategy.Replace
+      );
+    }
+
+    // triggering target view regeneration and consequently rendering view regeneration
+    this.regenerateView(this.lastSourceView, true);
+  }
+
+  setWindow(
+    startIndex: number = this.startIndex,
+    endIndex: number = this.endIndex,
+    noEventNotification: boolean = false
+  ): boolean {
+    const oldStartIndex = this.startIndex;
+    const oldEndIndex = this.endIndex;
+
+    if (super.setWindow(startIndex, endIndex, noEventNotification)) {
+      this._regenerateViewIfNeeded(oldStartIndex, oldEndIndex);
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  shiftWindow(shiftAmount: number, noEventNotification: boolean = false): boolean {
+    const oldStartIndex = this.startIndex;
+    const oldEndIndex = this.endIndex;
+
+    if (super.shiftWindow(shiftAmount, noEventNotification)) {
+      this._regenerateViewIfNeeded(oldStartIndex, oldEndIndex);
+      return true;
+    } else {
+      return false;
+    }
+  }
+
   /**
    * Calculate element index from a scroll amount.
    *
@@ -1199,45 +1309,5 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
    */
   scrollToElementIndex(elementIndex: number, offset: number = 0) {
     this._scrollPosition = this._elementLength * elementIndex + this._startFillerOffset + offset;
-  }
-
-  /**
-   * Called when a filler is reached, which indicates a view update might be necessary as the user has scrolled past all rendered view elements.
-   *
-   * @callback
-   * @param {Array<IntersectionObserverEntry>} entries - An array of IntersectionObserver entries.
-   */
-  private fillerReachedHandler(entries: Array<IntersectionObserverEntry>) {
-    entries.forEach((entry) => {
-      if (entry.isIntersecting && entry.intersectionRect.height > 0) {
-        const newStartIndex = this.getElementIndexFromScrollAmount();
-        this._shiftAmount = newStartIndex - this.startIndex;
-      }
-    });
-  }
-
-  /**
-   * Called when a sentinel is reached, which indicates a view update might be necessary as the user has scrolled past most of rendered view elements.
-   *
-   * @callback
-   * @param {Array<IntersectionObserverEntry>} entries - An array of IntersectionObserver entries.
-   */
-  private sentinelReachedHandler(entries: Array<IntersectionObserverEntry>) {
-    const shiftAmount = Math.floor(this.windowSize / 2);
-    const scrollDirection: ScrollDirection = this._scrollDirection;
-
-    entries.forEach((entry) => {
-      const shiftTowardsStart: boolean = this._startSentinelElement === entry.target;
-      if (
-        entry.isIntersecting &&
-        entry.intersectionRect.height > 0 &&
-        (shiftTowardsStart
-          ? isScrollDirectionTowardsStart(scrollDirection)
-          : isScrollDirectionTowardsEnd(scrollDirection))
-      ) {
-        // the last element of the first data section is appearing into view
-        this._shiftAmount = shiftTowardsStart ? -shiftAmount : shiftAmount;
-      }
-    });
   }
 }
