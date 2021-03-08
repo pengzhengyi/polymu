@@ -277,7 +277,7 @@ export class PropertyManager {
    * A regex that matches all occurrences of `manager.getPropertyValue('<propertyName>')`.
    */
   static readonly PREREQUISITE_REGEX: RegExp = new RegExp(
-    /manager\.getPropertyValue\((["'`])([^])+?\1\)/,
+    /manager\.getPropertyValue\((["'`])([^]+?)\1\)/,
     'g'
   );
 
