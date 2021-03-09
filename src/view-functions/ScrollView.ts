@@ -145,9 +145,10 @@ enum RenderingStrategy {
  *
  * @typedef TDomElement - A element type that should subclass {@link https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement HTMLElement}.
  */
-export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends PartialView<
-  TViewElement
-> {
+export class ScrollView<
+  TDomElement extends HTMLElement,
+  TViewElement = TDomElement
+> extends PartialView<TViewElement> {
   /** denotes the event that will be emitted before rendering view update, it will supply the current `ScrollView` */
   static readonly beforeRenderingViewUpdateEventName = 'beforeRenderingViewUpdate';
   /** denotes the event that will be emitted after rendering view update, it will supply the current `ScrollView` */
@@ -591,7 +592,7 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
         ScrollView._scrollAxisPropertyName
       );
 
-      if (scrollAxis === undefined || renderingView.isEmpty) {
+      if (scrollAxis === undefined || renderingView === undefined || renderingView.isEmpty) {
         return undefined;
       } else {
         const firstRenderedElement: TDomElement = renderingView.get(0);
@@ -632,7 +633,7 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
           renderingViewVersion
         );
 
-      return renderingView.isFull;
+      return renderingView && renderingView.isFull;
     },
     UpdateBehavior.Lazy
   );
@@ -732,7 +733,7 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
           elementLengthVersion
         );
 
-      return (this.numElementBefore || 0) * elementLength;
+      return this.numElementBefore * elementLength || 0;
     },
     UpdateBehavior.Immediate,
     (_, newValue, thisValue, manager) => {
@@ -1004,12 +1005,10 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
    */
   constructor(options: ScrollViewConfiguration<TViewElement, TDomElement>) {
     super();
-    this._convert_ = options.convert;
-    this._target = options.target;
-
     this._propertyManager = new PropertyManager([
       this._targetViewProperty,
       this._renderingStrategyProperty,
+      this._shiftAmountProperty,
       this._renderingViewProperty,
       this._targetProperty,
       this._scrollTargetProperty,
@@ -1023,8 +1022,11 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
       this._endFillerElementProperty,
       this._endFillerLengthProperty,
     ]);
-
     this._propertyManager.bind(this);
+
+    // initial values should be set after properties are bound to avoid overwriting during property binding
+    this._convert_ = options.convert;
+    this._target = options.target;
 
     this.initializeScrollEventListener();
     this._initializeFillerObservers(

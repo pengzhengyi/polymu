@@ -1,28 +1,52 @@
+import { ScrollView } from './ScrollView';
+
+describe('ScrollView initialization', () => {
+  const scrollTarget = document.createElement('div');
+  document.body.appendChild(scrollTarget);
+  let target: HTMLElement;
+  let scrollView: ScrollView<HTMLParagraphElement>;
+
+  beforeAll(() => {
+    function setupIntersectionObserverMock({
+      observe = () => null,
+      unobserve = () => null,
+      disconnect = () => null,
+    } = {}) {
+      class IntersectionObserver {
+        observe = observe;
+        unobserve = unobserve;
+        disconnect = disconnect;
+      }
+      Object.defineProperty(window, 'IntersectionObserver', {
+        writable: true,
+        configurable: true,
+        value: IntersectionObserver,
+      });
+      Object.defineProperty(global, 'IntersectionObserver', {
+        writable: true,
+        configurable: true,
+        value: IntersectionObserver,
+      });
+    }
+    setupIntersectionObserverMock();
+  });
+
+  beforeEach(() => {
+    target = document.createElement('div');
+    scrollTarget.appendChild(target);
+    scrollView = new ScrollView({ target });
+  });
+
+  test('initial state', () => {
+    expect(scrollView.startIndex).toBeFalsy();
+    expect(scrollView.startSentinelIndex).toBeFalsy();
+    expect(scrollView.endIndex).toBeFalsy();
+    expect(scrollView.endSentinelIndex).toBeFalsy();
+  });
+});
+
 // import { PartialViewScrollHandler } from './PartialViewScrollHandler';
 // import { PartialView } from './view-functions/PartialView';
-
-// function setupIntersectionObserverMock({
-//   observe = () => null,
-//   unobserve = () => null,
-//   disconnect = () => null,
-// } = {}) {
-//   class IntersectionObserver {
-//     observe = observe;
-//     unobserve = unobserve;
-//     disconnect = disconnect;
-//   }
-//   Object.defineProperty(window, 'IntersectionObserver', {
-//     writable: true,
-//     configurable: true,
-//     value: IntersectionObserver,
-//   });
-//   Object.defineProperty(global, 'IntersectionObserver', {
-//     writable: true,
-//     configurable: true,
-//     value: IntersectionObserver,
-//   });
-// }
-// setupIntersectionObserverMock();
 
 // describe('changing view', () => {
 //   const source: Array<HTMLLIElement> = [];
