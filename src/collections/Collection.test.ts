@@ -97,10 +97,8 @@ describe('LazyCollectionProvider', () => {
 
     expect(Array.from(collection.slice(-2, 100))).toEqual([1, 2, 3, 4, 5]);
     // materialized
-    debugger;
     expect(Array.from(collection.slice(1, 100))).toEqual([2, 3, 4, 5]);
     expect(collection[4]).toEqual(5);
-    debugger;
     expect(Array.from(collection)).toEqual([1, 2, 3, 4, 5]);
     expect(collection.length).toEqual(5);
   });

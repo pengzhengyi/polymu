@@ -54,7 +54,6 @@ describe('SortedView', () => {
       },
     ];
     const sv = new SortedView<Cell>();
-    debugger;
     expect(sv.addSortingFunction('row sort asc', (c1, c2) => c1.row - c2.row, 10)).toBe(true);
     expect(
       sv.addSortingFunction('cellIndex sort asc', (c1, c2) => c1.cellIndex - c2.cellIndex, 1)
