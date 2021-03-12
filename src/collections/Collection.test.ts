@@ -1,35 +1,39 @@
-import { LazyCollectionProvider, UnmaterializableCollectionProvider } from './Collection';
+import {
+  Collection,
+  LazyCollectionProvider,
+  UnmaterializableCollectionProvider,
+} from './Collection';
 
 describe('UnmaterializableCollectionProvider', () => {
   const iterable = [1, 2, 3, 4, 5];
-  let collectionProvider: UnmaterializableCollectionProvider<number>;
+  let collection: UnmaterializableCollectionProvider<number>;
 
-  beforeEach(() => (collectionProvider = new UnmaterializableCollectionProvider<number>(iterable)));
+  beforeEach(() => (collection = new UnmaterializableCollectionProvider<number>(iterable)));
 
   test('iteration', () => {
     let i = 0;
-    expect(collectionProvider.length).toBeUndefined();
-    for (const element of collectionProvider) {
+    expect(collection.length).toBeUndefined();
+    for (const element of collection) {
       expect(element).toEqual(iterable[i++]);
     }
-    expect(collectionProvider.length).toEqual(5);
+    expect(collection.length).toEqual(5);
 
     i = 0;
-    for (const element of collectionProvider) {
+    for (const element of collection) {
       expect(element).toEqual(iterable[i++]);
     }
   });
 
   test('indexing', () => {
-    expect(collectionProvider[-1]).toBeUndefined();
-    expect(collectionProvider[100]).toBeUndefined();
+    expect(Collection.get(collection, -1)).toBeUndefined();
+    expect(Collection.get(collection, 100)).toBeUndefined();
     for (let i = 0; i < iterable.length; i++) {
-      expect(collectionProvider[i]).toEqual(iterable[i]);
+      expect(Collection.get(collection, i)).toEqual(iterable[i]);
     }
   });
 
   test('slicing', () => {
-    const slice = collectionProvider.slice(1, 3);
+    const slice = collection.slice(1, 3);
     let index = 1;
     for (const element of slice) {
       expect(element).toEqual(iterable[index++]);
@@ -39,32 +43,32 @@ describe('UnmaterializableCollectionProvider', () => {
 
 describe('LazyCollectionProvider', () => {
   const iterable = [1, 2, 3, 4, 5];
-  let collectionProvider: LazyCollectionProvider<number>;
+  let collection: LazyCollectionProvider<number>;
 
-  beforeEach(() => (collectionProvider = new LazyCollectionProvider<number>(iterable)));
+  beforeEach(() => (collection = new LazyCollectionProvider<number>(iterable)));
 
   test('iteration', () => {
     let i = 0;
-    for (const element of collectionProvider) {
+    for (const element of collection) {
       expect(element).toEqual(iterable[i++]);
     }
 
     i = 0;
-    for (const element of collectionProvider) {
+    for (const element of collection) {
       expect(element).toEqual(iterable[i++]);
     }
   });
 
   test('indexing', () => {
-    expect(collectionProvider[-1]).toBeUndefined();
-    expect(collectionProvider[100]).toBeUndefined();
+    expect(Collection.get(collection, -1)).toBeUndefined();
+    expect(Collection.get(collection, 100)).toBeUndefined();
     for (let i = 0; i < iterable.length; i++) {
-      expect(collectionProvider[i]).toEqual(iterable[i]);
+      expect(Collection.get(collection, i)).toEqual(iterable[i]);
     }
   });
 
   test('slicing', () => {
-    const slice = collectionProvider.slice(1, 3);
+    const slice = collection.slice(1, 3);
     let index = 1;
     for (const element of slice) {
       expect(element).toEqual(iterable[index++]);
@@ -93,12 +97,12 @@ describe('LazyCollectionProvider', () => {
       iterationIndex++;
     }
 
-    expect(collection[3]).toEqual(4);
+    expect(Collection.get(collection, 3)).toEqual(4);
 
     expect(Array.from(collection.slice(-2, 100))).toEqual([1, 2, 3, 4, 5]);
     // materialized
     expect(Array.from(collection.slice(1, 100))).toEqual([2, 3, 4, 5]);
-    expect(collection[4]).toEqual(5);
+    expect(Collection.get(collection, 4)).toEqual(5);
     expect(Array.from(collection)).toEqual([1, 2, 3, 4, 5]);
     expect(collection.length).toEqual(5);
   });

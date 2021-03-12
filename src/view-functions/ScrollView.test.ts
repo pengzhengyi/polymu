@@ -1,3 +1,4 @@
+import { Collection } from '../collections/Collection';
 import { ScrollView } from './ScrollView';
 
 describe('ScrollView initialization', () => {
@@ -64,8 +65,8 @@ describe('ScrollView initialization', () => {
   test('rendering partial view', () => {
     scrollView.setWindow(0, 100);
     const targetView = scrollView.view(paragraphs);
-    expect(targetView[0].textContent).toEqual('0');
-    expect(targetView[10].textContent).toEqual('10');
+    expect(Collection.get(targetView, 0).textContent).toEqual('0');
+    expect(Collection.get(targetView, 10).textContent).toEqual('10');
 
     expect(scrollView.isWindowFull).toBe(true);
     expect(scrollView.windowSize).toBe(101);
@@ -75,12 +76,12 @@ describe('ScrollView initialization', () => {
   test('shift partial view', () => {
     scrollView.setWindow(0, 20);
     const originalTargetView = scrollView.view(paragraphs);
-    expect(originalTargetView[1].textContent).toEqual('1');
+    expect(Collection.get(originalTargetView, 1).textContent).toEqual('1');
 
     scrollView.shiftWindow(5);
     expect(scrollView.get(0).textContent).toEqual('5');
 
     const newTargetView = scrollView.view(paragraphs, true);
-    expect(newTargetView[1].textContent).toEqual('6');
+    expect(Collection.get(newTargetView, 1).textContent).toEqual('6');
   });
 });

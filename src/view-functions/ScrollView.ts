@@ -840,7 +840,7 @@ export class ScrollView<
       } else if (numElementAfter === null) {
         const lastSourceView = this.lastSourceView;
         if (lastSourceView instanceof LazyCollectionProvider) {
-          numElementAfter = lastSourceView.materializationLength - this.endIndex - 1;
+          numElementAfter = Collection.getMaterializationLength(lastSourceView) - this.endIndex - 1;
         } else {
           numElementAfter = null;
         }

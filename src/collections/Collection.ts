@@ -12,8 +12,6 @@
  *        + materialization is unnecessary as there is no need to index an element -- the collection will only be iterated.
  */
 
-import { Prop } from '../Abstraction';
-
 /**
  * Represents an iterable of elements. It provides the following properties:
  *    + indexable with at most O(n) cost
@@ -24,13 +22,6 @@ import { Prop } from '../Abstraction';
  * @typedef {TElement} - The element type.
  */
 export interface Collection<TElement> extends Iterable<TElement> {
-  /**
-   * Collection can be indexed using bracket syntax
-   * @example
-   *    collection[0]
-   */
-  [index: number]: TElement;
-
   /**
    * The length of the collection.
    */
@@ -54,6 +45,133 @@ export interface Collection<TElement> extends Iterable<TElement> {
 }
 
 /**
+ * An abstract class that provides some static utility functions for `Collection` type and a template for implementing `Collection` type.
+ *
+ * Note: all optional methods of Collection need to be implemented in derived class.
+ *
+ * It mandates:
+ *
+ *    + a way to get the length of the collection
+ *    + a way to retrieve an element by index
+ *    + a way to iterate the collection
+ *    + a way to slice the collection
+ */
+
+export abstract class Collection<TElement> implements Collection<TElement> {
+  /**
+   * Get an element from a collection at specified index. This is the de facto way to retrieve element from collection.
+   *
+   * + for Array, this will be fallback to `collection[index]`
+   * + for other types of collection, this will invoke the `get` method
+   *
+   * @param collection - A collection of elements.
+   * @param index - An index to get element.
+   * @return {TElement} The element at specified index. If no element is at specified index, return `undefined`.
+   */
+  static get<TElement>(collection: Collection<TElement>, index: number): TElement {
+    if (Array.isArray(collection)) {
+      // use bracket syntax
+      return collection[index];
+    } else {
+      return collection.get(index);
+    }
+  }
+
+  /**
+   * Whether an element is materialized at a specified index of the collection. An element is materialized when there is O(1) cost to retrieve it using bracket indexing syntax.
+   *
+   * @param {Collection<TElement>} collection - A collection where the element at specified index is checked.
+   * @param {number} index - The element index to check.
+   * @returns {boolean} True if the element at specified index is materialized.
+   */
+  static isElementMaterialized<TElement>(collection: Collection<TElement>, index: number): boolean {
+    if ('isElementMaterialized' in collection) {
+      return collection.isElementMaterialized(index);
+    }
+
+    return index in collection;
+  }
+
+  /**
+   * Returns the number of elements that can be accessed in constant time.
+   *
+   * + for Array, this will be fallback to `collection.length`
+   * + for other types of collection, this will invoke the `getMaterializationLength` method
+   *
+   * @param {Collection<TElement>} collection - A collection whose number of constant time accessible element is checked.
+   * @returns The number of materialized elements. These elements can be indexed at constant cost.
+   */
+  static getMaterializationLength<TElement>(collection: Collection<TElement>): number {
+    if (Array.isArray(collection)) {
+      return collection.length;
+    } else {
+      return collection.getMaterializationLength();
+    }
+  }
+
+  /**
+   * Whether the source iterable can be internalized. That is, whether a copy or a partial copy of the source iterable can be stored inside this collection provider.
+   */
+  protected materializable?: boolean;
+
+  /**
+   * An iterable of collection that constitutes the elements of the collection. The CollectionProvider provides extensions to manipulate this iterable.
+   */
+  protected readonly iterable?: Iterable<TElement>;
+
+  /**
+   * Indicates whether and how the collection should materialize the iterable.
+   */
+  protected readonly materializationStrategy?: MaterializationStrategy;
+
+  /**
+   * Creates a CollectionProvider, which is an indexable iterable.
+   *
+   * @param {Iterable<TElement>} iterable - An iterable of collection that constitutes the elements of the collection. The CollectionProvider provides extensions to manipulate this iterable.
+   * @param {MaterializationStrategy} materializationStrategy - Whether and how the collection can materialize the iterable.
+   * @constructs AbstractCollectionProvider
+   */
+  protected constructor(
+    iterable: Iterable<TElement>,
+    materializationStrategy: MaterializationStrategy
+  ) {
+    this.iterable = iterable;
+    this.materializationStrategy = materializationStrategy;
+    this.materializable = this.materializationStrategy !== MaterializationStrategy.Prohibit;
+  }
+
+  /**
+   * Implements the iterable protocol.
+   *
+   * @public
+   * @generator
+   * @yields {<TElement>} The next element in collection.
+   */
+  abstract [Symbol.iterator](): IterableIterator<TElement>;
+
+  /**
+   * Whether an element is materialized at a specified index. An element is materialized when there is O(1) cost to retrieve it using bracket indexing syntax.
+   *
+   * @param {number} index - The element index to check.
+   * @returns {boolean} True if the element at specified index is materialized.
+   */
+  abstract isElementMaterialized?(index: number): boolean;
+
+  /**
+   * Gets an element at specified index.
+   *
+   * @param {number} index - An integer at which the element will be retrieved.
+   * @return {TElement} The element at specified index. If no element is at specified index, return `undefined`.
+   */
+  abstract get?(index: number): TElement;
+
+  /**
+   * @returns The number of materialized elements. These elements can be indexed at constant cost.
+   */
+  abstract getMaterializationLength?(): number;
+}
+
+/**
  * `MaterializationStrategy` defines how a collection can process its underlying iterable.
  */
 enum MaterializationStrategy {
@@ -74,142 +192,13 @@ enum MaterializationStrategy {
 }
 
 /**
- * Template for creating a Collection Provider.
- *
- * It provides:
- *
- *    + the bracket indexing pattern using Proxy.
- *
- * It mandates:
- *
- *    + a way to get the length of the collection
- *    + a way to retrieve an element by index
- *    + a way to iterate the collection
- *    + a way to slice the collection
- */
-export abstract class AbstractCollectionProvider<TElement> implements Collection<TElement> {
-  /**
-   * A collection should be array-like (indexable by numeric index)
-   */
-
-  [index: number]: TElement;
-
-  /**
-   * Whether the source iterable can be internalized. That is, whether a copy or a partial copy of the source iterable can be stored inside this collection provider.
-   */
-
-  protected materializable: boolean;
-
-  /**
-   * @returns The number of materialized elements. These elements can be indexed at constant cost.
-   */
-  abstract get materializationLength(): number;
-
-  /**
-   * Retrieves the length of the collection.
-   *
-   * @return The length of the collection, which is also the length of the iterable.
-   */
-
-  abstract get length(): number;
-
-  /**
-   * Creates a CollectionProvider, which is an indexable iterable.
-   *
-   * @param {Iterable<TElement>} iterable - An iterable of collection that constitutes the elements of the collection. The CollectionProvider provides extensions to manipulate this iterable.
-   * @param {MaterializationStrategy} materializationStrategy - Whether and how the collection can materialize the iterable.
-   * @constructs AbstractCollectionProvider
-   */
-
-  protected constructor(
-    protected readonly iterable: Iterable<TElement>,
-    protected readonly materializationStrategy: MaterializationStrategy
-  ) {
-    this.materializable = this.materializationStrategy !== MaterializationStrategy.Prohibit;
-    return this.createProxy();
-  }
-
-  protected createProxy() {
-    return new Proxy(this, {
-      /**
-       * A trap for getting a property value. This trap enables bracket indexing syntax. @example `collection[0]`.
-       *
-       * @see {@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Proxy/Proxy/get}
-       */
-      get(target: AbstractCollectionProvider<TElement>, prop: Prop, receiver: any) {
-        if (prop in target) {
-          // attempts to resolve `prop` on the `target`
-          return Reflect.get(target, prop, receiver);
-        }
-
-        const index = Number.parseInt(prop as string, 10);
-        if (Number.isInteger(index)) {
-          return target.get(index);
-        }
-
-        return undefined;
-      },
-    });
-  }
-
-  /**
-   * Implements the iterable protocol.
-   *
-   * @public
-   * @generator
-   * @yields {<TElement>} The next element in collection.
-   */
-  abstract [Symbol.iterator](): IterableIterator<TElement>;
-
-  /**
-   * Gets an element at specified index.
-   *
-   * @param {number} index - An integer at which the element will be retrieved.
-   * @return {TElement} The element at specified index. If no element is at specified index, return `undefined`.
-   */
-
-  protected abstract get(index: number): TElement;
-
-  abstract slice(start: number, end: number): IterableIterator<TElement>;
-
-  /**
-   * Whether an element is materialized at a specified index. An element is materialized when there is O(1) cost to retrieve it using bracket indexing syntax.
-   *
-   * @param {number} index - The element index to check.
-   * @returns {boolean} True if the element at specified index is materialized.
-   */
-  abstract isElementMaterialized(index: number): boolean;
-
-  /**
-   * Whether an element is materialized at a specified index of the collection. An element is materialized when there is O(1) cost to retrieve it using bracket indexing syntax.
-   *
-   * @param {Collection<TElement>} collection - A collection where the element at specified index is checked.
-   * @param {number} index - The element index to check.
-   * @returns {boolean} True if the element at specified index is materialized.
-   */
-  static isElementMaterialized<TElement>(collection: Collection<TElement>, index: number): boolean {
-    if (collection instanceof AbstractCollectionProvider) {
-      return collection.isElementMaterialized(index);
-    }
-
-    return index in collection;
-  }
-}
-
-/**
  * An implementation of AbstractCollectionProvider that adopts the `Prohibit` MaterializationStrategy. In other words, this CollectionProvider will not materialize the iterable in any ways. As a result, the iterable should be repeatedly iterable: it should be able to be iterated any number of times.
  */
-export class UnmaterializableCollectionProvider<TElement> extends AbstractCollectionProvider<
-  TElement
-> {
+export class UnmaterializableCollectionProvider<TElement> extends Collection<TElement> {
   /**
    * If defined, stores the length of the collection
    */
   protected _length: number;
-
-  get materializationLength(): number {
-    return 0;
-  }
 
   get length(): number {
     return this._length;
@@ -238,7 +227,7 @@ export class UnmaterializableCollectionProvider<TElement> extends AbstractCollec
     this._length = i;
   }
 
-  protected get(index: number): TElement {
+  get(index: number): TElement {
     const length = this.length;
     if (index < 0 || (length !== undefined && index >= length)) {
       // shortcut out of bound indexing
@@ -254,6 +243,10 @@ export class UnmaterializableCollectionProvider<TElement> extends AbstractCollec
     }
     this._length = i;
     return undefined;
+  }
+
+  getMaterializationLength() {
+    return 0;
   }
 
   *slice(start: number, end: number): IterableIterator<TElement> {
@@ -299,7 +292,7 @@ interface IndexedElement<TElement> {
  * An implementation of AbstractCollectionProvider that adopts the `Lazy` MaterializationStrategy. More specifically, this CollectionProvider will materialize the iterable, which means eventually an array containing all elements from the iterable. However, this materialization process happens lazily.
  */
 
-export class LazyCollectionProvider<TElement> extends AbstractCollectionProvider<TElement> {
+export class LazyCollectionProvider<TElement> extends Collection<TElement> {
   /**
    * Whether materialization process finishes. If the process is finished, `this.materializedCollection` will contain all elements from the iterable in same order.
    */
@@ -310,10 +303,6 @@ export class LazyCollectionProvider<TElement> extends AbstractCollectionProvider
    */
 
   protected materializedCollection: Array<TElement>;
-
-  get materializationLength(): number {
-    return this.materializedCollection.length;
-  }
 
   /**
    * If defined, stores the length of the collection
@@ -398,7 +387,7 @@ export class LazyCollectionProvider<TElement> extends AbstractCollectionProvider
     }
   }
 
-  protected get(index: number): TElement {
+  get(index: number): TElement {
     if (this.isElementMaterialized(index)) {
       return this.materializedCollection[index];
     }
@@ -423,6 +412,10 @@ export class LazyCollectionProvider<TElement> extends AbstractCollectionProvider
         return element;
       }
     }
+  }
+
+  getMaterializationLength() {
+    return this.materializedCollection.length;
   }
 
   *slice(start: number, end: number): IterableIterator<TElement> {

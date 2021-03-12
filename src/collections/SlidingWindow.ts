@@ -6,7 +6,7 @@
  * The sliding window is built upon {@link CircularArray:CircularArray}.
  */
 
-import { AbstractCollectionProvider, Collection } from './Collection';
+import { Collection } from './Collection';
 
 /**
  * When the end index of `SlidingWindow` is greater than or equal with the length of iterable, a **resize** could happen.
@@ -250,7 +250,7 @@ export class SlidingWindow<TElement> implements Iterable<TElement> {
       return iterableLength <= this._startIndex;
     }
 
-    if (AbstractCollectionProvider.isElementMaterialized(this._iterable, this._startIndex)) {
+    if (Collection.isElementMaterialized(this._iterable, this._startIndex)) {
       return false;
     }
 
@@ -272,7 +272,7 @@ export class SlidingWindow<TElement> implements Iterable<TElement> {
       return iterableLength > this._endIndex;
     }
 
-    if (AbstractCollectionProvider.isElementMaterialized(this._iterable, this._endIndex)) {
+    if (Collection.isElementMaterialized(this._iterable, this._endIndex)) {
       return true;
     }
 
@@ -299,7 +299,7 @@ export class SlidingWindow<TElement> implements Iterable<TElement> {
 
     if (this._iterable.length === undefined) {
       // check whether the element at `_endIndex` is materialized (defined), if it is, then `this._iterable.length > this._endIndex`
-      if (AbstractCollectionProvider.isElementMaterialized(this._iterable, this._endIndex)) {
+      if (Collection.isElementMaterialized(this._iterable, this._endIndex)) {
         return this.windowSize;
       } else {
         // There might be cases where the actual iterable length is greater than the window end index but it is partially materialized so we are not aware of its actual length. We can conservative here by returning `null` to indicate "we cannot determine"
@@ -325,7 +325,7 @@ export class SlidingWindow<TElement> implements Iterable<TElement> {
 
     if (this._iterable.length === undefined) {
       // check whether the element at `_startIndex` is materialized (defined), if it is, then `this._iterable.length > this._startIndex`
-      if (AbstractCollectionProvider.isElementMaterialized(this._iterable, this._startIndex)) {
+      if (Collection.isElementMaterialized(this._iterable, this._startIndex)) {
         return this._startIndex;
       } else {
         // There might be cases where the actual iterable length is greater than the window end index but it is partially materialized so we are not aware of its actual length. We can conservative here by returning `null` to indicate "we cannot determine"
@@ -501,7 +501,7 @@ export class SlidingWindow<TElement> implements Iterable<TElement> {
    * @returns {TElement} The element at specified index.
    */
   get(windowIndex: number): TElement {
-    return this._iterable[this._startIndex + windowIndex];
+    return Collection.get(this._iterable, this._startIndex + windowIndex);
   }
 
   /**
