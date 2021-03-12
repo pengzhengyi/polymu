@@ -433,28 +433,14 @@ export class PropertyManager {
    * Checks whether provided snapshot for specified property is outdated compared to current stored snapshot.
    *
    * @param propertyName - The name of a property whose snapshot will be checked.
-   * @param {any} [value = null] - Provided snapshot value of property. If not provided, will not compare value across snapshots.
-   * @param {number} [version] - Provided snapshot version of property. If not provided, will not compare version across snapshots.
-   * @returns {boolean} True if two snapshots are identical. False if otherwise, Note if both value and version are not specified, default return value will be true.
+   * @param {number} version - Provided snapshot version of property.
+   * @returns {boolean} True if two snapshots are identical. False if otherwise.
    */
-  isSnapshotUpToDate(
-    propertyName: string,
-    value: any = null,
-    version: number = undefined
-  ): boolean {
-    const currentValue = this.getPropertyValue(propertyName);
+  isSnapshotVersionUpToDate(propertyName: string, version: number): boolean {
     const property = this.nameToProperty.get(propertyName);
     const currentVersion = this.getPropertyValueSnapshotVersion(property);
-    if (value !== null) {
-      if (currentValue !== value) {
-        return false;
-      }
-    }
-
-    if (version !== undefined) {
-      if (currentVersion !== version) {
-        return false;
-      }
+    if (currentVersion !== version) {
+      return false;
     }
 
     return true;
@@ -701,7 +687,9 @@ export class PropertyManager {
     const comparator = (property1: Property<any>, property2: Property<any>) =>
       this.propertyToDependencyTier.get(property1) - this.propertyToDependencyTier.get(property2);
 
-    AStarSearch<Property<any>>(property, getChildren, comparator, action);
+    for (const childProperty of getChildren(property)) {
+      AStarSearch<Property<any>>(childProperty, getChildren, comparator, action);
+    }
 
     // new calls to `notifyValueChange` will no longer be caused by this call
     this.__notifyValueChangeLock = false;

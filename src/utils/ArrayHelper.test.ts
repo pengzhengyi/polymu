@@ -14,7 +14,6 @@ describe('Quick Sort', () => {
     const result = array.slice();
     quickSort(result, comparator);
     array.sort();
-    debugger;
     expect(result).toEqual(array);
 
     const reversedArray = array.reverse();
