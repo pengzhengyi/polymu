@@ -5,6 +5,15 @@ describe('ScrollView initialization', () => {
   document.body.appendChild(scrollTarget);
   let target: HTMLElement;
   let scrollView: ScrollView<HTMLParagraphElement>;
+  let paragraphs: Array<HTMLParagraphElement> = Array.from(
+    (function* () {
+      for (let i = 0; i < 1000; i++) {
+        const element: HTMLParagraphElement = document.createElement('p');
+        element.textContent = i.toString();
+        yield element;
+      }
+    })()
+  );
 
   beforeAll(() => {
     function setupIntersectionObserverMock({
@@ -43,44 +52,35 @@ describe('ScrollView initialization', () => {
     expect(scrollView.endIndex).toBeFalsy();
     expect(scrollView.endSentinelIndex).toBeFalsy();
   });
+
+  test('initialize window boundary', () => {
+    scrollView.setWindow(0, 5);
+    expect(scrollView.startIndex).toEqual(0);
+    expect(scrollView.endIndex).toEqual(5);
+    expect(scrollView.startSentinelIndex).toBeGreaterThanOrEqual(0);
+    expect(scrollView.endSentinelIndex).toBeLessThanOrEqual(5);
+  });
+
+  test('rendering partial view', () => {
+    scrollView.setWindow(0, 100);
+    const targetView = scrollView.view(paragraphs);
+    expect(targetView[0].textContent).toEqual('0');
+    expect(targetView[10].textContent).toEqual('10');
+
+    expect(scrollView.isWindowFull).toBe(true);
+    expect(scrollView.windowSize).toBe(101);
+    expect(scrollView.get(21).textContent).toEqual('21');
+  });
+
+  test('shift partial view', () => {
+    scrollView.setWindow(0, 20);
+    const originalTargetView = scrollView.view(paragraphs);
+    expect(originalTargetView[1].textContent).toEqual('1');
+
+    scrollView.shiftWindow(5);
+    expect(scrollView.get(0).textContent).toEqual('5');
+
+    const newTargetView = scrollView.view(paragraphs, true);
+    expect(newTargetView[1].textContent).toEqual('6');
+  });
 });
-
-// import { PartialViewScrollHandler } from './PartialViewScrollHandler';
-// import { PartialView } from './view-functions/PartialView';
-
-// describe('changing view', () => {
-//   const source: Array<HTMLLIElement> = [];
-//   for (let i = 0; i < 10000; i++) {
-//     const listItem = document.createElement('li');
-//     listItem.textContent = i.toString();
-//     source.push(listItem);
-//   }
-//   const partialView = new PartialView<HTMLLIElement>(source, 0, 9, 10);
-//   const target = document.createElement('ul');
-//   document.body.appendChild(target);
-//   const elementLength = 100;
-//   const handler = new PartialViewScrollHandler<HTMLLIElement>({
-//     partialView,
-//     target,
-//     elementLength,
-//   });
-//   const range = (startIndex: number) => Array.from(Array(10).keys()).map((v) => v + startIndex);
-
-//   test('set view', () => {
-//     expect(handler.startSentinelIndex).toBeGreaterThanOrEqual(0);
-//     expect(handler.startSentinelIndex).toBeLessThan(10);
-//     expect(handler.endSentinelIndex).toBeGreaterThanOrEqual(0);
-//     expect(handler.endSentinelIndex).toBeLessThan(10);
-//     expect(handler.startFillerLength).toBe(elementLength * 0);
-//     expect(handler.endFillerLength).toBe(elementLength * (10000 - 10));
-//     expect(Array.from(target.children).map((child) => child.textContent)).toEqual(
-//       range(0).map((v) => v.toString())
-//     );
-//     handler.setWindow(100);
-//     expect(Array.from(target.children).map((child) => child.textContent)).toEqual(
-//       range(100).map((v) => v.toString())
-//     );
-//     expect(handler.startFillerLength).toBe(elementLength * 100);
-//     expect(handler.endFillerLength).toBe(elementLength * (10000 - 110));
-//   });
-// });

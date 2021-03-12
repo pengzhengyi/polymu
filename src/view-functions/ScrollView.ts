@@ -184,7 +184,11 @@ export class ScrollView<
     UpdateBehavior.Lazy,
     // when target view changes, the rendering view need to be replaced
     (oldValue, newValue, thisValue, manager) => {
-      this._renderingStrategy = RenderingStrategy.Replace;
+      // since changing `RenderingStrategy` will only have influence on `_renderingView` which will be updated in subsequent `notifyValueChange`, opt to modify `renderingStrategy` silently
+      manager.setPropertyValueSnapshotSilently(
+        this._renderingStrategyProperty,
+        RenderingStrategy.Replace
+      );
       manager.notifyValueChange(thisValue);
     }
   );
@@ -228,6 +232,7 @@ export class ScrollView<
     ScrollView._renderingViewPropertyName,
     (thisValue, manager) => {
       let targetView: Collection<TViewElement>;
+      let target: HTMLElement;
       const convert = this._convert;
       const renderingStrategy: RenderingStrategy = manager.getPropertyValue('_renderingStrategy');
 
@@ -247,15 +252,31 @@ export class ScrollView<
             this.__circularArray = new CircularArray(capacity);
           }
 
+          target = manager.getPropertyValue('_target');
+          const existingElements = Array.from(this._target.children);
+          let existingElementCount = existingElements.length;
           this.__circularArray.fit(
             (function* () {
               for (const viewElement of targetView) {
                 yield convert(viewElement);
               }
-            })()
+            })(),
+            undefined,
+            (element, index) => {
+              if (existingElementCount > 0) {
+                const existingElement = existingElements[index];
+                existingElement.replaceWith(element);
+                existingElementCount--;
+              } else {
+                target.appendChild(element);
+              }
+            }
           );
 
-          this._replaceView(this.__circularArray);
+          // remove surplus elements
+          for (; existingElementCount > 0; existingElementCount--) {
+            target.lastElementChild.remove();
+          }
 
           this._scrollPosition = scrollPosition;
           // allow current rendering view to be reused when RenderingStrategy has remained `NoAction`
@@ -274,7 +295,7 @@ export class ScrollView<
 
           targetView = manager.getPropertyValue('_targetView');
           const shiftAmount: number = manager.getPropertyValue('_shiftAmount');
-          const target: HTMLElement = manager.getPropertyValue('_target');
+          target = manager.getPropertyValue('_target');
 
           console.assert(
             this.__circularArray === undefined || !this.__circularArray.isFull,
@@ -369,7 +390,7 @@ export class ScrollView<
         ScrollView._targetPropertyName
       );
       thisValue.shouldReuseLastValue = (_, manager) =>
-        manager.isSnapshotUpToDate(ScrollView._targetPropertyName, target, targetVersion);
+        manager.isSnapshotVersionUpToDate(ScrollView._targetPropertyName, targetVersion);
 
       if (target === undefined) {
         return undefined;
@@ -417,39 +438,12 @@ export class ScrollView<
   protected _scrollAxisProperty: Property<ScreenAxis> = new Property(
     ScrollView._scrollAxisPropertyName,
     (thisValue, manager) => {
-      let screenAxis: ScreenAxis;
-      const renderingView: CircularArray<TDomElement> = manager.getPropertyValue('_renderingView');
-      const renderingViewVersion = manager.getPropertyValueSnapshotVersionWithName(
-        ScrollView._renderingViewPropertyName
-      );
-
-      if (renderingView && renderingView.length >= 2) {
-        // check element placement relationship
-        const firstElement: TDomElement = renderingView.get(0);
-        const secondElement: TDomElement = renderingView.get(1);
-
-        const { x: firstX, y: firstY } = firstElement.getBoundingClientRect();
-        const { x: secondX, y: secondY } = secondElement.getBoundingClientRect();
-
-        if (firstX === secondX && firstY < secondY) {
-          screenAxis = ScreenAxis.Vertical;
-        } else if (firstX < secondX && firstY === secondY) {
-          screenAxis = ScreenAxis.Horizontal;
-        }
-
-        thisValue.shouldReuseLastValue = (_, manager) =>
-          manager.isSnapshotUpToDate(
-            ScrollView._renderingViewPropertyName,
-            renderingView,
-            renderingViewVersion
-          );
-        return screenAxis;
-      }
-
       const scrollTarget: HTMLElement = manager.getPropertyValue('_scrollTarget');
       const scrollTargetVersion = manager.getPropertyValueSnapshotVersionWithName(
         ScrollView._scrollTargetPropertyName
       );
+
+      let screenAxis: ScreenAxis;
 
       // check existence of scrollbar
       if (scrollTarget.scrollHeight > scrollTarget.clientHeight) {
@@ -461,14 +455,8 @@ export class ScrollView<
         screenAxis = ScreenAxis.Vertical;
       }
       thisValue.shouldReuseLastValue = (_, manager) =>
-        manager.isSnapshotUpToDate(
-          ScrollView._renderingViewPropertyName,
-          renderingView,
-          renderingViewVersion
-        ) &&
-        manager.isSnapshotUpToDate(
+        manager.isSnapshotVersionUpToDate(
           ScrollView._scrollTargetPropertyName,
-          scrollTarget,
           scrollTargetVersion
         );
       return screenAxis;
@@ -482,17 +470,14 @@ export class ScrollView<
     ScrollView._lastScrollPositionPropertyName,
     (thisValue, manager) => {
       // `__getValue` will be called for first-time retrieval and every time scroll axis has changed to reset scroll position. In other cases, `shouldReuseLastValue` should evaluate to true and set value from `_scrollDirection` will be used
-      const scrollAxis: ScreenAxis = manager.getPropertyValue('_scrollAxis');
+
+      // Dependency Injection: manager.getPropertyValue('_scrollAxis');
       const scrollAxisVersion = manager.getPropertyValueSnapshotVersionWithName(
         ScrollView._scrollAxisPropertyName
       );
 
       thisValue.shouldReuseLastValue = (_, manager) =>
-        manager.isSnapshotUpToDate(
-          ScrollView._scrollAxisPropertyName,
-          scrollAxis,
-          scrollAxisVersion
-        );
+        manager.isSnapshotVersionUpToDate(ScrollView._scrollAxisPropertyName, scrollAxisVersion);
       return 0;
     },
     UpdateBehavior.Immediate
@@ -600,11 +585,7 @@ export class ScrollView<
         const elementLength = firstRenderedElement[propName];
         // reuse same element length unless scroll axis has changed
         thisValue.shouldReuseLastValue = (_, manager) =>
-          manager.isSnapshotUpToDate(
-            ScrollView._scrollAxisPropertyName,
-            scrollAxis,
-            scrollAxisVersion
-          );
+          manager.isSnapshotVersionUpToDate(ScrollView._scrollAxisPropertyName, scrollAxisVersion);
         return elementLength;
       }
     },
@@ -627,9 +608,8 @@ export class ScrollView<
         ScrollView._renderingViewPropertyName
       );
       thisValue.shouldReuseLastValue = (_, manager) =>
-        manager.isSnapshotUpToDate(
+        manager.isSnapshotVersionUpToDate(
           ScrollView._renderingViewPropertyName,
-          renderingView,
           renderingViewVersion
         );
 
@@ -660,7 +640,7 @@ export class ScrollView<
       );
 
       thisValue.shouldReuseLastValue = (_, manager) =>
-        manager.isSnapshotUpToDate(ScrollView._targetPropertyName, target, targetVersion);
+        manager.isSnapshotVersionUpToDate(ScrollView._targetPropertyName, targetVersion);
 
       if (target === undefined) {
         return undefined;
@@ -691,19 +671,9 @@ export class ScrollView<
   protected _startFillerLengthProperty: Property<number> = new Property(
     ScrollView._startFillerLengthPropertyName,
     (thisValue, manager) => {
-      const startFillerElement: HTMLElement = manager.getPropertyValue('_startFillerElement');
+      // Dependency Injection: manager.getPropertyValue('_startFillerElement');
       const startFillerElementVersion = manager.getPropertyValueSnapshotVersionWithName(
         ScrollView._startFillerElementPropertyName
-      );
-
-      const scrollAxis: ScreenAxis = manager.getPropertyValue('_scrollAxis');
-      const scrollAxisVersion = manager.getPropertyValueSnapshotVersionWithName(
-        ScrollView._scrollAxisPropertyName
-      );
-
-      const renderingView: CircularArray<TDomElement> = manager.getPropertyValue('_renderingView');
-      const renderingViewVersion = manager.getPropertyValueSnapshotVersionWithName(
-        ScrollView._renderingViewPropertyName
       );
 
       const elementLength: number = manager.getPropertyValue('_elementLength');
@@ -712,24 +682,12 @@ export class ScrollView<
       );
 
       thisValue.shouldReuseLastValue = (_, manager) =>
-        manager.isSnapshotUpToDate(
+        manager.isSnapshotVersionUpToDate(
           ScrollView._startFillerElementPropertyName,
-          startFillerElement,
           startFillerElementVersion
         ) &&
-        manager.isSnapshotUpToDate(
-          ScrollView._scrollAxisPropertyName,
-          scrollAxis,
-          scrollAxisVersion
-        ) &&
-        manager.isSnapshotUpToDate(
-          ScrollView._renderingViewPropertyName,
-          renderingView,
-          renderingViewVersion
-        ) &&
-        manager.isSnapshotUpToDate(
+        manager.isSnapshotVersionUpToDate(
           ScrollView._elementLengthPropertyName,
-          elementLength,
           elementLengthVersion
         );
 
@@ -772,19 +730,13 @@ export class ScrollView<
       );
 
       thisValue.shouldReuseLastValue = (_, manager) =>
-        manager.isSnapshotUpToDate(
-          ScrollView._scrollAxisPropertyName,
-          scrollAxis,
-          scrollAxisVersion
-        ) &&
-        manager.isSnapshotUpToDate(
+        manager.isSnapshotVersionUpToDate(ScrollView._scrollAxisPropertyName, scrollAxisVersion) &&
+        manager.isSnapshotVersionUpToDate(
           ScrollView._startFillerElementPropertyName,
-          startFillerElement,
           startFillerElementVersion
         ) &&
-        manager.isSnapshotUpToDate(
+        manager.isSnapshotVersionUpToDate(
           ScrollView._scrollTargetPropertyName,
-          scrollTarget,
           scrollTargetVersion
         );
 
@@ -834,7 +786,7 @@ export class ScrollView<
       );
 
       thisValue.shouldReuseLastValue = (_, manager) =>
-        manager.isSnapshotUpToDate(ScrollView._targetPropertyName, target, targetVersion);
+        manager.isSnapshotVersionUpToDate(ScrollView._targetPropertyName, targetVersion);
 
       if (target === undefined) {
         return undefined;
@@ -867,38 +819,18 @@ export class ScrollView<
       const endFillerElementVersion = manager.getPropertyValueSnapshotVersionWithName(
         ScrollView._endFillerElementPropertyName
       );
-      const scrollAxis: ScreenAxis = manager.getPropertyValue('_scrollAxis');
-      const scrollAxisVersion = manager.getPropertyValueSnapshotVersionWithName(
-        ScrollView._scrollAxisPropertyName
-      );
-      const renderingView: CircularArray<TDomElement> = manager.getPropertyValue('_renderingView');
-      const renderingViewVersion = manager.getPropertyValueSnapshotVersionWithName(
-        ScrollView._renderingViewPropertyName
-      );
       const elementLength: number = manager.getPropertyValue('_elementLength');
       const elementLengthVersion = manager.getPropertyValueSnapshotVersionWithName(
         ScrollView._elementLengthPropertyName
       );
 
       thisValue.shouldReuseLastValue = (_thisValue, manager) =>
-        manager.isSnapshotUpToDate(
+        manager.isSnapshotVersionUpToDate(
           ScrollView._endFillerElementPropertyName,
-          endFillerElement,
           endFillerElementVersion
         ) &&
-        manager.isSnapshotUpToDate(
-          ScrollView._scrollAxisPropertyName,
-          scrollAxis,
-          scrollAxisVersion
-        ) &&
-        manager.isSnapshotUpToDate(
-          ScrollView._renderingViewPropertyName,
-          renderingView,
-          renderingViewVersion
-        ) &&
-        manager.isSnapshotUpToDate(
+        manager.isSnapshotVersionUpToDate(
           ScrollView._elementLengthPropertyName,
-          elementLength,
           elementLengthVersion
         );
 
@@ -969,7 +901,7 @@ export class ScrollView<
       return undefined;
     }
 
-    return bound(Math.floor(this.windowSize / 4) * 3 - 1, 0, this.windowSize);
+    return bound(Math.floor((this.windowSize / 4) * 3) - 1, 0, this.windowSize);
   }
   /**
    * @returns {TDomElement} A end sentinel is a DOM element in the target window that signals a landmark: a later view should be loaded.
@@ -1198,45 +1130,12 @@ export class ScrollView<
     });
   }
 
-  /**
-   * Syncing the DOM with a new view. In effect, the child nodes in `this.target` will be replaced with current view.
-   *
-   * @param {Collection<T>} [newView = this.partialView.targetView] - A new view to update the rendered view.
-   */
-  protected _replaceView(newView: Iterable<TDomElement>) {
-    // TODO optimize with yield and return
-    const viewIterator = newView[Symbol.iterator]();
-    const elements = this._target.children;
-    let elementIndex = 0;
-    while (true) {
-      let { value: viewElement, done } = viewIterator.next();
-      if (done) {
-        break;
-      }
-
-      const element = elements[elementIndex++];
-      if (element) {
-        if (element === viewElement) {
-          continue;
-        }
-        // has corresponding view element: one-to-one replacement
-        element.replaceWith(viewElement);
-      } else {
-        // if there are more view elements than corresponding DOM elements from old view
-        this._target.appendChild(viewElement);
-      }
-    }
-
-    const numElements = elements.length;
-    for (; elementIndex < numElements; elementIndex++) {
-      // element has corresponding view element: detach element from DOM
-      this._target.lastElementChild.remove();
-    }
-  }
-
   protected _regenerateViewIfNeeded(oldStartIndex: number, oldEndIndex: number) {
     const startIndexShiftAmount: number = this.startIndex - oldStartIndex;
-    if (this.endIndex - oldEndIndex === startIndexShiftAmount) {
+    if (
+      Number.isInteger(startIndexShiftAmount) &&
+      this.endIndex - oldEndIndex === startIndexShiftAmount
+    ) {
       // can be considered a shift operation
       this._propertyManager.setPropertyValueSnapshotSilently(
         this._renderingStrategyProperty,
