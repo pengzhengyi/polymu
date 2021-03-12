@@ -403,7 +403,9 @@ export class SlidingWindow<TElement> implements Iterable<TElement> {
    * Implements the iteration protocol.
    */
   *[Symbol.iterator](): IterableIterator<TElement> {
-    yield* this._iterable.slice(this._startIndex, this._endIndex + 1);
+    if (this._isFullyInitialized) {
+      yield* this._iterable.slice(this._startIndex, this._endIndex + 1);
+    }
   }
 
   /**

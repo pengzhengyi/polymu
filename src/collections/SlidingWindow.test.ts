@@ -80,6 +80,27 @@ describe('SlidingWindow', () => {
     expect(window.reachedEnd).toBe(false);
   });
 
+  test('uninitialized SlidingWindow state', () => {
+    const window = new SlidingWindow();
+    expect(window.startIndex).toBeUndefined();
+    expect(window.endIndex).toBeUndefined();
+    expect(window.windowSize).toBeUndefined();
+    expect(window.iterable).toBeUndefined();
+    expect(window.isWindowEmpty).toBeUndefined();
+    expect(window.isWindowFull).toBeUndefined();
+    expect(window.length).toBeUndefined();
+    expect(window.numElementBefore).toBeUndefined();
+    expect(window.numElementAfter).toBeUndefined();
+    expect(window.reachedStart).toBeUndefined();
+    expect(window.reachedEnd).toBeUndefined();
+  });
+
+  test('iterate uninitialized SlidingWindow', () => {
+    const window = new SlidingWindow();
+    const result = Array.from(window);
+    expect(result).toEqual([]);
+  });
+
   test('changing iterable', () => {
     const array = ['a', 'b', 'c', 'd', 'e'];
     const window = new SlidingWindow(1, 4, array, ResizeStrategy.ShiftAndShrinkIfNecessary);
