@@ -227,8 +227,8 @@ export class ScrollView<
   );
 
   private __circularArray: CircularArray<TDomElement>;
-  protected _renderingView: CircularArray<TDomElement>;
-  protected _renderingViewProperty: Property<CircularArray<TDomElement>> = new Property(
+  protected _renderingView: Collection<TDomElement>;
+  protected _renderingViewProperty: Property<Collection<TDomElement>> = new Property(
     ScrollView._renderingViewPropertyName,
     (thisValue, manager) => {
       let targetView: Collection<TViewElement>;

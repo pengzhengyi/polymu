@@ -19,7 +19,9 @@
  * [ 7 5 6 ]  -- after 6st insertion
  */
 
-export class CircularArray<TElement> implements Iterable<TElement> {
+import { Collection } from './Collection';
+
+export class CircularArray<TElement> implements Collection<TElement> {
   /** The maximum number of elements that could be stored in this circular array */
   protected _capacity: number;
   /** Index of first element(if any) */
