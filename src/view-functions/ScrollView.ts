@@ -155,7 +155,6 @@ export class ScrollView<
   static readonly afterRenderingViewUpdateEventName = 'afterRenderingViewUpdate';
 
   // a collection of property names to facilitate renaming by reducing raw string appearances
-  protected static readonly _targetViewPropertyName = '_targetView';
   protected static readonly _renderingViewPropertyName = '_renderingView';
   protected static readonly _targetPropertyName = '_target';
   protected static readonly _startFillerElementPropertyName = '_startFillerElement';
@@ -177,21 +176,6 @@ export class ScrollView<
    * For example, it updates rendering view when the target view changes.
    */
   protected _propertyManager: PropertyManager;
-
-  protected _targetViewProperty: Property<Collection<TViewElement>> = new Property(
-    ScrollView._targetViewPropertyName,
-    (thisValue, manager) => manager.getPropertyValueSnapshot(thisValue),
-    UpdateBehavior.Lazy,
-    // when target view changes, the rendering view need to be replaced
-    (oldValue, newValue, thisValue, manager) => {
-      // since changing `RenderingStrategy` will only have influence on `_renderingView` which will be updated in subsequent `notifyValueChange`, opt to modify `renderingStrategy` silently
-      manager.setPropertyValueSnapshotSilently(
-        this._renderingStrategyProperty,
-        RenderingStrategy.Replace
-      );
-      manager.notifyValueChange(thisValue);
-    }
-  );
 
   protected _renderingStrategy: RenderingStrategy;
   protected _renderingStrategyProperty: Property<RenderingStrategy> = new Property(
@@ -241,7 +225,7 @@ export class ScrollView<
           break;
         case RenderingStrategy.Replace:
           this._modifyRenderingView(() => {
-            targetView = manager.getPropertyValue('_targetView');
+            targetView = this._targetView;
             const scrollPosition = this._scrollPosition;
 
             if (this.__circularArray === undefined) {
@@ -282,7 +266,7 @@ export class ScrollView<
           break;
         case RenderingStrategy.Shift:
           this._modifyRenderingView(() => {
-            targetView = manager.getPropertyValue('_targetView');
+            targetView = this._targetView;
             const shiftAmount: number = manager.getPropertyValue('_shiftAmount');
             target = manager.getPropertyValue('_target');
 
@@ -918,7 +902,6 @@ export class ScrollView<
   constructor(options: ScrollViewConfiguration<TViewElement, TDomElement>) {
     super();
     this._propertyManager = new PropertyManager([
-      this._targetViewProperty,
       this._renderingStrategyProperty,
       this._shiftAmountProperty,
       this._renderingViewProperty,
@@ -1112,10 +1095,10 @@ export class ScrollView<
 
   protected _regenerateViewIfNeeded(oldStartIndex: number, oldEndIndex: number) {
     const startIndexShiftAmount: number = this.startIndex - oldStartIndex;
-    if (
-      Number.isInteger(startIndexShiftAmount) &&
-      this.endIndex - oldEndIndex === startIndexShiftAmount
-    ) {
+    const endIndexShiftAmount: number = this.endIndex - oldEndIndex;
+    const hasSameShiftAmount: boolean =
+      Number.isInteger(startIndexShiftAmount) && startIndexShiftAmount === endIndexShiftAmount;
+    if (hasSameShiftAmount && this._renderingStrategy === RenderingStrategy.NoAction) {
       // can be considered a shift operation
       this._propertyManager.setPropertyValueSnapshotSilently(
         this._renderingStrategyProperty,
@@ -1134,6 +1117,25 @@ export class ScrollView<
 
     // triggering target view regeneration and consequently rendering view regeneration
     this.regenerateView(this.lastSourceView, true);
+  }
+
+  protected regenerateView(sourceView: Collection<TViewElement>, useCache: boolean) {
+    if (!useCache || sourceView !== this.lastSourceView) {
+      this._propertyManager.setPropertyValueSnapshotSilently(
+        this._renderingStrategyProperty,
+        RenderingStrategy.Replace
+      );
+    }
+
+    super.regenerateView(sourceView, useCache);
+
+    // target view has been updated, use updated target view to update rendering view if necessary
+    if (this._renderingStrategy !== RenderingStrategy.NoAction) {
+      /**
+       * When rendering view is up to date, rendering strategy will be `NoAction`. Since there exists an unsymmetry between these two values, this implies a necessary rendering view update is suppressed with silent updating of rendering strategy and the delayed update should occur here
+       */
+      this._propertyManager.notifyValueChange(this._renderingStrategyProperty);
+    }
   }
 
   setWindow(

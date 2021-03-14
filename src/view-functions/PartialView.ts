@@ -162,15 +162,19 @@ export class PartialView<TViewElement> extends AbstractViewFunction<TViewElement
    * If both conditions are false, nothing will be done -- same target view will be returned.
    */
   protected regenerateView(sourceView: Collection<TViewElement>, useCache: boolean) {
-    if (useCache && sourceView === this.lastSourceView && !this.shouldRegenerateView) {
-      return;
+    if (sourceView === this.lastSourceView) {
+      if (useCache && !this.shouldRegenerateView) {
+        return;
+      }
+    } else {
+      // update iterable reference to `sourceView`
+      this._slidingWindow.iterable = sourceView;
     }
 
-    this._slidingWindow.iterable = sourceView;
-    // `SlidingWindow` is a lazy generator of window elements, by wrapping the `SlidingWindow` in a `LazyCollectionProvider`, the elements are cached
+    // setting `_targetView_` is necessary even when the reference does not change as it will invoke a setter which allows before and after target view update tasks to be executed
     this._targetView_ = this._slidingWindow;
 
-    this.shouldRegenerateView = false;
+    super.regenerateView(sourceView, useCache);
   }
 
   /**
