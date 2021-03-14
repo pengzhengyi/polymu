@@ -145,10 +145,9 @@ enum RenderingStrategy {
  *
  * @typedef TDomElement - A element type that should subclass {@link https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement HTMLElement}.
  */
-export class ScrollView<
-  TDomElement extends HTMLElement,
-  TViewElement = TDomElement
-> extends PartialView<TViewElement> {
+export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends PartialView<
+  TViewElement
+> {
   /** denotes the event that will be emitted before rendering view update, it will supply the current `ScrollView` */
   static readonly beforeRenderingViewUpdateEventName = 'beforeRenderingViewUpdate';
   /** denotes the event that will be emitted after rendering view update, it will supply the current `ScrollView` */
