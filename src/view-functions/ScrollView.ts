@@ -240,126 +240,106 @@ export class ScrollView<
         case RenderingStrategy.NoAction:
           break;
         case RenderingStrategy.Replace:
-          this.deactivateObservers();
-          this.invoke(ScrollView.beforeRenderingViewUpdateEventName, this);
+          this._modifyRenderingView(() => {
+            targetView = manager.getPropertyValue('_targetView');
+            const scrollPosition = this._scrollPosition;
 
-          targetView = manager.getPropertyValue('_targetView');
-          const scrollPosition = this._scrollPosition;
-
-          if (this.__circularArray === undefined) {
-            // a heuristic to set the initial capacity for circular array
-            const capacity = targetView.length || (targetView as any).materializationLength || 1000;
-            this.__circularArray = new CircularArray(capacity);
-          }
-
-          target = manager.getPropertyValue('_target');
-          const existingElements = Array.from(this._target.children);
-          let existingElementCount = existingElements.length;
-          this.__circularArray.fit(
-            (function* () {
-              for (const viewElement of targetView) {
-                yield convert(viewElement);
-              }
-            })(),
-            undefined,
-            (element, index) => {
-              if (existingElementCount > 0) {
-                const existingElement = existingElements[index];
-                existingElement.replaceWith(element);
-                existingElementCount--;
-              } else {
-                target.appendChild(element);
-              }
+            if (this.__circularArray === undefined) {
+              // a heuristic to set the initial capacity for circular array
+              const capacity =
+                targetView.length || (targetView as any).materializationLength || 1000;
+              this.__circularArray = new CircularArray(capacity);
             }
-          );
 
-          // remove surplus elements
-          for (; existingElementCount > 0; existingElementCount--) {
-            target.lastElementChild.remove();
-          }
+            target = manager.getPropertyValue('_target');
+            const existingElements = Array.from(this._target.children);
+            let existingElementCount = existingElements.length;
+            this.__circularArray.fit(
+              (function* () {
+                for (const viewElement of targetView) {
+                  yield convert(viewElement);
+                }
+              })(),
+              undefined,
+              (element, index) => {
+                if (existingElementCount > 0) {
+                  const existingElement = existingElements[index];
+                  existingElement.replaceWith(element);
+                  existingElementCount--;
+                } else {
+                  target.appendChild(element);
+                }
+              }
+            );
 
-          this._scrollPosition = scrollPosition;
-          // allow current rendering view to be reused when RenderingStrategy has remained `NoAction`
-          manager.setPropertyValueSnapshotSilently(
-            this._renderingStrategyProperty,
-            RenderingStrategy.NoAction
-          );
-          manager.incrementPropertyValueSnapshotVersion(thisValue);
-          this.invoke(ScrollView.afterRenderingViewUpdateEventName, this);
-          this.activateObservers();
+            // remove surplus elements
+            for (; existingElementCount > 0; existingElementCount--) {
+              target.lastElementChild.remove();
+            }
 
+            this._scrollPosition = scrollPosition;
+          });
           break;
         case RenderingStrategy.Shift:
-          this.deactivateObservers();
-          this.invoke(ScrollView.beforeRenderingViewUpdateEventName, this);
+          this._modifyRenderingView(() => {
+            targetView = manager.getPropertyValue('_targetView');
+            const shiftAmount: number = manager.getPropertyValue('_shiftAmount');
+            target = manager.getPropertyValue('_target');
 
-          targetView = manager.getPropertyValue('_targetView');
-          const shiftAmount: number = manager.getPropertyValue('_shiftAmount');
-          target = manager.getPropertyValue('_target');
+            console.assert(
+              this.__circularArray === undefined || !this.__circularArray.isFull,
+              'invalid circular array state when performing shift in target view'
+            );
 
-          console.assert(
-            this.__circularArray === undefined || !this.__circularArray.isFull,
-            'invalid circular array state when performing shift in target view'
-          );
-
-          const shiftTowardsEnd = shiftAmount > 0;
-          let onEnter: (element: TDomElement, windowIndex: number) => void;
-          if (shiftTowardsEnd) {
-            onEnter = (element) => target.appendChild(element);
-          } else {
-            let lastInsertedElement: TDomElement;
-            onEnter = (element, windowIndex) => {
-              if (windowIndex === 0) {
-                // inserting first element
-                target.prepend(element);
-              } else {
-                // inserting other element
-                lastInsertedElement.after(element);
-              }
-              lastInsertedElement = element;
-            };
-          }
-          // update circular array based on `shiftAmount`
-          this.__circularArray.shift(
-            shiftAmount,
-            (function* () {
-              if (shiftTowardsEnd) {
-                // shift towards end
-                let numViewElement = targetView.length;
-                if (numViewElement === undefined) {
-                  const viewElements = Array.from(targetView);
-                  numViewElement = viewElements.length;
-                  for (let i = numViewElement - shiftAmount; i < numViewElement; i++) {
-                    yield convert(viewElements[i]);
+            const shiftTowardsEnd = shiftAmount > 0;
+            let onEnter: (element: TDomElement, windowIndex: number) => void;
+            if (shiftTowardsEnd) {
+              onEnter = (element) => target.appendChild(element);
+            } else {
+              let lastInsertedElement: TDomElement;
+              onEnter = (element, windowIndex) => {
+                if (windowIndex === 0) {
+                  // inserting first element
+                  target.prepend(element);
+                } else {
+                  // inserting other element
+                  lastInsertedElement.after(element);
+                }
+                lastInsertedElement = element;
+              };
+            }
+            // update circular array based on `shiftAmount`
+            this.__circularArray.shift(
+              shiftAmount,
+              (function* () {
+                if (shiftTowardsEnd) {
+                  // shift towards end
+                  let numViewElement = targetView.length;
+                  if (numViewElement === undefined) {
+                    const viewElements = Array.from(targetView);
+                    numViewElement = viewElements.length;
+                    for (let i = numViewElement - shiftAmount; i < numViewElement; i++) {
+                      yield convert(viewElements[i]);
+                    }
+                  } else {
+                    for (const viewElement of targetView.slice(
+                      numViewElement - shiftAmount,
+                      numViewElement
+                    )) {
+                      yield convert(viewElement);
+                    }
                   }
                 } else {
-                  for (const viewElement of targetView.slice(
-                    numViewElement - shiftAmount,
-                    numViewElement
-                  )) {
+                  // shift towards start, first `shiftAmount` elements of `targetView` will be inserted
+                  for (const viewElement of targetView.slice(0, -shiftAmount)) {
                     yield convert(viewElement);
                   }
                 }
-              } else {
-                // shift towards start, first `shiftAmount` elements of `targetView` will be inserted
-                for (const viewElement of targetView.slice(0, -shiftAmount)) {
-                  yield convert(viewElement);
-                }
-              }
-            })(),
-            (element) => element.remove(),
-            onEnter
-          );
-
-          // allow current rendering view to be reused when RenderingStrategy has remained `NoAction`
-          manager.setPropertyValueSnapshotSilently(
-            this._renderingStrategyProperty,
-            RenderingStrategy.NoAction
-          );
-          manager.setPropertyValueSnapshotSilently(this._shiftAmountProperty, 0);
-          manager.incrementPropertyValueSnapshotVersion(thisValue);
-          this.invoke(ScrollView.afterRenderingViewUpdateEventName, this);
-          this.activateObservers();
+              })(),
+              (element) => element.remove(),
+              onEnter
+            );
+          });
           break;
       }
       return this.__circularArray;
@@ -1182,6 +1162,23 @@ export class ScrollView<
     } else {
       return false;
     }
+  }
+
+  protected _modifyRenderingView(modification: () => void) {
+    this.deactivateObservers();
+    this.invoke(ScrollView.beforeRenderingViewUpdateEventName, this);
+
+    modification();
+
+    // allow current rendering view to be reused when RenderingStrategy has remained `NoAction`
+    this._propertyManager.setPropertyValueSnapshotSilently(
+      this._renderingStrategyProperty,
+      RenderingStrategy.NoAction
+    );
+    this._propertyManager.setPropertyValueSnapshotSilently(this._shiftAmountProperty, 0);
+    this._propertyManager.incrementPropertyValueSnapshotVersion(this._renderingViewProperty);
+    this.invoke(ScrollView.afterRenderingViewUpdateEventName, this);
+    this.activateObservers();
   }
 
   /**
