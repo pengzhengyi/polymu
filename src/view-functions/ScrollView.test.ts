@@ -8,7 +8,7 @@ describe('ScrollView initialization', () => {
   let scrollView: ScrollView<HTMLParagraphElement>;
   let paragraphs: Array<HTMLParagraphElement> = Array.from(
     (function* () {
-      for (let i = 0; i < 1000; i++) {
+      for (let i = 0; i < 200; i++) {
         const element: HTMLParagraphElement = document.createElement('p');
         element.textContent = i.toString();
         yield element;
@@ -83,5 +83,32 @@ describe('ScrollView initialization', () => {
 
     const newTargetView = scrollView.view(paragraphs, true);
     expect(Collection.get(newTargetView, 1).textContent).toEqual('6');
+  });
+
+  test('shift towards start when already reached start', () => {
+    scrollView.setWindow(0, 20);
+    const originalTargetView = scrollView.view(paragraphs);
+    expect(Collection.get(originalTargetView, 2).textContent).toEqual('2');
+
+    scrollView.shiftWindow(-5);
+    expect(Collection.get(originalTargetView, 2).textContent).toEqual('2');
+  });
+
+  test('shift towards start, not enough room for shifting', () => {
+    scrollView.setWindow(0, 20);
+    scrollView.view(paragraphs);
+    expect(scrollView.isWindowFull).toBe(true);
+    expect(scrollView.reachedStart).toBe(true);
+    expect(scrollView.startIndex).toEqual(0);
+    expect(scrollView.get(2).textContent).toEqual('2');
+
+    scrollView.shiftWindow(2);
+    expect(scrollView.reachedStart).toBe(false);
+    expect(scrollView.get(2).textContent).toEqual('4');
+
+    scrollView.shiftWindow(-5);
+    expect(scrollView.reachedStart).toBe(true);
+    expect(scrollView.startIndex).toEqual(0);
+    expect(scrollView.get(2).textContent).toEqual('2');
   });
 });
