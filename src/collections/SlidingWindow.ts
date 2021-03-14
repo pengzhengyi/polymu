@@ -126,7 +126,7 @@ export enum ResizeStrategy {
  *
  * Additionally, this window is not fixed: it is slidable through changing its start index and end index. This means `SlidingWindow` provides a lazy view: not until elements are resolved, the window is flexible enough to slide over any slice of any iterable.
  */
-export class SlidingWindow<TElement> implements Iterable<TElement> {
+export class SlidingWindow<TElement> implements Iterable<TElement>, Collection<TElement> {
   /** start index of the window, inclusive */
 
   protected _startIndex: number;
@@ -502,6 +502,10 @@ export class SlidingWindow<TElement> implements Iterable<TElement> {
    */
   get(windowIndex: number): TElement {
     return Collection.get(this._iterable, this._startIndex + windowIndex);
+  }
+
+  slice(start: number, end: number): Iterable<TElement> {
+    return Collection.slice(this, start, end);
   }
 
   /**

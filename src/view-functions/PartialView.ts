@@ -168,7 +168,7 @@ export class PartialView<TViewElement> extends AbstractViewFunction<TViewElement
 
     this._slidingWindow.iterable = sourceView;
     // `SlidingWindow` is a lazy generator of window elements, by wrapping the `SlidingWindow` in a `LazyCollectionProvider`, the elements are cached
-    this._targetView_ = new LazyCollectionProvider(this._slidingWindow);
+    this._targetView_ = this._slidingWindow;
 
     this.shouldRegenerateView = false;
   }

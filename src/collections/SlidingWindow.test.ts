@@ -37,6 +37,23 @@ describe('SlidingWindow', () => {
     expect(window.reachedEnd).toBe(true);
   });
 
+  test('slice SlidingWindow', () => {
+    const array = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k'];
+    const window = new SlidingWindow(0, 5, array);
+    // a -- f
+    expect(Array.from(window.slice(0, 2))).toEqual(['a', 'b']);
+    expect(Array.from(window.slice(2, 4))).toEqual(['c', 'd']);
+
+    // slice past end
+    expect(Array.from(window.slice(4, 10))).toEqual(['e', 'f']);
+
+    // slice start index past end
+    expect(Array.from(window.slice(6, 8))).toEqual([]);
+
+    // empty slice
+    expect(Array.from(window.slice(6, 4))).toEqual([]);
+  });
+
   test('unmaterializable iterable', () => {
     const array = ['a', 'b', 'c', 'd', 'e'];
     const collection = new UnmaterializableCollectionProvider(array);

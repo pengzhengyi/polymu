@@ -39,7 +39,7 @@ export interface Collection<TElement> extends Iterable<TElement> {
    *
    * @param {number} start - Zero-based index at which to start extraction. If `start` is less than 0, 0 will be used as value for `start`.
    * @param {number} end - Zero-based index before which to end extraction. `slice` extracts up to but no including `end`. If end is greater than the length of the collection, `slice` extracts through to the end of the sequence (`collection.length`)
-   * @return {IterableIterator<TElement>} An iterable of elements between specified indices.
+   * @return {Iterable<TElement>} An iterable of elements between specified indices.
    */
   slice(start: number, end: number): Iterable<TElement>;
 }
@@ -110,19 +110,86 @@ export abstract class Collection<TElement> implements Collection<TElement> {
   }
 
   /**
+   * Normalize the start index and end index used in {@see Collection#slice} call.
+   *
+   * Start index and end index do not specify a valid range when
+   *
+   *    + end index is greater than start index
+   *    + start index is greater than length
+   *
+   * @param start - Zero-based index at which to start extraction.
+   * @param end - Zero-based index before which to end extraction.
+   * @param length - The number of elements in the collection.
+   * @returns `null` if start index and end index does not define a valid range. Otherwise, return normalized start index and end index: Both are lower bounded by 0 and upper bounded by collection length (if defined).
+   */
+  static normalizeSliceIndices(start: number, end: number, length: number): [number, number] {
+    // lower bound start index
+    start = Math.max(0, start);
+    if (end <= start) {
+      return null;
+    }
+
+    if (length !== undefined) {
+      if (start >= length) {
+        return null;
+      }
+      // upper bound end index
+      end = Math.min(length, end);
+    }
+
+    return [start, end];
+  }
+
+  /**
+   * This static method provides a basic implementation of `slice` by invoking `Collection.get` on each index in specified range.
+   *
+   * @see {@link Collection#slice}
+   *
+   * Returns a slice view of the collection with elements selected from start to end (end not included) where `start` and `end` represent the index of items in that array. The collection will not be modified.
+   *
+   * Roughly equivalent to the following piece of code:
+   *
+   * ```Javascript
+   * for (let i = start; i < end; i++) }
+   *    yield collection[i];
+   * }
+   * ```
+   *
+   * @param {number} start - Zero-based index at which to start extraction. If `start` is less than 0, 0 will be used as value for `start`.
+   * @param {number} end - Zero-based index before which to end extraction. `slice` extracts up to but no including `end`. If end is greater than the length of the collection, `slice` extracts through to the end of the sequence (`collection.length`)
+   * @return {Iterable<TElement>} An iterable of elements between specified indices.
+   */
+  static *slice<TElement>(
+    collection: Collection<TElement>,
+    start: number,
+    end: number
+  ): Iterable<TElement> {
+    const normalizedIndices = Collection.normalizeSliceIndices(start, end, collection.length);
+    if (normalizedIndices == null) {
+      return;
+    } else {
+      [start, end] = normalizedIndices;
+    }
+
+    for (let i = start; i < end; i++) {
+      yield Collection.get(collection, i);
+    }
+  }
+
+  /**
    * Whether the source iterable can be internalized. That is, whether a copy or a partial copy of the source iterable can be stored inside this collection provider.
    */
-  protected materializable?: boolean;
+  materializable?: boolean;
 
   /**
    * An iterable of collection that constitutes the elements of the collection. The CollectionProvider provides extensions to manipulate this iterable.
    */
-  protected readonly iterable?: Iterable<TElement>;
+  readonly iterable?: Iterable<TElement>;
 
   /**
    * Indicates whether and how the collection should materialize the iterable.
    */
-  protected readonly materializationStrategy?: MaterializationStrategy;
+  readonly materializationStrategy?: MaterializationStrategy;
 
   /**
    * Creates a CollectionProvider, which is an indexable iterable.
@@ -169,6 +236,10 @@ export abstract class Collection<TElement> implements Collection<TElement> {
    * @returns The number of materialized elements. These elements can be indexed at constant cost.
    */
   abstract getMaterializationLength?(): number;
+
+  slice(start: number, end: number): Iterable<TElement> {
+    return Collection.slice(this, start, end);
+  }
 }
 
 /**
@@ -210,7 +281,7 @@ export class UnmaterializableCollectionProvider<TElement> extends Collection<TEl
    * @param {Iterable<TElement>} iterable - An iterable of collection elements. This iterable must be repeatedly iterable.
    * @constructs UnmaterializableCollectionProvider
    */
-  constructor(protected readonly iterable: Iterable<TElement>) {
+  constructor(iterable: Iterable<TElement>) {
     super(iterable, MaterializationStrategy.Prohibit);
   }
 
@@ -250,14 +321,11 @@ export class UnmaterializableCollectionProvider<TElement> extends Collection<TEl
   }
 
   *slice(start: number, end: number): IterableIterator<TElement> {
-    start = Math.max(0, start);
-    if (end <= start) {
+    const normalizedIndices = Collection.normalizeSliceIndices(start, end, this.length);
+    if (normalizedIndices == null) {
       return;
-    }
-
-    const length = this.length;
-    if (length !== undefined && start >= length) {
-      return;
+    } else {
+      [start, end] = normalizedIndices;
     }
 
     let i = 0;
@@ -297,12 +365,12 @@ export class LazyCollectionProvider<TElement> extends Collection<TElement> {
    * Whether materialization process finishes. If the process is finished, `this.materializedCollection` will contain all elements from the iterable in same order.
    */
 
-  protected materialized: boolean;
+  protected _materialized: boolean;
   /**
    * Stores the materialized iterable. When materialization is finished, this array will contain all elements from the iterable in correct order. When materialization is not finished, this array will contain a starting subsequence of elements from the iterable. In other words, at any time, this array will contain the first `x` elements from the iterable, where `0 <= x <= n`, n being the length of the iterable.
    */
 
-  protected materializedCollection: Array<TElement>;
+  protected _materializedCollection: Array<TElement>;
 
   /**
    * If defined, stores the length of the collection
@@ -310,8 +378,8 @@ export class LazyCollectionProvider<TElement> extends Collection<TElement> {
   protected _length: number;
 
   get length(): number {
-    if (this._length === undefined && this.materialized) {
-      return (this._length = this.materializedCollection.length);
+    if (this._length === undefined && this._materialized) {
+      return (this._length = this._materializedCollection.length);
     }
 
     return this._length;
@@ -335,7 +403,7 @@ export class LazyCollectionProvider<TElement> extends Collection<TElement> {
         }
 
         that._length = index;
-        that.materialized = true;
+        that._materialized = true;
       })();
     }
     return this._continuation;
@@ -346,11 +414,11 @@ export class LazyCollectionProvider<TElement> extends Collection<TElement> {
    *
    * @param {Iterable<TElement>} iterable - An iterable of collection elements. This iterable could be single-use since it will be materialized.
    */
-  constructor(protected readonly iterable: Iterable<TElement>) {
+  constructor(iterable: Iterable<TElement>) {
     super(iterable, MaterializationStrategy.Lazy);
 
-    this.materializedCollection = [];
-    this.materialized = false;
+    this._materializedCollection = [];
+    this._materialized = false;
   }
 
   /**
@@ -360,17 +428,17 @@ export class LazyCollectionProvider<TElement> extends Collection<TElement> {
    * @param {TElement} element - The element to be materialized.
    */
   protected materializeElement(index: number, element: TElement) {
-    this.materializedCollection[index] = element;
+    this._materializedCollection[index] = element;
   }
 
   isElementMaterialized(index: number): boolean {
-    return this.materialized || index in this.materializedCollection;
+    return this._materialized || index in this._materializedCollection;
   }
 
   *[Symbol.iterator](): IterableIterator<TElement> {
-    if (this.materialized) {
+    if (this._materialized) {
       // reuse the materialized collection
-      yield* this.materializedCollection;
+      yield* this._materializedCollection;
     } else {
       // iterate using the continuation
       const continuation = this.continuation;
@@ -381,7 +449,7 @@ export class LazyCollectionProvider<TElement> extends Collection<TElement> {
           break;
         }
         for (; iterIndex <= value.index; iterIndex++) {
-          yield this.materializedCollection[iterIndex];
+          yield this._materializedCollection[iterIndex];
         }
       }
     }
@@ -389,7 +457,7 @@ export class LazyCollectionProvider<TElement> extends Collection<TElement> {
 
   get(index: number): TElement {
     if (this.isElementMaterialized(index)) {
-      return this.materializedCollection[index];
+      return this._materializedCollection[index];
     }
 
     const length = this.length;
@@ -407,7 +475,7 @@ export class LazyCollectionProvider<TElement> extends Collection<TElement> {
 
       const { index: elementIndex, element } = value;
       if (index < elementIndex) {
-        return this.materializedCollection[index];
+        return this._materializedCollection[index];
       } else if (index === elementIndex) {
         return element;
       }
@@ -415,29 +483,21 @@ export class LazyCollectionProvider<TElement> extends Collection<TElement> {
   }
 
   getMaterializationLength() {
-    return this.materializedCollection.length;
+    return this._materializedCollection.length;
   }
 
   *slice(start: number, end: number): IterableIterator<TElement> {
-    // lower bound start index
-    start = Math.max(0, start);
-    if (end <= start) {
+    const normalizedIndices = Collection.normalizeSliceIndices(start, end, this.length);
+    if (normalizedIndices == null) {
       return;
+    } else {
+      [start, end] = normalizedIndices;
     }
 
-    const length = this.length;
-    if (length !== undefined) {
-      if (start >= length) {
-        return;
-      }
-      // upper bound end index
-      end = Math.min(length, end);
-    }
-
-    if (this.materialized || end in this.materializedCollection) {
+    if (this._materialized || end in this._materializedCollection) {
       // if end in materialized, then all indices before it is also materialized
       for (let i = start; i < end; i++) {
-        yield this.materializedCollection[i];
+        yield this._materializedCollection[i];
       }
     }
 
@@ -452,7 +512,7 @@ export class LazyCollectionProvider<TElement> extends Collection<TElement> {
       for (; iterIndex <= value.index; iterIndex++) {
         if (start <= iterIndex) {
           if (iterIndex < end) {
-            yield this.materializedCollection[iterIndex];
+            yield this._materializedCollection[iterIndex];
           } else {
             return;
           }
