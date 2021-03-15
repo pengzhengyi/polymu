@@ -2,6 +2,7 @@ import { AbstractViewFunction } from './AbstractViewFunction';
 import { AggregateView } from './AggregateView';
 import { FilteredView } from './FilteredView';
 import { PartialView } from './PartialView';
+import { ScrollView } from './ScrollView';
 import { SortedView } from './SortedView';
 
 describe('AggregateView', () => {
@@ -71,7 +72,6 @@ describe('AggregateView', () => {
   test('exposed features', () => {
     const sv = new SortedView<number>();
     const fv = new FilteredView<number>();
-    const array = Array.from(Array(100).keys());
     const pv = new PartialView<number>(0, 4);
     const vc = new AggregateView<number>([fv, sv, pv]);
     const featureSet: Set<string> = new Set(
@@ -82,5 +82,81 @@ describe('AggregateView', () => {
     );
     const featureSetFromViewChain = new Set(vc.getFeatures());
     expect(featureSetFromViewChain).toEqual(featureSet);
+  });
+
+  test('pushing and popping view functions in AggregateView', () => {
+    const vc = new AggregateView<number>();
+    const fv = new FilteredView<number>();
+    expect(vc.viewFunctions.length).toEqual(0);
+    vc.viewFunctions.push(fv);
+
+    expect(vc.viewFunctions.length).toEqual(1);
+    const array = Array.from(Array(100).keys());
+    let targetView = Array.from(vc.view(array));
+    expect(targetView.length).toBe(100);
+
+    fv.addFilterFunction('less than 10', (number) => number < 10);
+    targetView = Array.from(vc.view(array));
+    expect(targetView.length).toBe(10);
+
+    expect(vc.viewFunctions.pop()).toBe(fv);
+    expect(vc.viewFunctions.length).toEqual(0);
+
+    targetView = Array.from(vc.view(array));
+    expect(targetView.length).toBe(100);
+  });
+
+  test('shifting and unshifting view functions in AggregateView', () => {
+    const vc = new AggregateView<number>();
+    const fv = new FilteredView<number>();
+    expect(vc.viewFunctions.length).toEqual(0);
+    vc.viewFunctions.unshift(fv);
+
+    expect(vc.viewFunctions.length).toEqual(1);
+    const array = Array.from(Array(100).keys());
+    let targetView = Array.from(vc.view(array));
+    expect(targetView.length).toBe(100);
+
+    fv.addFilterFunction('less than 10', (number) => number < 10);
+    targetView = Array.from(vc.view(array));
+    expect(targetView.length).toBe(10);
+
+    expect(vc.viewFunctions.shift()).toBe(fv);
+    expect(vc.viewFunctions.shift()).toBeUndefined();
+    expect(vc.viewFunctions.length).toEqual(0);
+
+    targetView = Array.from(vc.view(array));
+    expect(targetView.length).toBe(100);
+  });
+
+  test('splicing view functions in AggregateView', () => {
+    const vc = new AggregateView<number>();
+    const fv = new FilteredView<number>();
+    expect(vc.viewFunctions.length).toEqual(0);
+    vc.viewFunctions.splice(0, 0, fv);
+
+    expect(vc.viewFunctions.length).toEqual(1);
+    const array = Array.from(Array(100).keys());
+    let targetView = Array.from(vc.view(array));
+    expect(targetView.length).toBe(100);
+
+    fv.addFilterFunction('less than 10', (number) => number < 10);
+    targetView = Array.from(vc.view(array));
+    expect(targetView.length).toBe(10);
+
+    expect(vc.viewFunctions.splice(0, 1)).toEqual([fv]);
+    expect(vc.viewFunctions.length).toEqual(0);
+
+    targetView = Array.from(vc.view(array));
+    expect(targetView.length).toBe(100);
+  });
+
+  test('unsupported operations in view functions', () => {
+    const vc = new AggregateView<number>();
+    const fv = new FilteredView<number>();
+    expect(vc.viewFunctions.length).toEqual(0);
+
+    expect(() => vc.viewFunctions.fill(fv)).toThrowError('not supported');
+    expect(() => vc.viewFunctions.copyWithin(5, 0, 2)).toThrowError('not supported');
   });
 });
