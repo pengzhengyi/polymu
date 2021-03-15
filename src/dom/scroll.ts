@@ -28,3 +28,47 @@ export function getScrollParent(element: HTMLElement, includeHidden: boolean = f
 
   return fallback;
 }
+
+/**
+ * An enumeration of possible scroll directions.
+ */
+export enum ScrollDirection {
+  Up,
+  Down,
+  Left,
+  Right,
+  /** Indicates no scrolling happened */
+  Stay,
+}
+
+/**
+ * Whether provided scroll direction is towards the first element of the potential view. In other words, whether current displayed elements will be substituted by elements with smaller indices in the potential view.
+ *
+ * @param scrollDirection - A scroll direction.
+ * @returns `true` if the scroll direction is towards start, `false` otherwise.
+ */
+export function isScrollDirectionTowardsStart(scrollDirection: ScrollDirection): boolean {
+  switch (scrollDirection) {
+    case ScrollDirection.Up:
+    case ScrollDirection.Left:
+      return true;
+    default:
+      return false;
+  }
+}
+
+/**
+ * Whether provided scroll direction is towards the last element of the potential view. In other words, whether current displayed elements will be substituted by elements with larger indices in the potential view.
+ *
+ * @param scrollDirection - A scroll direction.
+ * @returns `true` if the scroll direction is towards end, `false` otherwise.
+ */
+export function isScrollDirectionTowardsEnd(scrollDirection: ScrollDirection) {
+  switch (scrollDirection) {
+    case ScrollDirection.Down:
+    case ScrollDirection.Right:
+      return true;
+    default:
+      return false;
+  }
+}

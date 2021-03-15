@@ -7,6 +7,13 @@
  *
  *      + When scrolling happens, the window will be shifted accordingly
  *      + When the window is updated, rendered elements will be replaced accordingly
+ *
+ * From another perspective, `ScrollView` can be split into a `SyncView` and a `ScrollHandler`.
+ *
+ *    + The former updates the DOM tree whenever its target view changes: for example, if its target view updates from empty to 100 elements, all 100 elements will be appended to the target node.
+ *    + The latter responds to Scroll Event so that whenever page is scrolled and different content should be displayed, it appropriately updates the target view for `SyncView` which will then refresh the rendering view.
+ *
+ * TODO extract a SyncView which is useful to create a responsive DOM update behavior.
  */
 
 import { CircularArray } from '../collections/CircularArray';
@@ -14,55 +21,16 @@ import { Collection, LazyCollectionProvider } from '../collections/Collection';
 import { Property, PropertyManager, UpdateBehavior } from '../composition/property-management';
 import { fillerClass, startFillerClass, endFillerClass } from '../constants/css-classes';
 import { IntersectionObserverOptions } from '../dom/IntersectionObserver';
-import { getScrollParent } from '../dom/scroll';
+import {
+  getScrollParent,
+  isScrollDirectionTowardsStart,
+  isScrollDirectionTowardsEnd,
+  ScrollDirection,
+} from '../dom/scroll';
 import { debounceWithCooldown } from '../utils/debounce';
 import { bound } from '../utils/math';
 import { ViewModel } from '../ViewModel';
 import { PartialView } from './PartialView';
-
-/**
- * An enumeration of possible scroll directions.
- */
-enum ScrollDirection {
-  Up,
-  Down,
-  Left,
-  Right,
-  /** Indicates no scrolling happened */
-  Stay,
-}
-
-/**
- * Whether provided scroll direction is towards the first element of the potential view. In other words, whether current displayed elements will be substituted by elements with smaller indices in the potential view.
- *
- * @param scrollDirection - A scroll direction.
- * @returns `true` if the scroll direction is towards start, `false` otherwise.
- */
-function isScrollDirectionTowardsStart(scrollDirection: ScrollDirection): boolean {
-  switch (scrollDirection) {
-    case ScrollDirection.Up:
-    case ScrollDirection.Left:
-      return true;
-    default:
-      false;
-  }
-}
-
-/**
- * Whether provided scroll direction is towards the last element of the potential view. In other words, whether current displayed elements will be substituted by elements with larger indices in the potential view.
- *
- * @param scrollDirection - A scroll direction.
- * @returns `true` if the scroll direction is towards end, `false` otherwise.
- */
-function isScrollDirectionTowardsEnd(scrollDirection: ScrollDirection) {
-  switch (scrollDirection) {
-    case ScrollDirection.Down:
-    case ScrollDirection.Right:
-      return true;
-    default:
-      return false;
-  }
-}
 
 /**
  * An enumeration of possible screen axis.
