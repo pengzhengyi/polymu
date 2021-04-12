@@ -14,7 +14,7 @@ import { ViewFunction } from './ViewFunction';
 import { TaskQueue } from '../TaskQueue';
 import { IFeatureProvider } from '../composition/composition';
 import { Collection } from '../collections/Collection';
-import { EventNotifier } from '../EventNotification';
+import { EventNotifier } from '../composition/EventNotification';
 
 /**
  * The basic prototype for creating an efficient implementation of ViewFunction.
