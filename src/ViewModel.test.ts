@@ -1,6 +1,5 @@
 import { ViewModel } from './ViewModel';
-import { DomForwardingInstantiation, ForwardingPropertyDescriptor } from './Instantiation';
-import { MutationReporter } from './MutationReporter';
+import { MutationReporter } from './dom/MutationReporter';
 
 describe('View Model', () => {
   let source: HTMLElement;

@@ -1,6 +1,6 @@
 import { Prop } from './Abstraction';
 import { DomFallthroughInstantiation, ForwardingPropertyDescriptor } from './Instantiation';
-import { MutationReporter, MutationReporterCallback } from './MutationReporter';
+import { MutationReporter, MutationReporterCallback } from './dom/MutationReporter';
 import { v4 as uuid } from 'uuid';
 
 /**
