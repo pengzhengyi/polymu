@@ -1,9 +1,9 @@
-import { ViewModel } from './ViewModel';
-import { MutationReporter } from './dom/MutationReporter';
+import { ViewElement } from './ViewElement';
+import { MutationReporter } from '../dom/MutationReporter';
 
-describe('View Model', () => {
+describe('View Element', () => {
   let source: HTMLElement;
-  let viewModel: ViewModel;
+  let viewElement: ViewElement;
 
   beforeEach(() => {
     source = document.createElement('tr');
@@ -15,56 +15,56 @@ describe('View Model', () => {
       <td id="961365" tabindex="-1">Brown University</td>
       <td id="961368" tabindex="-1">Harvard University</td>
     `;
-    viewModel = new ViewModel(source, undefined, undefined, undefined, [
-      (element) => new ViewModel(element),
+    viewElement = new ViewElement(source, undefined, undefined, undefined, [
+      (element) => new ViewElement(element),
     ]);
-    viewModel.patchWithDOM__(source);
+    viewElement.patchWithDOM__(source);
   });
 
   test('unique identifier', () => {
-    viewModel.operateOnRange__((viewModel) =>
-      viewModel.element_.setAttribute(
-        `data-${ViewModel.identifierDatasetName_}`,
-        viewModel.identifier_
+    viewElement.operateOnRange__((viewElement) =>
+      viewElement.element_.setAttribute(
+        `data-${ViewElement.identifierDatasetName_}`,
+        viewElement.identifier_
       )
     );
-    const identifiers: Array<string> = viewModel.operateOnRange__(
-      (viewModel) => viewModel.identifier_
+    const identifiers: Array<string> = viewElement.operateOnRange__(
+      (viewElement) => viewElement.identifier_
     );
     expect(identifiers.length).toBe(6);
     const table = document.createElement('table');
     table.appendChild(source);
     document.body.appendChild(table);
-    expect(ViewModel.getElementByIdentifier__(identifiers[0])).toBe(source.children[0]);
+    expect(ViewElement.getElementByIdentifier__(identifiers[0])).toBe(source.children[0]);
   });
 
   test('Access Properties', () => {
     // no explicit key registered
-    expect(Object.keys(viewModel).length).toBe(0);
-    expect((viewModel as any).children.length).toBe(6);
-    expect(viewModel.children_.length).toBe(6);
-    expect(viewModel.element_).toBe(source);
-    expect((viewModel.children_[0] as any).textContent).toBe('A. J. Kfoury');
-    expect((viewModel.children_[2] as any).textContent).toBe('1999');
-    expect((viewModel.children_[4] as any).id).toBe('961365');
+    expect(Object.keys(viewElement).length).toBe(0);
+    expect((viewElement as any).children.length).toBe(6);
+    expect(viewElement.children_.length).toBe(6);
+    expect(viewElement.element_).toBe(source);
+    expect((viewElement.children_[0] as any).textContent).toBe('A. J. Kfoury');
+    expect((viewElement.children_[2] as any).textContent).toBe('1999');
+    expect((viewElement.children_[4] as any).id).toBe('961365');
   });
 
-  test('create view model to accommodate DOM child', () => {
-    viewModel.removeChildByIndex__(0);
-    viewModel.removeChild__(viewModel.children_[0]);
-    expect(viewModel.children_.length).toBe(4);
-    expect((viewModel as any).children.length).toBe(6);
-    viewModel.patchWithDOM__(source.cloneNode(true) as HTMLElement);
-    expect((viewModel as any).children.length).toBe(6);
-    expect(viewModel.children_.length).toBe(6);
-    expect((viewModel.children_[0] as any).textContent).toBe('A. J. Kfoury');
-    expect((viewModel.children_[2] as any).textContent).toBe('1999');
-    expect((viewModel.children_[4] as any).id).toBe('961365');
+  test('create view element to accommodate DOM child', () => {
+    viewElement.removeChildByIndex__(0);
+    viewElement.removeChild__(viewElement.children_[0]);
+    expect(viewElement.children_.length).toBe(4);
+    expect((viewElement as any).children.length).toBe(6);
+    viewElement.patchWithDOM__(source.cloneNode(true) as HTMLElement);
+    expect((viewElement as any).children.length).toBe(6);
+    expect(viewElement.children_.length).toBe(6);
+    expect((viewElement.children_[0] as any).textContent).toBe('A. J. Kfoury');
+    expect((viewElement.children_[2] as any).textContent).toBe('1999');
+    expect((viewElement.children_[4] as any).id).toBe('961365');
   });
 
   test('observe childList mutation', (done) => {
-    const vm: ViewModel = new ViewModel(source, undefined, undefined, undefined, [
-      (element) => new ViewModel(element),
+    const vm: ViewElement = new ViewElement(source, undefined, undefined, undefined, [
+      (element) => new ViewElement(element),
     ]);
     vm.setMutationReporter__(
       function (
@@ -81,7 +81,7 @@ describe('View Model', () => {
         expect((vm.children_[2] as any).textContent).toBe('2014');
         expect((vm.children_[4] as any).id).toBe('962819');
         vm.unobserve__(vm.element_);
-        vm.patchWithViewModel__(viewModel);
+        vm.patchWithViewElement__(viewElement);
         expect((vm as any).children.length).toBe(6);
         expect(vm.children_.length).toBe(6);
         expect(vm.element_).toBe(source);

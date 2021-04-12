@@ -125,7 +125,10 @@ export class ForwardingInstantiation extends Abstraction {
    * @param {boolean} [reset=false] - Whether existing props will be removed.
    * @description __override__ The overriding function allows access functions in ForwardingPropertyDescriptor to receive two additional arguments: `forwardingTo` and `thisArgument`.
    */
-  registerProps__(props: Record<Prop, Partial<ForwardingPropertyDescriptor>>, reset: boolean = false) {
+  registerProps__(
+    props: Record<Prop, Partial<ForwardingPropertyDescriptor>>,
+    reset: boolean = false
+  ) {
     /** props will be registered in {@link ./Abstraction.Abstraction} */
     super.registerProps__(
       ForwardingInstantiation.__transformPropertyDescriptors(props, this),
@@ -255,7 +258,10 @@ export class DomForwardingInstantiation<
    * @param {boolean} [reset=false] - Whether existing props will be removed.
    * @description __override__ The overriding function will replace falsy descriptor values in `props` with default property descriptor {@link DomForwardingInstantiation.__fillDefaultDescriptor}.
    */
-  registerProps__(props: Record<string, Partial<ForwardingPropertyDescriptor>>, reset: boolean = false) {
+  registerProps__(
+    props: Record<string, Partial<ForwardingPropertyDescriptor>>,
+    reset: boolean = false
+  ) {
     // super refers to {@link ForwardingInstantiation}
     super.registerProps__(DomForwardingInstantiation.__fillDefaultDescriptor(props), reset);
   }
@@ -426,7 +432,7 @@ export class DomFallthroughInstantiation<TDomElement extends HTMLElement = HTMLE
        * @see {@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Proxy/Proxy/ownKeys}
        */
 
-      ownKeys(target: DomFallthroughInstantiation<TDomElement>): Array<Prop> {
+      ownKeys(target: DomFallthroughInstantiation<TDomElement>) {
         const keys = new Set(Reflect.ownKeys(target));
         for (const elementKey in Reflect.ownKeys(target.element_)) {
           keys.add(elementKey);
@@ -476,8 +482,6 @@ export class DomFallthroughInstantiation<TDomElement extends HTMLElement = HTMLE
   }
 
   /**
-   * Ignore warning since instantiation implements the TDomElement interface through proxying -- type engine cannot reason on such relationship.
-   *
    * This function only performs a type cast and can be used without concern for performance.
    *
    * @public
@@ -486,7 +490,6 @@ export class DomFallthroughInstantiation<TDomElement extends HTMLElement = HTMLE
    */
 
   public asDomElement__(): TDomElement {
-    // @ts-ignore: Class incorrectly implements interface
-    return this as TDomElement;
+    return (this as unknown) as TDomElement;
   }
 }

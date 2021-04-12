@@ -29,7 +29,7 @@ import {
 } from '../dom/scroll';
 import { debounceWithCooldown } from '../utils/debounce';
 import { bound } from '../utils/math';
-import { ViewModel } from '../ViewModel';
+import { ViewElement } from '../views/ViewElement';
 import { PartialView } from './PartialView';
 
 /**
@@ -527,7 +527,7 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
       this._convert = convertFunction;
     } else {
       this._convert = (viewElement) => {
-        if (viewElement instanceof ViewModel) {
+        if (viewElement instanceof ViewElement) {
           return viewElement.element_;
         }
         return (viewElement as unknown) as TDomElement;
