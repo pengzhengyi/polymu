@@ -121,21 +121,36 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
   /** denotes the event that will be emitted after rendering view update, it will supply the current `ScrollView` */
   static readonly afterRenderingViewUpdateEventName = 'afterRenderingViewUpdate';
 
-  // a collection of property names to facilitate renaming by reducing raw string appearances
-  protected static readonly _renderingViewPropertyName = '_renderingView';
-  protected static readonly _targetPropertyName = '_target';
-  protected static readonly _startFillerElementPropertyName = '_startFillerElement';
-  protected static readonly _startFillerLengthPropertyName = '_startFillerLength';
-  protected static readonly _startFillerOffsetPropertyName = '_startFillerOffset';
-  protected static readonly _endFillerElementPropertyName = '_endFillerElement';
-  protected static readonly _endFillerLengthPropertyName = '_endFillerLength';
-  protected static readonly _scrollAxisPropertyName = '_scrollAxis';
-  protected static readonly _elementLengthPropertyName = '_elementLength';
-  protected static readonly _scrollTargetPropertyName = '_scrollTarget';
+  // a collection of property names to facilitate renaming by reducing appearances of raw string
+
+  /** The property name for `_renderingStrategy` */
   protected static readonly _renderingStrategyPropertyName = '_renderingStrategy';
+  /** The property name for `_shiftAmount` */
   protected static readonly _shiftAmountPropertyName = '_shiftAmount';
+  /** The property name for `_renderingView` */
+  protected static readonly _renderingViewPropertyName = '_renderingView';
+  /** The property name for `_target` */
+  protected static readonly _targetPropertyName = '_target';
+  /** The property name for `_scrollTarget` */
+  protected static readonly _scrollTargetPropertyName = '_scrollTarget';
+  /** The property name for `_scrollAxis` */
+  protected static readonly _scrollAxisPropertyName = '_scrollAxis';
+  /** The property name for `_lastScrollPosition` */
   protected static readonly _lastScrollPositionPropertyName = '_lastScrollPosition';
+  /** The property name for `_elementLength` */
+  protected static readonly _elementLengthPropertyName = '_elementLength';
+  /** The property name for `_shouldPartialRender` */
   protected static readonly _shouldPartialRenderPropertyName = '_shouldPartialRender';
+  /** The property name for `_startFillerElement` */
+  protected static readonly _startFillerElementPropertyName = '_startFillerElement';
+  /** The property name for `_startFillerLength` */
+  protected static readonly _startFillerLengthPropertyName = '_startFillerLength';
+  /** The property name for `_startFillerOffset` */
+  protected static readonly _startFillerOffsetPropertyName = '_startFillerOffset';
+  /** The property name for `_endFillerElement */
+  protected static readonly _endFillerElementPropertyName = '_endFillerElement';
+  /** The property name for `_endFillerLength` */
+  protected static readonly _endFillerLengthPropertyName = '_endFillerLength';
 
   /**
    * A ` PropertyManager` that manages the interdependencies of ScrollView properties.
@@ -144,7 +159,13 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
    */
   protected _propertyManager: PropertyManager;
 
+  /**
+   * Decides whether it is necessary and how this `ScrollView` will update its rendering view.
+   */
   protected _renderingStrategy: RenderingStrategy;
+  /**
+   * A property that describes `_renderingStrategy`.
+   */
   protected _renderingStrategyProperty: Property<RenderingStrategy> = new Property(
     ScrollView._renderingStrategyPropertyName,
     (thisValue, manager) => {
@@ -160,6 +181,11 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
     UpdateBehavior.Lazy
   );
 
+  /**
+   * Provides supportive information indicating how far the hypothetical new rendering view has deviated from the current rendering view. For example, a `_shiftAmount` of 5 indicates the new rendering view's first element is the current rendering view's fifth element.
+   *
+   * `_shiftAmount` is only meaningful when `_renderingStrategy` is Shift.
+   */
   protected _shiftAmount: number;
   protected _shiftAmountProperty: Property<number> = new Property(
     ScrollView._shiftAmountPropertyName,
@@ -167,7 +193,6 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
     UpdateBehavior.Lazy,
     (oldValue, newValue, thisValue, manager) => {
       if (newValue) {
-        // `newValue !== undefined && newValue !== 0`
         if (this._renderingStrategy === RenderingStrategy.NoAction) {
           this._renderingStrategy = RenderingStrategy.Shift;
         }
@@ -177,8 +202,21 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
     }
   );
 
+  /**
+   * An underlying data structure that contain the rendering view.
+   *
+   * A circular array is used since it supports efficient implementation of shifting -- add/remove some elements from one end while remove/add same number of elements at the other end.
+   */
   private __circularArray: CircularArray<TDomElement>;
+  /**
+   * A collection of elements that consist of rendering view. These elements are also actual DOM elements that are children of `this._target`.
+   *
+   * Consequently, changes made to elements in this collection, for example, setting background color of second element in the collection to red, will be  equivalent to setting that of the second child of `this._target`.
+   */
   protected _renderingView: Collection<TDomElement>;
+  /**
+   * A property that describes `_renderingView`. It decides how new rendering view will be generated and how the DOM tree is updated consequently.
+   */
   protected _renderingViewProperty: Property<Collection<TDomElement>> = new Property(
     ScrollView._renderingViewPropertyName,
     (thisValue, manager) => {
@@ -299,11 +337,14 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
   );
 
   /**
-   * The DOM container that holds the rendered view elements.
+   * The DOM container that holds the elements in rendering view .
    *
    * @see {@link ScrollViewConfiguration#target}
    */
   protected _target: HTMLElement;
+  /**
+   * A property that describes `_target`.
+   */
   protected _targetProperty: Property<HTMLElement> = new Property(
     ScrollView._targetPropertyName,
     // `_target` is "prerequisite free": it is a leaf node in prerequisite graph as its value is modified through exposed setter
@@ -313,6 +354,9 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
 
   /** A HTMLElement that constitutes the scrolling area, inside which the scroll bar will be rendered */
   protected _scrollTarget: HTMLElement;
+  /**
+   * A property that describes `_scrollTarget`. Its value is dependent on `_target`.
+   */
   protected _scrollTargetProperty: Property<HTMLElement> = new Property(
     ScrollView._scrollTargetPropertyName,
     (thisValue, manager) => {
@@ -364,7 +408,7 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
    */
   protected _scrollAxis: ScreenAxis;
   /**
-   * @returns {ScreenAxis} The monitoring axis of current scroll handler. It is computed from the coordinate alignment of first rendered element and second rendered element or the direction of scrollbar.
+   * A property that describes `_scrollAxis` -- The monitoring axis of current scroll handler. When scroll target changes, it will be decided by detecting the presence of scrollbar.
    */
   protected _scrollAxisProperty: Property<ScreenAxis> = new Property(
     ScrollView._scrollAxisPropertyName,
@@ -397,11 +441,12 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
 
   /** previous scroll position, used to determine the scroll direction */
   protected _lastScrollPosition: number = 0;
+  /**
+   * A property describes `_lastScrollPosition`. For first-time retrieval and every time scroll axis has changed, 0 will be returned. In other cases, `shouldReuseLastValue` will evaluate to true and the value set in `_scrollDirection` will be used.
+   */
   protected _lastScrollPositionProperty: Property<number> = new Property(
     ScrollView._lastScrollPositionPropertyName,
     (thisValue, manager) => {
-      // `__getValue` will be called for first-time retrieval and every time scroll axis has changed to reset scroll position. In other cases, `shouldReuseLastValue` should evaluate to true and set value from `_scrollDirection` will be used
-
       // Dependency Injection: manager.getPropertyValue('_scrollAxis');
       const scrollAxisVersion = manager.getPropertyValueSnapshotVersionWithName(
         ScrollView._scrollAxisPropertyName
@@ -425,6 +470,11 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
       return this._scrollTarget.scrollLeft;
     }
   }
+  /**
+   * Change the current scroll position. Page will be scrolled as a result.
+   *
+   * @param {number} position - A new scroll position.
+   */
   protected set _scrollPosition(position: number) {
     if (this._scrollAxis === ScreenAxis.Vertical) {
       this._scrollTarget.scrollTop = position;
@@ -493,11 +543,12 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
    * @requires {@link ScrollView#targetView}
    * **ASSUMPTION**
    * Using one concrete value to designate the length assumes all elements have same length. If elements have different lengths, a possible compromise is to use an average length.
+   *
    * TODO @todo Measure element width individually.
    */
   protected _elementLength: number;
   /**
-   * @returns {number} How many pixels an element occupies in the rendering axis. It is measured as the first rendered view element's `clientWidth` or `clientHeight` depending on `scrollAxis`.
+   * A property that describes the behavior of `_elementLength`. It describes how `_elementLength` will be computed from rendered view and scroll axis.
    */
   protected _elementLengthProperty: Property<number> = new Property(
     ScrollView._elementLengthPropertyName,
@@ -527,10 +578,11 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
    * Whether the source view should be partially rendered -- a fixed window of the source view is rendered while other regions of the source view is accessible through scrolling.
    *
    * Source view will not be partially rendered if the number of elements in source view is smaller than the window size. In other words, source view can entirely fit in the window. In this scenario, scrolling will not result substitution of elements in the window (scroll monitoring will be turned off).
-   *
-   * @returns {boolean} Whether partial rendering should be performed. If this predicate is not meaningful (for example, no source view has been passed in for view generation), `undefined` will be returned. Otherwise, partial rendering will happen unless the source view is known to fit in the window. That is, if `_shouldPartialRender` returns `false`, then the source view can be entirely rendered in the window and scrolling will not result in replacement of window.
    */
   protected _shouldPartialRender: boolean;
+  /**
+   * A property that describes the behavior of `_shouldPartialRender`.
+   */
   protected _shouldPartialRenderProperty: Property<boolean> = new Property(
     ScrollView._shouldPartialRenderPropertyName,
     (thisValue, manager) => {
@@ -556,11 +608,12 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
    *    + detect whether a window update is necessary (an update is necessary when filler appears within view)
    *
    * As the start filler (first, topmost or leftmost), it will emulate the length of elements not rendered before the target view.
+   *
+   * Filler elements serves as special guard nodes: when they appear in view -- blank section is appearing in the viewport, a target view update is necessary to refill the viewport with content.
    */
   protected _startFillerElement: HTMLElement;
-
   /**
-   * @returns {HTMLElement} The inserted start filler element which is used to emulate full height.
+   * A property that describes the behavior of `_startFillerElement`.
    */
   protected _startFillerElementProperty: Property<HTMLElement> = new Property(
     ScrollView._startFillerElementPropertyName,
@@ -577,6 +630,7 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
         return undefined;
       }
 
+      // create new start filler element and insert it before the target. Creation will only happen when target changes.
       const tagName = this.__guessFillerTagName(target.parentElement.tagName);
       const startFillerElement = document.createElement(tagName);
       startFillerElement.classList.add(fillerClass, startFillerClass);
@@ -594,10 +648,12 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
     }
   );
 
-  protected _startFillerLength: number;
-
   /**
-   * @returns {number} The length of the start filler in `this.scrollAxis`.
+   * The length of the start filler in `this.scrollAxis`.
+   */
+  protected _startFillerLength: number;
+  /**
+   * A property that describes the behavior of `_startFillerLength`.
    */
   protected _startFillerLengthProperty: Property<number> = new Property(
     ScrollView._startFillerLengthPropertyName,
@@ -642,7 +698,7 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
    */
   protected _startFillerOffset: number;
   /**
-   * @returns {number} The offset by which the start filler is separated from the beginning of the `this.scrollTarget` in the axis indicated by `this.scrollAxis`.
+   * A property that describes the behavior of `_startFillerOffset`.
    */
   protected _startFillerOffsetProperty: Property<number> = new Property(
     ScrollView._startFillerOffsetPropertyName,
@@ -675,6 +731,7 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
         return undefined;
       }
 
+      // offset is computed as cumulative offset of all scroll parents until the desired scroll target of start filler element
       const getOffset = (element: HTMLElement) =>
         scrollAxis === ScreenAxis.Horizontal ? element.offsetLeft : element.offsetTop;
 
@@ -696,18 +753,13 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
    *    + detect whether a window update is necessary (an update is necessary when filler appears within view)
    *
    * As the end filler (last, bottommost or rightmost), it will emulate the length of elements not rendered after the target view.
-   */
-  protected _endFillerElement: HTMLElement;
-  /**
-   * @returns {HTMLElement} The inserted end filler element used to emulate full height.
-   */
-
-  /**
-   * Initializes the filler elements.
    *
    * Filler elements serves as special guard nodes: when they appear in view -- blank section is appearing in the viewport, a target view update is necessary to refill the viewport with content.
    */
-
+  protected _endFillerElement: HTMLElement;
+  /**
+   * A property that describes the behavior of `_endFillerElement`.
+   */
   protected _endFillerElementProperty: Property<HTMLElement> = new Property(
     ScrollView._endFillerElementPropertyName,
     (thisValue, manager) => {
@@ -723,6 +775,7 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
         return undefined;
       }
 
+      // create new start filler element and insert it before the target. Creation will only happen when target changes.
       const tagName = this.__guessFillerTagName(target.parentElement.tagName);
       const endFillerElement = document.createElement(tagName);
       endFillerElement.classList.add(fillerClass, endFillerClass);
@@ -739,14 +792,17 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
     }
   );
 
+  /**
+   * The length of the end filler in `this.scrollAxis`.
+   */
   protected _endFillerLength: number;
   /**
-   * @returns {number} The length of the end filler in `this.scrollAxis`.
+   * A property that describes the behavior of `_endFillerLength`.
    */
   protected _endFillerLengthProperty: Property<number> = new Property(
     ScrollView._endFillerLengthPropertyName,
     (thisValue, manager) => {
-      const endFillerElement: HTMLElement = manager.getPropertyValue('_endFillerElement');
+      // Dependency Injection: manager.getPropertyValue('_endFillerElement');
       const endFillerElementVersion = manager.getPropertyValueSnapshotVersionWithName(
         ScrollView._endFillerElementPropertyName
       );
@@ -776,19 +832,17 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
           numElementAfter = null;
         }
       }
-      return numElementAfter * elementLength;
+      // TODO: when we do not know whether there are any elements after rendered view, 1000 is used as a magic number here to mean that there might be elements so we reserve some area for scroll.
+      return numElementAfter * elementLength || 1000;
     },
     UpdateBehavior.Immediate,
-    (_oldValue, newValue, _thisValue, _manager) => {
-      if (newValue !== undefined) {
-        if (newValue === null) {
-          // TODO use a magic number
-          newValue = 1000;
-        }
-
+    (_, newValue, thisValue, _manager) => {
+      if (newValue !== undefined && newValue !== null) {
         const propName = this._scrollAxis === ScreenAxis.Vertical ? 'height' : 'width';
         this._endFillerElement.style[propName] = `${newValue}px`;
       }
+
+      _manager.notifyValueChange(thisValue);
     }
   );
   /**
@@ -922,7 +976,7 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
           (document === event.target && document.documentElement === this._scrollTarget)
         ) {
           // only handle scroll event happening on observed scroll container
-          const startIndex = this.getElementIndexFromScrollAmount();
+          const startIndex = this._getElementIndexFromScrollAmount();
           if (startIndex < this.startIndex || this.endIndex < startIndex) {
             // view out of sync
             this.setWindow(startIndex);
@@ -933,6 +987,13 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
     );
   }
 
+  /**
+   * Guess the HTML tag name for filler element given its container's HTML tag name.
+   *
+   * @param containerTagName - The HTML tag name for filler element's container.
+   * @returns Guessed tag name for filler element.
+   * @example If the container of filler element is a ordered list (ol), then filler element will be a list item (li).
+   */
   protected __guessFillerTagName(containerTagName: string) {
     let tagName: string = 'div';
     switch (containerTagName) {
@@ -1029,7 +1090,7 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
   protected fillerReachedHandler(entries: Array<IntersectionObserverEntry>) {
     entries.forEach((entry) => {
       if (entry.isIntersecting && entry.intersectionRect.height > 0) {
-        const newStartIndex = this.getElementIndexFromScrollAmount();
+        const newStartIndex = this._getElementIndexFromScrollAmount();
         this._shiftAmount = newStartIndex - this.startIndex;
       }
     });
@@ -1060,13 +1121,21 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
     });
   }
 
+  /**
+   * Regenerate rendering view if needed. This method will choose to update rendering view using replacement or more efficient shifting.
+   *
+   * @param oldStartIndex - Previous start index. Used to determine by what amount start index has changed.
+   * @param oldEndIndex - Previous end index. Used to determine by what amount end index has changed.
+   */
   protected _regenerateViewIfNeeded(oldStartIndex: number, oldEndIndex: number) {
     const startIndexShiftAmount: number = this.startIndex - oldStartIndex;
     const endIndexShiftAmount: number = this.endIndex - oldEndIndex;
     const hasSameShiftAmount: boolean =
       Number.isInteger(startIndexShiftAmount) && startIndexShiftAmount === endIndexShiftAmount;
+
+    // rendering strategy and shift amount are updated silently (not triggering immediate update) as consequential value update is delegated to subsequent call to `regenerateView`.
     if (hasSameShiftAmount && this._renderingStrategy === RenderingStrategy.NoAction) {
-      // can be considered a shift operation
+      // can be treated as shift operation
       this._propertyManager.setPropertyValueSnapshotSilently(
         this._renderingStrategyProperty,
         RenderingStrategy.Shift
@@ -1086,6 +1155,9 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
     this.regenerateView(this.lastSourceView, true);
   }
 
+  /**
+   * @override
+   */
   protected regenerateView(sourceView: Collection<TViewElement>, useCache: boolean) {
     if (!useCache || sourceView !== this.lastSourceView) {
       this._propertyManager.setPropertyValueSnapshotSilently(
@@ -1099,40 +1171,17 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
     // target view has been updated, use updated target view to update rendering view if necessary
     if (this._renderingStrategy !== RenderingStrategy.NoAction) {
       /**
-       * When rendering view is up to date, rendering strategy will be `NoAction`. Since there exists an unsymmetry between these two values, this implies a necessary rendering view update is suppressed with silent updating of rendering strategy and the delayed update should occur here
+       * When rendering view is up to date, rendering strategy will be `NoAction`. Since there exists an dissymmetry between these two values, this implies a necessary rendering view update is suppressed where rendering strategy and possibly shift amount is silently updated. Therefore, the delayed update should occur here.
        */
       this._propertyManager.notifyValueChange(this._renderingStrategyProperty);
     }
   }
 
-  setWindow(
-    startIndex: number = this.startIndex,
-    endIndex: number = this.endIndex,
-    noEventNotification: boolean = false
-  ): boolean {
-    const oldStartIndex = this.startIndex;
-    const oldEndIndex = this.endIndex;
-
-    if (super.setWindow(startIndex, endIndex, noEventNotification)) {
-      this._regenerateViewIfNeeded(oldStartIndex, oldEndIndex);
-      return true;
-    } else {
-      return false;
-    }
-  }
-
-  shiftWindow(shiftAmount: number, noEventNotification: boolean = false): boolean {
-    const oldStartIndex = this.startIndex;
-    const oldEndIndex = this.endIndex;
-
-    if (super.shiftWindow(shiftAmount, noEventNotification)) {
-      this._regenerateViewIfNeeded(oldStartIndex, oldEndIndex);
-      return true;
-    } else {
-      return false;
-    }
-  }
-
+  /**
+   * Modify the rendering view. This method takes care of necessary setting up and tearing down procedures before updating rendering view, for example, turn off and turn back on the monitoring.
+   *
+   * @param modification - A callback that updates the rendering view.
+   */
   protected _modifyRenderingView(modification: () => void) {
     this.deactivateObservers();
     this.invoke(ScrollView.beforeRenderingViewUpdateEventName, this);
@@ -1157,7 +1206,7 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
    *
    * @param {number} [scrollAmount = this.scrollPosition] - How far scrolled from page top.
    */
-  protected getElementIndexFromScrollAmount(scrollAmount: number = this._scrollPosition) {
+  protected _getElementIndexFromScrollAmount(scrollAmount: number = this._scrollPosition) {
     const position = Math.max(scrollAmount - this._startFillerOffset, 0);
     return bound(Math.floor(position / this._elementLength), 0, this._renderingView.length - 1);
   }
@@ -1176,5 +1225,39 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
    */
   scrollToElementIndex(elementIndex: number, offset: number = 0) {
     this._scrollPosition = this._elementLength * elementIndex + this._startFillerOffset + offset;
+  }
+
+  /**
+   * @override
+   */
+  setWindow(
+    startIndex: number = this.startIndex,
+    endIndex: number = this.endIndex,
+    noEventNotification: boolean = false
+  ): boolean {
+    const oldStartIndex = this.startIndex;
+    const oldEndIndex = this.endIndex;
+
+    if (super.setWindow(startIndex, endIndex, noEventNotification)) {
+      this._regenerateViewIfNeeded(oldStartIndex, oldEndIndex);
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  /**
+   * @override
+   */
+  shiftWindow(shiftAmount: number, noEventNotification: boolean = false): boolean {
+    const oldStartIndex = this.startIndex;
+    const oldEndIndex = this.endIndex;
+
+    if (super.shiftWindow(shiftAmount, noEventNotification)) {
+      this._regenerateViewIfNeeded(oldStartIndex, oldEndIndex);
+      return true;
+    } else {
+      return false;
+    }
   }
 }
