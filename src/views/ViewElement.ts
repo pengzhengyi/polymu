@@ -2,6 +2,7 @@ import { Prop } from '../Abstraction';
 import { DomFallthroughInstantiation } from '../Instantiation';
 import { MutationReporter, MutationReporterCallback } from '../dom/MutationReporter';
 import { v4 as uuid } from 'uuid';
+import { patch } from '../utils/IterableHelper';
 
 /**
  * A function to create a VieElement from a HTMLElement.
@@ -479,29 +480,78 @@ export class ViewElement<
     this.__patchSelf(other.element_ as TDomElement, mode);
 
     // patch children
-    const numChildren = other._children.length;
-    let childIndex = 0;
-    for (const child of this._children) {
-      if (childIndex < numChildren) {
-        child.patchWithViewElement__(other._children[childIndex], mode, noDetach, noAttach);
-      } else {
+    patch(
+      this._children,
+      other._children,
+      (child, otherChild) => child.patchWithViewElement__(otherChild, mode, noDetach, noAttach),
+      (child, childIndex) => {
         // this ViewElement surplus: remove
         this.removeChildByIndex__(childIndex);
         if (!noDetach) {
           child.element_.remove();
         }
+      },
+      (otherChild, childIndex) => {
+        // other ViewElement surplus: append to the end
+        this.insertChild__(otherChild, childIndex);
+        if (!noAttach) {
+          this.element_.appendChild(otherChild.element_);
+        }
       }
-      childIndex++;
-    }
+    );
+  }
 
-    // other ViewElement surplus: append to the end
-    for (; childIndex < numChildren; childIndex++) {
-      const viewElement = other._children[childIndex];
-      this.insertChild__(viewElement, childIndex);
-      if (!noAttach) {
-        this.element_.appendChild(viewElement.element_);
+  /**
+   * Updates current ViewElement's children ViewElement by a collection of ViewElement using the in-place-patch algorithm.
+   *
+   * From the following illustrations describing scenarios for different `_children` length, one can tell there are three potential scenarios:
+   *
+   *    + MATCH: there is a child ViewElement and a matching ViewElement in `elements`. In this case, `patchWithViewElement__` will recur on these two ViewElement.
+   *    + SURPLUS (append): there is a child ViewElement in `elements` that does not have a matching child ViewElement in `this`. In this case, this ViewElement will be appended to `this._children`. If `noAttach` is false, the corresponding DOM element will also be appended to `this.element_`.
+   *    + SURPLUS (remove): there is a child ViewElement in `this` that does not have a matching ViewElement in `elements`. In this case, the child ViewElement will be removed from `this._children`. If `noDetach` is false, the corresponding DOM element will also be removed from `this.element_`.
+   *
+   *             MATCH
+   *    this:  [ - - - ]
+   *    other: [ - - - - - - - ]
+   *                   SURPLUS (append)
+   *
+   *                   SURPLUS (remove)
+   *    this:  [ - - - - - - - ]
+   *    other: [ - - - ]
+   *             MATCH
+   *
+   *
+   * @param {Iterable<ViewElement>} elements - An iterable of ViewElement used to update children ViewElement of current ViewElement.
+   * @param {PatchModeForMatch} [mode=PatchModeForMatch.CreateAlias] - Determines how to update current ViewElement's HTML element.
+   * @param {boolean} [noDetach = true] - Whether surplus DOM elements of `this._children` will be removed from DOM tree.
+   * @param {boolean} [noAttach = true] - Whether surplus DOM elements of `other._children` will be appended
+   */
+  patchChildViewElementsWithViewElements__(
+    elements: Iterable<ViewElement>,
+    mode: PatchModeForMatch = PatchModeForMatch.CreateAlias,
+    noDetach: boolean = true,
+    noAttach: boolean = true
+  ) {
+    // patch children
+    patch(
+      this._children,
+      elements,
+      (child, otherChild) => child.patchWithViewElement__(otherChild, mode, noDetach, noAttach),
+      (child, childIndex) => {
+        // this ViewElement surplus: remove
+        this.removeChildByIndex__(childIndex);
+        if (!noDetach) {
+          child.element_.remove();
+        }
+      },
+      (otherChild, childIndex) => {
+        // other ViewElement surplus: append to the end
+        this.insertChild__(otherChild, childIndex);
+        if (!noAttach) {
+          this.element_.appendChild(otherChild.element_);
+        }
       }
-    }
+    );
   }
 
   /**
@@ -557,36 +607,36 @@ export class ViewElement<
     noDetach: boolean = true,
     noAttach: boolean = true
   ) {
+    let newChildViewElementHandler: (otherChild: Element, childIndex: number) => void;
+
+    if (Array.isArray(this._viewElementFactories) && this._viewElementFactories.length === 0) {
+      // do nothing because no blueprints exist for child ViewElement
+      newChildViewElementHandler = undefined;
+    } else {
+      newChildViewElementHandler = (otherChild: Element, childIndex: number) => {
+        const viewElement = this._childViewElementFactory(otherChild as HTMLElement);
+        this.insertChild__(viewElement, childIndex);
+        if (!noAttach) {
+          this.element_.appendChild(viewElement.element_);
+        }
+      };
+    }
+
     // patch children
-    const numChildren = elements.length;
-    let childIndex = 0;
-    for (const child of this._children) {
-      if (childIndex < numChildren) {
-        child.patchWithDOM__(elements[childIndex] as HTMLElement, mode, noDetach, noAttach);
-      } else {
+    patch(
+      this._children,
+      elements,
+      (child, otherChild) =>
+        child.patchWithDOM__(otherChild as HTMLElement, mode, noDetach, noAttach),
+      (child, childIndex) => {
         // this ViewElement surplus: remove
         this.removeChildByIndex__(childIndex);
         if (!noDetach) {
           child.element_.remove();
         }
-      }
-      childIndex++;
-    }
-
-    if (Array.isArray(this._viewElementFactories) && this._viewElementFactories.length === 0) {
-      // stop because no blueprints exist for child ViewElement
-      return;
-    }
-
-    // other ViewElement surplus: add
-    for (; childIndex < numChildren; childIndex++) {
-      const child = elements[childIndex] as HTMLElement;
-      const viewElement = this._childViewElementFactory(child);
-      this.insertChild__(viewElement, childIndex);
-      if (!noAttach) {
-        this.element_.appendChild(viewElement.element_);
-      }
-    }
+      },
+      newChildViewElementHandler
+    );
   }
 
   /**
