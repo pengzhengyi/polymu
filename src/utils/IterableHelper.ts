@@ -1,0 +1,72 @@
+/**
+ * @module
+ * This module provide utility functions for Iterable.
+ */
+
+/**
+ * If two iterables have different length, then there are two possible scenarios:
+ *
+ *      + SURPLUS (iterable1): there is a element in `iterable1` that does not have a matching element in `iterable2`.
+ *      + SURPLUS (iterable2): there is a element in `iterable2` that does not have a matching element in `iterable1`.
+ *
+ *                          SURPLUS (iterable1)
+ *    iterable1:  [ - - - - - - - ]
+ *    iterable2:  [ - - - ]
+ *                  MATCH
+ *
+ *                  MATCH
+ *    iterable1:  [ - - - ]
+ *    iterable2:  [ - - - - - - - ]
+ *                          SURPLUS (iterable2)
+ *
+ * This method provide an iteration protocol that enumerates two iterables and take action for each pairing situation (MATCH, SURPLUS iterable1, SURPLUS iterable2).
+ *
+ * @param iterable1 - The first iterable.
+ * @param iterable2 - The second iterable.
+ * @param matchHandler - A callback to be executed when there are elements in both iterable at specified index. Will be called with both elements and index.
+ * @param iterable1SurplusHandler - A callback to be executed when there is only element in `iterable1` at specified index. Will be called with that element and index.
+ * @param iterable2SurplusHandler - A callback to be executed when there is only element in `iterable2` at specified index. Will be called with that element and index.
+ */
+export function patch<T1, T2>(
+  iterable1: Iterable<T1>,
+  iterable2: Iterable<T2>,
+  matchHandler: (
+    elementFromIterable1: T1,
+    elementFromIterable2: T2,
+    index: number
+  ) => void = undefined,
+  iterable1SurplusHandler: (elementFromIterable1: T1, index: number) => void = undefined,
+  iterable2SurplusHandler: (elementFromIterable2: T2, index: number) => void = undefined
+) {
+  let childIndex = 0;
+  const iterator2 = iterable2[Symbol.iterator]();
+  let iterable2Done: boolean = false;
+  let elementFromIterable2: T2;
+
+  for (const elementFromIterable1 of iterable1) {
+    if (iterable2Done) {
+      // iterable1 surplus
+      iterable1SurplusHandler && iterable1SurplusHandler(elementFromIterable1, childIndex);
+    } else {
+      ({ value: elementFromIterable2, done: iterable2Done } = iterator2.next());
+      if (iterable2Done) {
+        // iterable1 has element not matched by iterable2
+        iterable1SurplusHandler && iterable1SurplusHandler(elementFromIterable1, childIndex);
+      } else {
+        // match
+        matchHandler && matchHandler(elementFromIterable1, elementFromIterable2, childIndex);
+      }
+    }
+
+    childIndex++;
+  }
+
+  // all elements in iterable1 has been iterated over, handle remaining unmatched elements in iterable2 if exists
+  while (!iterable2Done) {
+    ({ value: elementFromIterable2, done: iterable2Done } = iterator2.next());
+    if (!iterable2Done) {
+      iterable2SurplusHandler && iterable2SurplusHandler(elementFromIterable2, childIndex);
+      childIndex++;
+    }
+  }
+}
