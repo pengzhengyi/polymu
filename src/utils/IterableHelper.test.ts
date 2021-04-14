@@ -1,4 +1,4 @@
-import { patch } from './IterableHelper';
+import { isIterable, patch } from './IterableHelper';
 
 describe('patch test', () => {
   test('iterable1 and iterable2 has same length', () => {
@@ -46,5 +46,21 @@ describe('patch test', () => {
     const iterable1SurplusHandler = (e1: number) => expect(e1).toEqual(1);
 
     patch(iterable1, iterable2, failWhenCalled, iterable1SurplusHandler, failWhenCalled);
+  });
+});
+
+describe('isIterable test', () => {
+  test('not iterable types', () => {
+    expect(isIterable(undefined)).toEqual(false);
+    expect(isIterable(null)).toEqual(false);
+    expect(isIterable(0)).toEqual(false);
+    expect(isIterable(function () {})).toEqual(false);
+  });
+
+  test('iterable types', () => {
+    expect(isIterable([])).toEqual(true);
+    expect(isIterable('abc')).toEqual(true);
+    expect(isIterable(new Set())).toEqual(true);
+    expect(isIterable(new Map())).toEqual(true);
   });
 });

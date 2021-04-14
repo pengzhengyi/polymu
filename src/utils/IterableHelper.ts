@@ -70,3 +70,18 @@ export function patch<T1, T2>(
     }
   }
 }
+
+/**
+ * Check whether an object is iterable.
+ *
+ * @param obj - An object to check whether it is iterable.
+ * @returns True if the object is iterable. False otherwise.
+ */
+export function isIterable(obj: any) {
+  // checks for null and undefined
+  if (obj === null || obj === undefined) {
+    return false;
+  }
+
+  return typeof obj[Symbol.iterator] === 'function';
+}
