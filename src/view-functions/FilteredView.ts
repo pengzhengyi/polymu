@@ -34,7 +34,7 @@ export class FilteredView<TViewElement> extends AbstractViewFunction<TViewElemen
   /** A mapping from identifier to filter function */
   private filterFunctions: Map<any, FilterFunction<TViewElement>> = new Map();
 
-  /** The aggregate filter function -- ANDing all filter functions */
+  /** The aggregate filter function -- combining all filter functions */
   get filter(): FilterFunction<TViewElement> {
     const numFilterFunction: number = this.filterFunctions.size;
     if (numFilterFunction === 0) {
