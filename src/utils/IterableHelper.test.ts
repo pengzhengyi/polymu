@@ -1,4 +1,4 @@
-import { isIterable, patch } from './IterableHelper';
+import { isIterable, patch, peek } from './IterableHelper';
 
 describe('patch test', () => {
   test('iterable1 and iterable2 has same length', () => {
@@ -62,5 +62,35 @@ describe('isIterable test', () => {
     expect(isIterable('abc')).toEqual(true);
     expect(isIterable(new Set())).toEqual(true);
     expect(isIterable(new Map())).toEqual(true);
+  });
+});
+
+describe('peek', () => {
+  test('empty iterable', () => {
+    const array: Array<number> = [];
+    const peekResult = peek(array);
+    const { done, value } = peekResult.next();
+    expect(done).toEqual(true);
+    expect(value).toBeFalsy();
+  });
+
+  test('not empty iterable', () => {
+    const array: Array<number> = [1, 2];
+    const peekResult = peek(array);
+    let { done, value } = peekResult.next();
+    expect(done).toEqual(false);
+    expect(value).toEqual(1);
+
+    ({ done, value } = peekResult.next());
+    expect(done).toEqual(false);
+    expect(value).toEqual(1);
+
+    ({ done, value } = peekResult.next());
+    expect(done).toEqual(false);
+    expect(value).toEqual(2);
+
+    ({ done, value } = peekResult.next());
+    expect(done).toEqual(true);
+    expect(value).toBeFalsy();
   });
 });

@@ -85,3 +85,21 @@ export function isIterable(obj: any) {
 
   return typeof obj[Symbol.iterator] === 'function';
 }
+
+/**
+ * Peek the first element of an iterable. Then iterate the iterable including the first element.
+ *
+ * @param iterable - An iterable to be iterated.
+ * @yields Elements of iterable, where first element is iterated twice at the beginning.
+ */
+export function* peek<T>(iterable: Iterable<T>): IterableIterator<T> {
+  let isFirst = true;
+  for (const element of iterable) {
+    if (isFirst) {
+      yield element;
+      isFirst = false;
+    }
+
+    yield element;
+  }
+}
