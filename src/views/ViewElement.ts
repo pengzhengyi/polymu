@@ -105,6 +105,7 @@ export class ViewElement<
    * Since `_viewElementBuilders` is hierarchical, it also decides the emulation depth in `patchWithDOM__`. For example, suppose `_viewElementBuilders.length` is 2, then calling `patchWithDOM__` on a `element` will emulate this element's children and grandchildren.
    */
   private _viewElementFactories: ViewElementFactory | Array<ViewElementFactory>;
+
   /**
    * @returns {ViewElementFactory} A factory method to create a ViewElement from a DOM element that can be registered as direct children of current ViewElement.
    */
@@ -127,6 +128,29 @@ export class ViewElement<
 
   /** @see {@link MutationReporter:MutationReporter} */
   private _mutationReporter: MutationReporter;
+
+  /**
+   * @returns Existing `MutationReporter` or a lazily initialized one.
+   */
+  protected get mutationReporter_(): MutationReporter {
+    if (this._mutationReporter) {
+      return this._mutationReporter;
+    } else {
+      this._mutationReporter.disconnect();
+
+      Object.defineProperty(this, '_mutationReporter', {
+        configurable: false,
+        enumerable: false,
+        value: new MutationReporter(this._mutationReporterCallback),
+        writable: true,
+      });
+    }
+  }
+
+  /**
+   * Temporarily hold the callback used to initialize `this._mutationReporter` when it is not already defined. This allows lazy initialization of `this._mutationReporter`.
+   */
+  private _mutationReporterCallback: MutationReporterCallback;
 
   /**
    * Exposes `this._children`
@@ -650,14 +674,16 @@ export class ViewElement<
   setMutationReporter__(callback: MutationReporterCallback) {
     if (this._mutationReporter) {
       this._mutationReporter.disconnect();
-    }
 
-    Object.defineProperty(this, '_mutationReporter', {
-      configurable: false,
-      enumerable: false,
-      value: new MutationReporter(callback),
-      writable: true,
-    });
+      Object.defineProperty(this, '_mutationReporter', {
+        configurable: false,
+        enumerable: false,
+        value: new MutationReporter(callback),
+        writable: true,
+      });
+    } else {
+      this._mutationReporterCallback = callback;
+    }
   }
 
   /**
@@ -699,16 +725,16 @@ export class ViewElement<
       shouldObserveSubtree,
       attributeFilter
     );
-    this._mutationReporter.observe(target, options);
+    this.mutationReporter_.observe(target, options);
   }
 
   /** @see {@link MutationReporter:MutationReporter#unobserve} */
   unobserve__(target: Node) {
-    this._mutationReporter.unobserve(target);
+    this.mutationReporter_.unobserve(target);
   }
 
   /** @see {@link MutationReporter:MutationReporter#reconnectToExecute} */
   reconnectToExecute__(callback: () => void) {
-    this._mutationReporter.reconnectToExecute(callback);
+    this.mutationReporter_.reconnectToExecute(callback);
   }
 }

@@ -8,8 +8,7 @@
  */
 
 import { Abstraction, Prop } from './Abstraction';
-import { NotImplemented } from './utils/errors';
-import { getProperty, hasProperty, setProperty } from './dom/properties';
+import { getProperty, setProperty } from './dom/properties';
 
 /**
  * Strips the getter-setter pair of functions from PropertyDescriptor so that access functions type annotations can be overridden.
@@ -145,7 +144,7 @@ export class ForwardingInstantiation extends Abstraction {
    *    Suppose the registered property is `id` and the `forwardingTo` is an object. Then `this.id` is equivalent to `forwardingTo.id`.
    *
    * @public
-   * @param {any} forwardingTo - A target to forward access / modification on regiserted properties.
+   * @param {any} forwardingTo - A target to forward access / modification on registered properties.
    */
   setForwardingTo__(forwardingTo: any) {
     /**

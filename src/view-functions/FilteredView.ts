@@ -56,7 +56,6 @@ export class FilteredView<TViewElement> extends AbstractViewFunction<TViewElemen
    * @override
    * @description Defines methods that should be exposed.
    */
-
   getFeatures(): IterableIterator<string> | Iterable<string> {
     return this.features;
   }
