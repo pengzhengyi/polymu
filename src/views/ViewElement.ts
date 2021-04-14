@@ -136,8 +136,6 @@ export class ViewElement<
     if (this._mutationReporter) {
       return this._mutationReporter;
     } else {
-      this._mutationReporter.disconnect();
-
       Object.defineProperty(this, '_mutationReporter', {
         configurable: false,
         enumerable: false,
@@ -205,16 +203,12 @@ export class ViewElement<
    * @public
    * @param {HTMLElement} forwardingTo - A DOM element to which access/modification operations are forwarded. {@link Instantiation:ForwardingInstantiation#constructor}
    * @param {MutationReporterCallback} [mutationReporterCallback] - A callback to be executed when desired mutation has been observed. If not specified, `this.onMutation__` will be invoked. {@link MutationReporter:MutationReporter#constructor}.
-   * @param {ViewElement} [parent = null] - Parent ViewElement of current ViewElement. Null by default.
-   * @param {Array<ViewElement>} [children = []] - ViewElement that are children of current ViewElement.
    * @param {Array<ViewElementFactory>} [viewElementFactories = []] - An array of factory meth ods to create ViewElement from DOM elements. This array is hierarchical in that first builder is suitable for create child ViewElement of current ViewElement, second builder is suitable for creating child ViewElement of current child ViewElement, and so on...
    * @constructs ViewElement
    */
   constructor(
     forwardingTo?: HTMLElement,
     callback?: MutationReporterCallback,
-    parent: ViewElement = null,
-    children: Array<ViewElement> = [],
     viewElementFactories: ViewElementFactory | Array<ViewElementFactory> = []
   ) {
     super(forwardingTo);
@@ -227,14 +221,14 @@ export class ViewElement<
     });
     // reset the identifier value in dataset as its prior value is `undefined`
     this.forwardingTo_.dataset[ViewElement.identifierDatasetName_] = this.identifier_;
-
     Object.defineProperty(this, 'parent_', {
       configurable: false,
       enumerable: false,
-      value: parent,
+      value: undefined,
       writable: true,
     });
-    this.children_ = children;
+    this.children_ = [];
+
     Object.defineProperty(this, '_viewElementFactories', {
       configurable: false,
       enumerable: false,
