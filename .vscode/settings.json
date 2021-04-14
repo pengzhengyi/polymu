@@ -1,9 +1,12 @@
 {
     "cSpell.words": [
         "Cooldown",
+        "childlist",
         "materializability",
+        "nodelist",
         "polymu",
         "prepending",
+        "reobserve",
         "unmaterializable"
     ],
     "editor.defaultFormatter": "esbenp.prettier-vscode",
@@ -16,5 +19,10 @@
         "source.fixAll": true
     },
     "files.trimTrailingWhitespace": true,
-    "editor.tabSize": 2
+    "editor.tabSize": 2,
+    "cSpell.ignoreWords": [
+        "kfoury",
+        "proxying",
+        "unrooted"
+    ]
 }
