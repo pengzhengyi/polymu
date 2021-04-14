@@ -21,7 +21,7 @@ export type ViewElementFactory = (
  *
  * @see {@link ViewElement#patchWithViewElement__}
  */
-enum PatchModeForMatch {
+export enum PatchModeForMatch {
   /**
    * reassign this view element's dom element to the other view element's dom element.
    *
@@ -614,13 +614,13 @@ export class ViewElement<
    *      `this.patchWithDOM__(this.element_.cloneNode(true), PatchModeForMatch.ModifyProperties)`
    *      `this.patchWithDOM__(this.element_, PatchModeForMatch.CreateAlias)`
    *
-   * @param {Array<HTMLElement>} elements - An array of DOM elements to patch current children ViewElement.
+   * @param {Iterable<HTMLElement> | HTMLCollection} elements - An array of DOM elements to patch current children ViewElement.
    * @param {PatchModeForMatch} [mode=PatchModeForMatch.CreateAlias] - Determines how to update current ViewElement's HTML element.
    * @param {boolean} [noDetach = true] - Whether surplus DOM elements of `this._children` will be removed from DOM tree.
    * @param {boolean} [noAttach = true] - Whether surplus DOM elements of `other.children` will be appended
    */
   patchChildViewElementsWithDOMElements__(
-    elements: Array<HTMLElement> | HTMLCollection,
+    elements: Iterable<HTMLElement> | HTMLCollection,
     mode: PatchModeForMatch = PatchModeForMatch.CreateAlias,
     noDetach: boolean = true,
     noAttach: boolean = true

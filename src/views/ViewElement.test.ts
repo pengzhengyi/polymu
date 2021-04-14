@@ -45,6 +45,7 @@ describe('View Element', () => {
     expect((viewElement.children_[0] as any).textContent).toBe('A. J. Kfoury');
     expect((viewElement.children_[2] as any).textContent).toBe('1999');
     expect((viewElement.children_[4] as any).id).toBe('961365');
+    expect(viewElement instanceof HTMLElement).toEqual(false);
   });
 
   test('create view element to accommodate DOM child', () => {
