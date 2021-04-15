@@ -24,8 +24,7 @@ export type TViewElementLike = ViewElement<HTMLElement> | HTMLElement;
  *
  *    @example A list view of employee record is currently sorted by their salary. A HR inserts a new employee and this employee is immediately placed into its correct place.
  */
-export class SyncView<TViewElementLike> extends AbstractViewFunction<TViewElementLike>
-  implements IFeatureProvider {
+export class SyncView extends AbstractViewFunction<TViewElementLike> implements IFeatureProvider {
   /** methods that should be exposed since they define the API for `SyncView` */
   protected features: Array<string> = [];
 
@@ -83,9 +82,10 @@ export class SyncView<TViewElementLike> extends AbstractViewFunction<TViewElemen
     /**
      * Initialize a `ViewElement` from provided DOM element, since we only care about direct child mutation for provided DOM element, we only provide a factory method for `viewElementFactories`
      */
-    this.rootViewElement_ = new ViewElement(rootDomElement, this.onMutation_.bind(this), [
+    this.rootViewElement_ = new ViewElement(rootDomElement, [
       (element) => new ViewElement(element),
     ]);
+    this.rootViewElement_.setMutationReporter__(this.onMutation_.bind(this));
 
     this.initializeTaskQueue_();
 
@@ -117,7 +117,6 @@ export class SyncView<TViewElementLike> extends AbstractViewFunction<TViewElemen
 
     this.sync(sourceView);
 
-    // @ts-expect-error
     this._targetView = this.childViewElements;
 
     super.regenerateView(sourceView, useCache);
@@ -131,7 +130,7 @@ export class SyncView<TViewElementLike> extends AbstractViewFunction<TViewElemen
       work: () => this.unobserve(),
       isRecurring: true,
     });
-    this.beforeViewUpdateTaskQueue.tasks.push({
+    this.afterViewUpdateTaskQueue.tasks.push({
       work: () => this.observe(),
       isRecurring: true,
     });
@@ -155,21 +154,24 @@ export class SyncView<TViewElementLike> extends AbstractViewFunction<TViewElemen
   /**
    * Handler for observed mutations. It will only handle direct children mutation of `this.rootDomElement`.
    */
-  protected onMutation_(mutations: Array<MutationRecord>, reporter: MutationReporter) {
+  protected onMutation_(
+    mutations: Array<MutationRecord>,
+    observer: MutationObserver,
+    originalMutations: Array<MutationRecord>,
+    reporter: MutationReporter
+  ) {
     reporter.report(mutations);
 
     this.modifyDom(() => {
-      this.rootViewElement_.reconnectToExecute__(() => {
-        for (const mutation of mutations) {
-          if (mutation.target !== this.rootDomElement) {
-            continue;
-          }
-
-          if (mutation.type === 'childList') {
-            this.onChildListMutation_(mutation);
-          }
+      for (const mutation of mutations) {
+        if (mutation.target !== this.rootDomElement) {
+          continue;
         }
-      });
+
+        if (mutation.type === 'childList') {
+          this.onChildListMutation_(mutation);
+        }
+      }
     });
   }
   /**
