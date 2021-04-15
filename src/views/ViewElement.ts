@@ -130,27 +130,6 @@ export class ViewElement<
   private _mutationReporter: MutationReporter;
 
   /**
-   * @returns Existing `MutationReporter` or a lazily initialized one.
-   */
-  protected get mutationReporter_(): MutationReporter {
-    if (this._mutationReporter) {
-      return this._mutationReporter;
-    } else {
-      Object.defineProperty(this, '_mutationReporter', {
-        configurable: false,
-        enumerable: false,
-        value: new MutationReporter(this._mutationReporterCallback),
-        writable: true,
-      });
-    }
-  }
-
-  /**
-   * Temporarily hold the callback used to initialize `this._mutationReporter` when it is not already defined. This allows lazy initialization of `this._mutationReporter`.
-   */
-  private _mutationReporterCallback: MutationReporterCallback;
-
-  /**
    * Exposes `this._children`
    * @public
    * @return The ViewElement that are children of current ViewElement.
@@ -202,13 +181,11 @@ export class ViewElement<
    *
    * @public
    * @param {HTMLElement} forwardingTo - A DOM element to which access/modification operations are forwarded. {@link Instantiation:ForwardingInstantiation#constructor}
-   * @param {MutationReporterCallback} [mutationReporterCallback] - A callback to be executed when desired mutation has been observed. If not specified, `this.onMutation__` will be invoked. {@link MutationReporter:MutationReporter#constructor}.
    * @param {Array<ViewElementFactory>} [viewElementFactories = []] - An array of factory meth ods to create ViewElement from DOM elements. This array is hierarchical in that first builder is suitable for create child ViewElement of current ViewElement, second builder is suitable for creating child ViewElement of current child ViewElement, and so on...
    * @constructs ViewElement
    */
   constructor(
     forwardingTo?: HTMLElement,
-    callback?: MutationReporterCallback,
     viewElementFactories: ViewElementFactory | Array<ViewElementFactory> = []
   ) {
     super(forwardingTo);
@@ -235,8 +212,6 @@ export class ViewElement<
       value: viewElementFactories,
       writable: true,
     });
-
-    this.setMutationReporter__(callback ? callback : this.onMutation__.bind(this));
   }
 
   /**
@@ -665,19 +640,17 @@ export class ViewElement<
    * @public
    * @param {MutationReporterCallback} callback - The callback to be invoked when mutations are observed. It will be invoked with `this` bound to current ViewElement.
    */
-  setMutationReporter__(callback: MutationReporterCallback) {
+  setMutationReporter__(callback: MutationReporterCallback = this.onMutation__.bind(this)) {
     if (this._mutationReporter) {
       this._mutationReporter.disconnect();
-
-      Object.defineProperty(this, '_mutationReporter', {
-        configurable: false,
-        enumerable: false,
-        value: new MutationReporter(callback),
-        writable: true,
-      });
-    } else {
-      this._mutationReporterCallback = callback;
     }
+
+    Object.defineProperty(this, '_mutationReporter', {
+      configurable: false,
+      enumerable: false,
+      value: new MutationReporter(callback),
+      writable: true,
+    });
   }
 
   /**
@@ -719,16 +692,16 @@ export class ViewElement<
       shouldObserveSubtree,
       attributeFilter
     );
-    this.mutationReporter_.observe(target, options);
+    this._mutationReporter.observe(target, options);
   }
 
   /** @see {@link MutationReporter:MutationReporter#unobserve} */
   unobserve__(target: Node) {
-    this.mutationReporter_.unobserve(target);
+    this._mutationReporter.unobserve(target);
   }
 
   /** @see {@link MutationReporter:MutationReporter#reconnectToExecute} */
   reconnectToExecute__(callback: () => void) {
-    this.mutationReporter_.reconnectToExecute(callback);
+    this._mutationReporter.reconnectToExecute(callback);
   }
 }

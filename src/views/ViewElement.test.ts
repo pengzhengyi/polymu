@@ -15,7 +15,7 @@ describe('View Element', () => {
       <td id="961365" tabindex="-1">Brown University</td>
       <td id="961368" tabindex="-1">Harvard University</td>
     `;
-    viewElement = new ViewElement(source, undefined, [(element) => new ViewElement(element)]);
+    viewElement = new ViewElement(source, [(element) => new ViewElement(element)]);
     viewElement.patchWithDOM__(source);
   });
 
@@ -62,9 +62,7 @@ describe('View Element', () => {
   });
 
   test('observe childList mutation', (done) => {
-    const vm: ViewElement = new ViewElement(source, undefined, [
-      (element) => new ViewElement(element),
-    ]);
+    const vm: ViewElement = new ViewElement(source, [(element) => new ViewElement(element)]);
     vm.setMutationReporter__(
       function (
         mutations: Array<MutationRecord>,
