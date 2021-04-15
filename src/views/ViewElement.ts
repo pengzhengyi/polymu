@@ -408,19 +408,26 @@ export class ViewElement<
    * @param {TDomElement} other - The HTML element of the other ViewElement.
    * @param {PatchModeForMatch} [mode=PatchModeForMatch.CreateAlias] - Determines how to update current ViewElement's HTML element.
    * @param {IterableIterator<Prop>} [properties] - An iterable of properties. This parameter is only used when `mode === PatchModeForMatch.ModifyProperties`. If not supplied, will update all properties exist in the other ViewElement's HTML element.
+   * @param {boolean} [noDetach = true] - Whether current underlying element should be removed from the DOM tree. Default to true, which means it will not be removed.
+   * @param {boolean} [noAttach = true] - Whether new element should be added to the DOM tree. Default to true, which means it will not be added.
    */
-
   private __patchSelf(
     other: TDomElement,
     mode: PatchModeForMatch = PatchModeForMatch.CreateAlias,
-    properties?: IterableIterator<Prop>
+    properties?: IterableIterator<Prop>,
+    noDetach: boolean = true,
+    noAttach: boolean = true
   ) {
+    let oldElement = this.element_;
+    let newElement: TDomElement;
+
     switch (mode) {
       case PatchModeForMatch.CreateAlias:
         this.setForwardingTo__(other);
+        newElement = other;
         break;
       case PatchModeForMatch.CloneNode:
-        this.setForwardingTo__(other.cloneNode(true) as TDomElement);
+        this.setForwardingTo__((newElement = other.cloneNode(true) as TDomElement));
         break;
       case PatchModeForMatch.ModifyProperties:
         if (properties) {
@@ -434,7 +441,20 @@ export class ViewElement<
             this.asDomElement__()[prop] = other[prop];
           }
         }
-        break;
+        // noDetach and noAttach is not relevant here because properties of the current underlying element are modified instead
+        return;
+    }
+
+    if (!noDetach && !noAttach) {
+      oldElement.replaceWith(newElement);
+    } else if (!noDetach) {
+      // should detach but not attach
+      oldElement.remove();
+    } else if (!noAttach) {
+      // ? This is a situation that does not make much sense, where we are keeping the old element alongside the new element. We arbitrarily decide to insert new element after the old element.
+      oldElement.after(newElement);
+    } else {
+      // do nothing if neither detach old element nor attach new element
     }
   }
 
@@ -470,7 +490,7 @@ export class ViewElement<
     noAttach: boolean = true
   ) {
     // patch self
-    this.__patchSelf(other.element_ as TDomElement, mode);
+    this.__patchSelf(other.element_ as TDomElement, mode, undefined, noDetach, noAttach);
 
     // patch children
     patch(
@@ -571,7 +591,7 @@ export class ViewElement<
     noAttach: boolean = true
   ) {
     // patch self
-    this.__patchSelf(other, mode);
+    this.__patchSelf(other, mode, undefined, noDetach, noAttach);
 
     // patch children
     this.patchChildViewElementsWithDOMElements__(other.children, mode, noDetach, noAttach);
