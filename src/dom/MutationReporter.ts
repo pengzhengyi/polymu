@@ -43,10 +43,14 @@ export type MutationReporterCallback = (
  */
 export class MutationReporter {
   /** NodeList equivalent of empty array */
-  private static readonly emptyNodeList: NodeList = document
+  private static readonly _EMPTY_NODELIST: NodeList = document
     .createElement('div')
     .querySelectorAll('#empty-nodelist');
-  private readonly mutationObserver: MutationObserver;
+
+  /**
+   * A {@link https://developer.mozilla.org/en-US/docs/Web/API/MutationObserver `MutationObserver`} that provides the ability to watch for changes being made to the DOM tree.
+   */
+  private _mutationObserver: MutationObserver;
 
   /** A mapping from observed targets to their observing configuration (MutationObserverInit) */
   readonly observing: Map<Node, MutationObserverInit> = new Map();
@@ -71,9 +75,7 @@ export class MutationReporter {
    * @constructs MutationReporter
    */
   constructor(mutationReporterCallback?: MutationReporterCallback) {
-    this.mutationObserver = new MutationObserver((mutations, observer) =>
-      this.onMutations(mutations, observer)
-    );
+    this.initializeMutationObserver__();
     this.mutationReporterCallback = mutationReporterCallback;
   }
 
@@ -145,7 +147,7 @@ export class MutationReporter {
    * @param {MutationRecord} mutationRecord - A ChildList mutation that involves a CharacterData mutation.
    * @returns {MutationRecord} A generated record for the CharacterData mutation.
    */
-  private static childListToCharacterData(mutationRecord: MutationRecord): MutationRecord {
+  protected static childListToCharacterData__(mutationRecord: MutationRecord): MutationRecord {
     const addedNodes: Set<Node> = new Set();
     for (const node of mutationRecord.addedNodes) {
       addedNodes.add(node);
@@ -179,8 +181,8 @@ export class MutationReporter {
     return {
       type: 'characterData',
       target: mutationRecord.target,
-      addedNodes: this.emptyNodeList,
-      removedNodes: this.emptyNodeList,
+      addedNodes: this._EMPTY_NODELIST,
+      removedNodes: this._EMPTY_NODELIST,
       previousSibling: null,
       nextSibling: null,
       attributeName: null,
@@ -197,7 +199,7 @@ export class MutationReporter {
    * @param {MutationRecord} mutationRecord - A ChildList mutation record.
    * @return {boolean} Whether the provided mutation contains a text content mutation.
    */
-  private static hasTextContentMutation(mutationRecord: MutationRecord): boolean {
+  protected static hasTextContentMutation__(mutationRecord: MutationRecord): boolean {
     for (const addedNode of mutationRecord.addedNodes) {
       if (addedNode.textContent) {
         return true;
@@ -221,16 +223,25 @@ export class MutationReporter {
    * @param {MutationRecord} mutationRecord - A mutation record corresponds to a mutation.
    * @return {Array<MutationRecord>} An one-element array if the record is not corrected, a pair [CharacterData Mutation, ChildList Mutation] if the record is corrected.
    */
-  private static correctMutationRecord(mutationRecord: MutationRecord): Array<MutationRecord> {
+  protected static correctMutationRecord__(mutationRecord: MutationRecord): Array<MutationRecord> {
     switch (mutationRecord.type) {
       case 'childList':
-        if (this.hasTextContentMutation(mutationRecord)) {
-          return [MutationReporter.childListToCharacterData(mutationRecord), mutationRecord];
+        if (this.hasTextContentMutation__(mutationRecord)) {
+          return [MutationReporter.childListToCharacterData__(mutationRecord), mutationRecord];
         }
       // fallthrough
       default:
         return [mutationRecord];
     }
+  }
+
+  /**
+   * Initialize `this.mutationObserver`.
+   */
+  protected initializeMutationObserver__() {
+    this._mutationObserver = new MutationObserver((mutations, observer) =>
+      this.__onMutations(mutations, observer)
+    );
   }
 
   /**
@@ -243,14 +254,17 @@ export class MutationReporter {
    * @param {() => MutationReporter} thisWrapper - A function that returns a MutationReporter instance.
    * @return {MutationCallback} A callback to be used to initialize the MutationObserver.
    */
-  private onMutations(mutations: Array<MutationRecord>, observer: MutationObserver) {
+  private __onMutations(
+    mutations: Array<MutationRecord>,
+    observer: MutationObserver
+  ): MutationCallback {
     if (mutations.length === 0) {
       return;
     }
 
     const correctedMutations: Array<MutationRecord> = [];
     for (const mutation of mutations) {
-      correctedMutations.push(...MutationReporter.correctMutationRecord(mutation));
+      correctedMutations.push(...MutationReporter.correctMutationRecord__(mutation));
     }
 
     if (this.mutationReporterCallback) {
@@ -270,22 +284,7 @@ export class MutationReporter {
    */
   observe(target: Node, options: MutationObserverInit) {
     this.observing.set(target, options);
-    this.mutationObserver.observe(target, options);
-  }
-
-  /**
-   * Tells the observer to stop watching for mutations.
-   *
-   * The difference from {@link https://developer.mozilla.org/en-US/docs/Web/API/MutationObserver/disconnect} is the option to clear records in `this.observing`.
-   *
-   * @public
-   * @param {boolean} [clearMemory = true] - Whether memory of previous observed targets should be cleared.
-   */
-  disconnect(clearMemory: boolean = true) {
-    if (clearMemory) {
-      this.observing.clear();
-    }
-    this.mutationObserver.disconnect();
+    this._mutationObserver.observe(target, options);
   }
 
   /**
@@ -304,11 +303,29 @@ export class MutationReporter {
       return;
     }
 
-    const mutations = this.mutationObserver.takeRecords();
+    const mutations = this._mutationObserver.takeRecords();
     this.disconnect(false);
-    this.reconnect();
+    /**
+     * @see {@link https://github.com/whatwg/dom/issues/126}
+     *
+     * reinitialize a new `MutationObserver` after disconnecting the old one.
+     *
+     * This recreation is necessary to avoid infinite loop illustrated below
+     *
+     * 1. receiving a mutation record at an observed target (inside `MutationObserver`'s callback)
+     * 2. stop observing this target by calling `disconnect` (**unexpected: the target still remains in the mutation observer's node list**)
+     * 3. handle the mutation record (action here will manipulate the DOM and will trigger another mutation record if this target is still observed)
+     * 4. re-observing the previously observed target -- call `observe` on this target (**the target now have two occurrences in the mutation observer's node list**)
+     * 5. this already-handled-once mutation record is dispatched again to newly added target due to live editing of node list
+     * 6. infinite loop
+     *
+     * To stop this loop, we replace the current `MutationObserver` by a new `MutationObserver` after calling `disconnect`. Re-observing will not be an issue since the new `MutationObserver` have an empty node list.
+     */
+    this.initializeMutationObserver__();
+
+    this.reobserve__();
     if (Array.isArray(mutations) && mutations.length > 0) {
-      this.onMutations(mutations, this.mutationObserver);
+      this.__onMutations(mutations, this._mutationObserver);
     }
   }
 
@@ -316,12 +333,26 @@ export class MutationReporter {
    * Tells the observer to start watching for target mutations according to options for every pair of target and options in `this.observing`.
    * @public
    */
-  reconnect() {
+  protected reobserve__() {
     for (const [node, options] of this.observing) {
-      this.mutationObserver.observe(node, options);
+      this._mutationObserver.observe(node, options);
     }
   }
 
+  /**
+   * Tells the observer to stop watching for mutations.
+   *
+   * The difference from {@link https://developer.mozilla.org/en-US/docs/Web/API/MutationObserver/disconnect} is the option to clear records in `this.observing`.
+   *
+   * @public
+   * @param {boolean} [clearMemory = true] - Whether memory of previous observed targets should be cleared.
+   */
+  disconnect(clearMemory: boolean = true) {
+    if (clearMemory) {
+      this.observing.clear();
+    }
+    this._mutationObserver.disconnect();
+  }
   /**
    * Tells the observer to:
    *
@@ -338,12 +369,13 @@ export class MutationReporter {
    * @example If needs to reobserve with different options, set the corresponding options in `this.observing` before calling this function.
    */
   reconnectToExecute(callback: () => void) {
-    const mutations = this.mutationObserver.takeRecords();
+    const mutations = this._mutationObserver.takeRecords();
     this.disconnect(false);
     callback();
-    this.reconnect();
+    this.initializeMutationObserver__();
+    this.reobserve__();
     if (Array.isArray(mutations) && mutations.length > 0) {
-      this.onMutations(mutations, this.mutationObserver);
+      this.__onMutations(mutations, this._mutationObserver);
     }
   }
 
