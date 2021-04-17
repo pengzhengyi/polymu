@@ -232,7 +232,17 @@ export class SyncView extends AbstractViewFunction<TViewElementLike> implements 
    */
   sync(source: TViewElementLike | Iterable<TViewElementLike>) {
     this.modifyDom(() => {
-      if (isIterable(source)) {
+      if (source instanceof HTMLElement) {
+        this.rootViewElement_.patchWithDOM__(source, PatchModeForMatch.CreateAlias, false, false);
+      } else if (source instanceof ViewElement) {
+        // since `ViewElement` is also iterable, it should come before the check for `isIterable`
+        this.rootViewElement_.patchWithViewElement__(
+          source,
+          PatchModeForMatch.CreateAlias,
+          false,
+          false
+        );
+      } else if (isIterable(source)) {
         const peekResult = peek(source as Iterable<TViewElementLike>);
         const { done, value } = peekResult.next();
 
@@ -255,17 +265,6 @@ export class SyncView extends AbstractViewFunction<TViewElementLike> implements 
               false
             );
           }
-        }
-      } else {
-        if (source instanceof HTMLElement) {
-          this.rootViewElement_.patchWithDOM__(source, PatchModeForMatch.CreateAlias, false, false);
-        } else {
-          this.rootViewElement_.patchWithViewElement__(
-            source as ViewElement,
-            PatchModeForMatch.CreateAlias,
-            false,
-            false
-          );
         }
       }
     });
