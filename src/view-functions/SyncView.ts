@@ -112,7 +112,7 @@ export class SyncView extends AbstractViewFunction<TViewElementLike> implements 
    * @override
    */
   protected regenerateView(sourceView: Collection<TViewElementLike>, useCache: boolean) {
-    if (useCache && sourceView === this.lastSourceView && !this.shouldRegenerateView) {
+    if (useCache && sourceView === this.lastSourceView) {
       // source has not change and sorting functions have not changed => we can reuse current view
       return;
     }
