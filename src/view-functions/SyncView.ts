@@ -1,6 +1,6 @@
 import { Collection } from '../collections/Collection';
 import { IFeatureProvider } from '../composition/composition';
-import { MutationReporter } from '../dom/MutationReporter';
+import { ChildListChangeEvent } from '../dom/CustomEvents';
 import { TaskQueue } from '../TaskQueue';
 import { isIterable, peek } from '../utils/IterableHelper';
 import { PatchModeForMatch, ViewElement } from '../views/ViewElement';
@@ -85,7 +85,9 @@ export class SyncView extends AbstractViewFunction<TViewElementLike> implements 
     this.rootViewElement_ = new ViewElement(rootDomElement, [
       (element) => new ViewElement(element),
     ]);
-    this.rootViewElement_.setMutationReporter__(this.onMutation_.bind(this));
+
+    this.rootViewElement_.initializeMutationReporter();
+    this.initializeMutationHandler__();
 
     this.initializeTaskQueue_();
 
@@ -152,41 +154,34 @@ export class SyncView extends AbstractViewFunction<TViewElementLike> implements 
   }
 
   /**
-   * Handler for observed mutations. It will only handle direct children mutation of `this.rootDomElement`.
+   * Add `EventListener` for interested mutations to observe. Since events are dispatched at `this.rootDomElement`, these registered event handlers could be considered as triggered at TARGET phase.
+   *
+   * Currently, this method only register a handler for children mutation of `this.rootDomElement`, where `this.childViewElements` will be updated according to the childList mutations.
    */
-  protected onMutation_(
-    mutations: Array<MutationRecord>,
-    observer: MutationObserver,
-    originalMutations: Array<MutationRecord>,
-    reporter: MutationReporter
-  ) {
-    reporter.report(mutations);
-
-    this.modifyDom(() => {
-      for (const mutation of mutations) {
-        if (mutation.target !== this.rootDomElement) {
-          continue;
-        }
-
-        if (mutation.type === 'childList') {
-          this.onChildListMutation_(mutation);
-        }
-      }
-    });
+  protected initializeMutationHandler__() {
+    this.rootDomElement.addEventListener(
+      ChildListChangeEvent.typeArg,
+      (event: ChildListChangeEvent) => this.onChildListMutation_(event)
+    );
   }
   /**
    * Handles ChildList mutation.
    *
    * For example, if a DOM child is removed from `target`, remove the ViewModel child corresponding to that DOM child from `this.sourceViewModel`.
    */
-  protected onChildListMutation_(mutation: MutationRecord) {
-    for (const removedNode of mutation.removedNodes) {
+  protected onChildListMutation_(childListChangeEvent: ChildListChangeEvent) {
+    if (childListChangeEvent.target !== this.rootDomElement) {
+      // only handle mutations to direct children
+      return;
+    }
+
+    for (const removedNode of childListChangeEvent.detail.removedNodes) {
       const identifier = (removedNode as HTMLElement).dataset[ViewElement.identifierDatasetName_];
       this.rootViewElement_.removeChildByIdentifier__(identifier);
     }
 
     const addedNodeToChildIndex: Map<Node, number> = new Map();
-    for (const addedNode of mutation.addedNodes) {
+    for (const addedNode of childListChangeEvent.detail.addedNodes) {
       if (addedNode.nodeType !== Node.ELEMENT_NODE) {
         // ignore mutations of other types of node (for example, text node)
         continue;

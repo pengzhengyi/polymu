@@ -1,5 +1,6 @@
 import { ViewElement } from './ViewElement';
 import { MutationReporter } from '../dom/MutationReporter';
+import { ChildListChangeEvent } from '../dom/CustomEvents';
 
 describe('View Element', () => {
   let source: HTMLElement;
@@ -62,34 +63,61 @@ describe('View Element', () => {
   });
 
   test('observe childList mutation', (done) => {
-    const vm: ViewElement = new ViewElement(source, [(element) => new ViewElement(element)]);
-    vm.setMutationReporter__(
-      function (
-        mutations: Array<MutationRecord>,
-        observer: MutationObserver,
-        originalMutations: Array<MutationRecord>,
-        reporter: MutationReporter
-      ) {
-        this.onMutation__(mutations, observer, originalMutations, reporter);
-        expect((vm as any).children.length).toBe(6);
+    const listElement = document.createElement('ol');
+    document.body.appendChild(listElement);
+    for (let i = 0; i < 6; i++) {
+      const listItemElement = document.createElement('li');
+      listItemElement.textContent = `item ${i}`;
+      listElement.appendChild(listItemElement);
+    }
+
+    const vm: ViewElement = new ViewElement(listElement, [(element) => new ViewElement(element)]);
+    vm.patchChildViewElementsWithDOMElements__(listElement.children);
+    // original data
+    expect((vm as any).children.length).toBe(6);
+    expect(vm.element_).toBe(listElement);
+    expect(vm.children_.length).toBe(6);
+    expect((vm.children_[0] as any).textContent).toBe('item 0');
+    expect((vm.children_[2] as any).textContent).toBe('item 2');
+    expect((vm.children_[4] as any).textContent).toBe('item 4');
+
+    vm.initializeMutationReporter();
+    vm.setupAutoUpdateChildViewElement();
+
+    document.addEventListener(
+      ChildListChangeEvent.typeArg,
+      () => {
+        // before mutations are handled
+        // 5 list items since innerHTML has been executed
+        expect(vm.element_.childElementCount).toBe(5);
+        // 6 child ViewElement since listener registered at `vm.element_` is not executed
         expect(vm.children_.length).toBe(6);
-        expect(vm.element_).toBe(source);
-        expect((vm.children_[0] as any).textContent).toBe('Amy J. Ko');
-        expect((vm.children_[2] as any).textContent).toBe('2014');
-        expect((vm.children_[4] as any).id).toBe('962819');
-        vm.unobserve__(vm.element_);
-        vm.patchWithViewElement__(viewElement);
-        expect((vm as any).children.length).toBe(6);
-        expect(vm.children_.length).toBe(6);
-        expect(vm.element_).toBe(source);
-        expect((vm.children_[0] as any).textContent).toBe('A. J. Kfoury');
-        expect((vm.children_[2] as any).textContent).toBe('1999');
-        expect((vm.children_[4] as any).id).toBe('961365');
+      },
+      {
+        once: true,
+        capture: true,
+      }
+    );
+
+    document.addEventListener(
+      ChildListChangeEvent.typeArg,
+      () => {
+        // after mutations are handled
+        expect(vm.element_.childElementCount).toBe(5);
+        expect(vm.children_.length).toBe(5);
+        expect(vm.element_).toBe(listElement);
+        expect((vm.children_[0] as any).textContent).toBe('0');
+        expect((vm.children_[2] as any).textContent).toBe('2');
+        expect((vm.children_[4] as any).textContent).toBe('4');
         done();
-      }.bind(vm)
+      },
+      {
+        once: true,
+      }
     );
 
     vm.observe__(vm.element_, false, undefined, false, true, false);
-    source.innerHTML = `<td id="900014" tabindex="-1">Amy J. Ko</td><td id="900015" tabindex="-1">University of Washington</td><td id="962817" tabindex="-1">2014</td><td id="962820" tabindex="-1">Software engineering</td><td id="962819" tabindex="-1">Oregon State University</td><td id="962818" tabindex="-1">Carnegie Mellon University</td>`;
+    // change to new data
+    listElement.innerHTML = `<li>0</li><li>1</li><li>2</li><li>3</li><li>4</li>`;
   });
 });

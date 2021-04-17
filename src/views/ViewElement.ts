@@ -3,6 +3,7 @@ import { DomFallthroughInstantiation } from '../Instantiation';
 import { MutationReporter, MutationReporterCallback } from '../dom/MutationReporter';
 import { v4 as uuid } from 'uuid';
 import { patch } from '../utils/IterableHelper';
+import { ChildListChangeEvent } from '../dom/CustomEvents';
 
 /**
  * A function to create a VieElement from a HTMLElement.
@@ -657,10 +658,12 @@ export class ViewElement<
    *
    * Calling this method after a MutationReporter has been bound to current instance will recreate the MutationReporter. Previous bound MutationReporter will be disconnected.
    *
+   * This method should be invoked when a `MutationObserver` is needed to track the changes happening to the underlying DOM element of this `ViewElement`. After this method is invoked, `observe` method can be invoked to specify how changes should be tracked.
+   *
    * @public
-   * @param {MutationReporterCallback} callback - The callback to be invoked when mutations are observed. It will be invoked with `this` bound to current ViewElement.
+   * @param {MutationReporterCallback} [callback] - The callback to be invoked when mutations are observed. It will be invoked with `this` bound to current ViewElement.
    */
-  setMutationReporter__(callback: MutationReporterCallback = this.onMutation__.bind(this)) {
+  initializeMutationReporter(callback?: MutationReporterCallback) {
     if (this._mutationReporter) {
       this._mutationReporter.disconnect();
     }
@@ -674,21 +677,13 @@ export class ViewElement<
   }
 
   /**
-   * Default callback for observed mutations -- report each mutation as its corresponding event and update ViewElement children on child list change.
-   *
-   * @see {@link MutationReporter:MutationReporterCallback}
+   * ! This is an inefficient implementation to automatically update `ViewElement` hierarchy in event of DOM tree mutations. In short, calling this method will rebuild the `ViewElement` hierarchy according to the current DOM subtree. A more efficient implementation should utilize information in `mutations` to partially update the `ViewElement` hierarchy.
    */
-  protected onMutation__(
-    mutations: Array<MutationRecord>,
-    observer: MutationObserver,
-    originalMutations: Array<MutationRecord>,
-    reporter: MutationReporter
-  ) {
-    reporter.report(mutations);
-    if (mutations.some((mutation) => mutation.type === 'childList')) {
+  setupAutoUpdateChildViewElement() {
+    this.element_.addEventListener(ChildListChangeEvent.typeArg, () => {
       // update children ViewElement
       this.patchWithDOM__(this.element_);
-    }
+    });
   }
 
   /**
