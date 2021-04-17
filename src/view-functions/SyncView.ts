@@ -25,8 +25,10 @@ export type TViewElementLike = ViewElement<HTMLElement> | HTMLElement;
  *    @example A list view of employee record is currently sorted by their salary. A HR inserts a new employee and this employee is immediately placed into its correct place.
  */
 export class SyncView extends AbstractViewFunction<TViewElementLike> implements IFeatureProvider {
-  /** methods that should be exposed since they define the API for `SyncView` */
-  protected features: Array<string> = [];
+  /**
+   * @implements {IFeatureProvider} Methods that should be exposed since they define the API for `SyncView`
+   */
+  protected features: Array<string> = ['sync'];
 
   /**
    * ! @override A queue containing tasks executed before updating DOM tree. This queue is different from normal `beforeViewUpdateTaskQueue` that is executed when target view is about to be updated.
@@ -91,7 +93,7 @@ export class SyncView extends AbstractViewFunction<TViewElementLike> implements 
 
     this.initializeTaskQueue_();
 
-    this.observe();
+    this.observe__();
   }
 
   /**
@@ -129,11 +131,11 @@ export class SyncView extends AbstractViewFunction<TViewElementLike> implements 
    */
   protected initializeTaskQueue_() {
     this.beforeViewUpdateTaskQueue.tasks.push({
-      work: () => this.unobserve(),
+      work: () => this.unobserve__(),
       isRecurring: true,
     });
     this.afterViewUpdateTaskQueue.tasks.push({
-      work: () => this.observe(),
+      work: () => this.observe__(),
       isRecurring: true,
     });
   }
@@ -141,7 +143,7 @@ export class SyncView extends AbstractViewFunction<TViewElementLike> implements 
   /**
    * Ask `this.rootDomElement` to monitor DOM mutations. Only childlist mutations on direct children of `target` will be handled.
    */
-  protected observe() {
+  protected observe__() {
     // we only need to track childlist change on direct children of `this.rootDomElement`
     this.rootViewElement_.observe__(this.rootDomElement, false, undefined, false, true, false);
   }
@@ -149,7 +151,7 @@ export class SyncView extends AbstractViewFunction<TViewElementLike> implements 
   /**
    * Stop monitoring DOM mutations.
    */
-  protected unobserve() {
+  protected unobserve__() {
     this.rootViewElement_.unobserve__(this.rootDomElement);
   }
 
@@ -209,7 +211,7 @@ export class SyncView extends AbstractViewFunction<TViewElementLike> implements 
    * @param beforeViewUpdateTaskQueueArgs - Arguments passed to `beforeViewUpdateTaskQueue` when it executes setup work.
    * @param afterViewUpdateTaskQueueArgs - Arguments passed to `afterViewUpdateTaskQueue` when it executes teardown work.
    */
-  modifyDom(
+  protected modifyDomInternal__(
     action: () => void,
     beforeViewUpdateTaskQueueArgs: any[] = [],
     afterViewUpdateTaskQueueArgs: any[] = []
@@ -231,7 +233,7 @@ export class SyncView extends AbstractViewFunction<TViewElementLike> implements 
    * @param source - Element or elements used to update current `this.rootViewElement_`.
    */
   sync(source: TViewElementLike | Iterable<TViewElementLike>) {
-    this.modifyDom(() => {
+    this.modifyDomInternal__(() => {
       if (source instanceof HTMLElement) {
         this.rootViewElement_.patchWithDOM__(source, PatchModeForMatch.CreateAlias, false, false);
       } else if (source instanceof ViewElement) {

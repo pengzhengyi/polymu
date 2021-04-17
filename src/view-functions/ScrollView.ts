@@ -16,6 +16,7 @@
 
 import { CircularArray } from '../collections/CircularArray';
 import { Collection, LazyCollectionProvider } from '../collections/Collection';
+import { IFeatureProvider } from '../composition/composition';
 import { Property, PropertyManager, UpdateBehavior } from '../composition/property-management';
 import { fillerClass, startFillerClass, endFillerClass } from '../constants/css-classes';
 import { IntersectionObserverOptions } from '../dom/IntersectionObserver';
@@ -111,9 +112,9 @@ enum RenderingStrategy {
  *
  * @typedef TDomElement - A element type that should subclass {@link https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement HTMLElement}.
  */
-export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends PartialView<
-  TViewElement
-> {
+export class ScrollView<TViewElement, TDomElement extends HTMLElement>
+  extends PartialView<TViewElement>
+  implements IFeatureProvider {
   /** denotes the event that will be emitted before rendering view update, it will supply the current `ScrollView` */
   static readonly beforeRenderingViewUpdateEventName = 'beforeRenderingViewUpdate';
   /** denotes the event that will be emitted after rendering view update, it will supply the current `ScrollView` */
@@ -149,6 +150,9 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
   protected static readonly _endFillerElementPropertyName = '_endFillerElement';
   /** The property name for `_endFillerLength` */
   protected static readonly _endFillerLengthPropertyName = '_endFillerLength';
+
+  /** @implements {IFeatureProvider} Methods that should be exposed since they define the API for `PartialView` */
+  features: Array<string> = ['setWindow', 'shiftWindow', 'scrollToElementIndex'];
 
   /**
    * A ` PropertyManager` that manages the interdependencies of ScrollView properties.
@@ -227,7 +231,7 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
         case RenderingStrategy.NoAction:
           break;
         case RenderingStrategy.Replace:
-          this._modifyRenderingView(() => {
+          this.modifyRenderingView__(() => {
             targetView = this._targetView;
             const scrollPosition = this._scrollPosition;
 
@@ -268,7 +272,7 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
           });
           break;
         case RenderingStrategy.Shift:
-          this._modifyRenderingView(() => {
+          this.modifyRenderingView__(() => {
             targetView = this._targetView;
             const shiftAmount: number = manager.getPropertyValue('_shiftAmount');
             target = manager.getPropertyValue('_target');
@@ -629,7 +633,7 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
       }
 
       // create new start filler element and insert it before the target. Creation will only happen when target changes.
-      const tagName = this.__guessFillerTagName(target.parentElement.tagName);
+      const tagName = this.guessFillerTagName__(target.parentElement.tagName);
       const startFillerElement = document.createElement(tagName);
       startFillerElement.classList.add(fillerClass, startFillerClass);
       target.before(this._startFillerElement);
@@ -774,7 +778,7 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
       }
 
       // create new start filler element and insert it before the target. Creation will only happen when target changes.
-      const tagName = this.__guessFillerTagName(target.parentElement.tagName);
+      const tagName = this.guessFillerTagName__(target.parentElement.tagName);
       const endFillerElement = document.createElement(tagName);
       endFillerElement.classList.add(fillerClass, endFillerClass);
       return endFillerElement;
@@ -942,17 +946,17 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
     this._convert_ = options.convert;
     this._target = options.target;
 
-    this.initializeScrollEventListener();
-    this._initializeFillerObservers(
+    this.initializeScrollEventListener__();
+    this.initializeFillerObservers__(
       options.startFillerObserverOptions,
       options.endFillerObserverOptions
     );
-    this.initializeSentinelObservers(
+    this.initializeSentinelObservers__(
       options.startSentinelObserverOptions,
       options.endSentinelObserverOptions
     );
 
-    this.activateObservers();
+    this.activateObservers__();
   }
 
   /**
@@ -962,7 +966,7 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
    *
    * @listens ScrollEvent
    */
-  private initializeScrollEventListener() {
+  protected initializeScrollEventListener__() {
     const observeTarget =
       this._scrollTarget === document.documentElement ? window : this._scrollTarget;
 
@@ -974,7 +978,7 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
           (document === event.target && document.documentElement === this._scrollTarget)
         ) {
           // only handle scroll event happening on observed scroll container
-          const startIndex = this._getElementIndexFromScrollAmount();
+          const startIndex = this.getElementIndexFromScrollAmount__();
           if (startIndex < this.startIndex || this.endIndex < startIndex) {
             // view out of sync
             this.setWindow(startIndex);
@@ -992,7 +996,7 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
    * @returns Guessed tag name for filler element.
    * @example If the container of filler element is a ordered list (ol), then filler element will be a list item (li).
    */
-  protected __guessFillerTagName(containerTagName: string) {
+  protected guessFillerTagName__(containerTagName: string) {
     let tagName: string = 'div';
     switch (containerTagName) {
       case 'ol':
@@ -1019,16 +1023,16 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
    * @param {IntersectionObserverOptions} [startFillerOptions] - A configuration object for start filler's IntersectionObserver.
    * @param {IntersectionObserverOptions} [endFillerOptions] - A configuration object for end filler's IntersectionObserver.
    */
-  protected _initializeFillerObservers(
+  protected initializeFillerObservers__(
     startFillerOptions?: IntersectionObserverOptions,
     endFillerOptions?: IntersectionObserverOptions
   ) {
     this._startFillerObserver = new IntersectionObserver(
-      (entries) => this.fillerReachedHandler(entries),
+      (entries) => this.fillerReachedHandler__(entries),
       startFillerOptions
     );
     this._endFillerObserver = new IntersectionObserver(
-      (entries) => this.fillerReachedHandler(entries),
+      (entries) => this.fillerReachedHandler__(entries),
       endFillerOptions
     );
   }
@@ -1039,16 +1043,16 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
    * @param {IntersectionObserverOptions} [startSentinelOptions] - A configuration object for start sentinel's IntersectionObserver.
    * @param {IntersectionObserverOptions} [endSentinelOptions] - A configuration object for end sentinel's IntersectionObserver.
    */
-  protected initializeSentinelObservers(
+  protected initializeSentinelObservers__(
     startSentinelOptions?: IntersectionObserverOptions,
     endSentinelOptions?: IntersectionObserverOptions
   ) {
     this._startSentinelObserver = new IntersectionObserver(
-      (entries) => this.sentinelReachedHandler(entries),
+      (entries) => this.sentinelReachedHandler__(entries),
       startSentinelOptions
     );
     this._endSentinelObserver = new IntersectionObserver(
-      (entries) => this.sentinelReachedHandler(entries),
+      (entries) => this.sentinelReachedHandler__(entries),
       endSentinelOptions
     );
   }
@@ -1059,7 +1063,7 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
    * If the source view can fit within a window (`this.shouldPartialRender` is true), then IntersectionObserver will not be activated.
    * @public
    */
-  activateObservers() {
+  protected activateObservers__() {
     if (this._shouldPartialRender) {
       this._startFillerObserver.observe(this._startFillerElement);
       this._endFillerObserver.observe(this._endFillerElement);
@@ -1072,7 +1076,7 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
    * Deactivates all IntersectionObserver. Usually called when a view update is taking place.
    * @public
    */
-  deactivateObservers() {
+  protected deactivateObservers__() {
     this._startFillerObserver.disconnect();
     this._endFillerObserver.disconnect();
     this._startSentinelObserver.disconnect();
@@ -1085,10 +1089,10 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
    * @callback
    * @param {Array<IntersectionObserverEntry>} entries - An array of IntersectionObserver entries.
    */
-  protected fillerReachedHandler(entries: Array<IntersectionObserverEntry>) {
+  protected fillerReachedHandler__(entries: Array<IntersectionObserverEntry>) {
     entries.forEach((entry) => {
       if (entry.isIntersecting && entry.intersectionRect.height > 0) {
-        const newStartIndex = this._getElementIndexFromScrollAmount();
+        const newStartIndex = this.getElementIndexFromScrollAmount__();
         this._shiftAmount = newStartIndex - this.startIndex;
       }
     });
@@ -1100,7 +1104,7 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
    * @callback
    * @param {Array<IntersectionObserverEntry>} entries - An array of IntersectionObserver entries.
    */
-  protected sentinelReachedHandler(entries: Array<IntersectionObserverEntry>) {
+  protected sentinelReachedHandler__(entries: Array<IntersectionObserverEntry>) {
     const shiftAmount = Math.floor(this.windowSize / 2);
     const scrollDirection: ScrollDirection = this._scrollDirection;
 
@@ -1125,7 +1129,7 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
    * @param oldStartIndex - Previous start index. Used to determine by what amount start index has changed.
    * @param oldEndIndex - Previous end index. Used to determine by what amount end index has changed.
    */
-  protected _regenerateViewIfNeeded(oldStartIndex: number, oldEndIndex: number) {
+  protected regenerateViewIfNeeded__(oldStartIndex: number, oldEndIndex: number) {
     const startIndexShiftAmount: number = this.startIndex - oldStartIndex;
     const endIndexShiftAmount: number = this.endIndex - oldEndIndex;
     const hasSameShiftAmount: boolean =
@@ -1180,8 +1184,8 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
    *
    * @param modification - A callback that updates the rendering view.
    */
-  protected _modifyRenderingView(modification: () => void) {
-    this.deactivateObservers();
+  protected modifyRenderingView__(modification: () => void) {
+    this.deactivateObservers__();
     this.invoke(ScrollView.beforeRenderingViewUpdateEventName, this);
 
     modification();
@@ -1194,7 +1198,7 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
     this._propertyManager.setPropertyValueSnapshotSilently(this._shiftAmountProperty, 0);
     this._propertyManager.incrementPropertyValueSnapshotVersion(this._renderingViewProperty);
     this.invoke(ScrollView.afterRenderingViewUpdateEventName, this);
-    this.activateObservers();
+    this.activateObservers__();
   }
 
   /**
@@ -1204,7 +1208,7 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
    *
    * @param {number} [scrollAmount = this.scrollPosition] - How far scrolled from page top.
    */
-  protected _getElementIndexFromScrollAmount(scrollAmount: number = this._scrollPosition) {
+  protected getElementIndexFromScrollAmount__(scrollAmount: number = this._scrollPosition) {
     const position = Math.max(scrollAmount - this._startFillerOffset, 0);
     return bound(Math.floor(position / this._elementLength), 0, this._renderingView.length - 1);
   }
@@ -1237,7 +1241,7 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
     const oldEndIndex = this.endIndex;
 
     if (super.setWindow(startIndex, endIndex, noEventNotification)) {
-      this._regenerateViewIfNeeded(oldStartIndex, oldEndIndex);
+      this.regenerateViewIfNeeded__(oldStartIndex, oldEndIndex);
       return true;
     } else {
       return false;
@@ -1252,7 +1256,7 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement> extends P
     const oldEndIndex = this.endIndex;
 
     if (super.shiftWindow(shiftAmount, noEventNotification)) {
-      this._regenerateViewIfNeeded(oldStartIndex, oldEndIndex);
+      this.regenerateViewIfNeeded__(oldStartIndex, oldEndIndex);
       return true;
     } else {
       return false;
