@@ -254,13 +254,12 @@ export class ViewElement<
   }
 
   /**
-   * Retrieves a child ViewElement by its underlying element.
+   * Retrieves a child ViewElement by its identifier.
    *
-   * @param {HTMLElement} element - An underlying element for a child ViewElement.
+   * @param identifier - An identifier of a child `ViewElement`.
    * @returns {ViewElement} Associated child ViewElement.
    */
-  getChildByElement__(element: HTMLElement): ViewElement {
-    const identifier = element.dataset[ViewElement.identifierDatasetName_];
+  getChildByIdentifier__(identifier: string): ViewElement {
     return this._identifierToChild.get(identifier);
   }
 
