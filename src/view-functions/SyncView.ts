@@ -81,18 +81,20 @@ export class SyncView extends AbstractViewFunction<TViewElementLike> implements 
   /**
    * Create a `SyncView` instance.
    *
-   * @param rootDomElement - The underlying root DOM element.
+   * @param rootElement - The underlying root element. Can either be a `ViewElement` or `HTMLElement`.
    * @constructs SyncView
    */
-  constructor(rootDomElement: HTMLElement) {
+  constructor(rootElement: HTMLElement | ViewElement) {
     super();
 
-    /**
-     * Initialize a `ViewElement` from provided DOM element, since we only care about direct child mutation for provided DOM element, we only provide a factory method for `viewElementFactories`
-     */
-    this.rootViewElement_ = new ViewElement(rootDomElement, [
-      (element) => new ViewElement(element),
-    ]);
+    if (rootElement instanceof HTMLElement) {
+      /**
+       * Initialize a `ViewElement` from provided DOM element, since we only care about direct child mutation for provided DOM element, we only provide a factory method for `viewElementFactories`
+       */
+      this.rootViewElement_ = new ViewElement(rootElement, [(element) => new ViewElement(element)]);
+    } else {
+      this.rootViewElement_ = rootElement;
+    }
 
     this.rootViewElement_.initializeMutationReporter();
     this.initializeMutationHandler__();
