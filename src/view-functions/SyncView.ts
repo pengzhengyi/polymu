@@ -178,6 +178,8 @@ export class SyncView extends AbstractViewFunction<TViewElementLike> implements 
    * Handles ChildList mutation.
    *
    * For example, if a DOM child is removed from `target`, remove the ViewModel child corresponding to that DOM child from `this.sourceViewModel`.
+   *
+   * @param childListChangeEvent - An event containing information about the childlist mutation that triggered this event.
    */
   protected onChildListMutation_(childListChangeEvent: ChildListChangeEvent) {
     if (childListChangeEvent.target !== this.rootDomElement) {
