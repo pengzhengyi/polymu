@@ -1,3 +1,9 @@
+/**
+ * @module
+ *
+ * This module provides an `SyncView` which represents a view transformation that renders view elements to the DOM and watch for the corresponding DOM region for unmanaged mutations (mutations not initiated from `SyncView`) to update view elements.
+ */
+
 import { Collection } from '../collections/Collection';
 import { IFeatureProvider } from '../composition/composition';
 import { ChildListChangeEvent } from '../dom/CustomEvents';
