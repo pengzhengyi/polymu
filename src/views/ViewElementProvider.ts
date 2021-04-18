@@ -4,7 +4,9 @@
  * This module provides interface `IViewElementProvider` and some utility classes implementing this interface.
  */
 
-import { LazyCollectionProvider } from '../collections/Collection';
+import { Collection, LazyCollectionProvider } from '../collections/Collection';
+import { peek } from '../utils/IterableHelper';
+import { TViewElementLike } from '../view-functions/SyncView';
 import { ViewElement } from './ViewElement';
 
 /**
@@ -68,12 +70,14 @@ class LazyCollectionProviderWithMaterializationCallback<TElement> extends LazyCo
  *    + (rooted) a node who will be the parent view element and whose children will be the child view elements
  *    + (unrooted) a collection of elements which will themselves be child view elements
  */
-type TSourceType =
+export type TSourceType =
   | HTMLTemplateElement
   | DocumentFragment
   | HTMLCollection
   | HTMLElement
-  | Iterable<HTMLElement>;
+  | Iterable<HTMLElement>
+  | ViewElement
+  | Iterable<ViewElement>;
 
 /**
  * This class provides the ability to parse DOM constructs like `HTMLCollection`, `HTMLElement`, `HTMLTemplateElement` to provide parent and children `ViewElement`.
@@ -92,10 +96,10 @@ export class ViewElementProvider implements IViewElementProvider {
   /**
    * Internal implementation to provide children `ViewElement`.
    */
-  protected getChildViewElementsInternal: () => Iterable<ViewElement>;
+  protected getChildViewElementsInternal: () => Collection<ViewElement>;
 
   /** @override */
-  get childViewElements(): Iterable<ViewElement> {
+  get childViewElements(): Collection<ViewElement> {
     return this.getChildViewElementsInternal();
   }
 
@@ -103,7 +107,7 @@ export class ViewElementProvider implements IViewElementProvider {
    * Consume DOM construct so that current `ViewElementProvider` is able to provide corresponding `ViewElement` construct.
    *
    * @param source - A DOM construct provides DOM element(s) to bootstrap corresponding `ViewElement` hierarchy.
-   * @param {HTMLElement} [fallbackContainer] - An DOM element which will be used to create parent `ViewElement` if `source` is "unrooted". An error will be raised if this argument is not provided when `source` is "unrooted".
+   * @param {HTMLElement} [fallbackContainer] - An DOM element which will be used to (re)create parent `ViewElement` if `source` is "unrooted". An error will be raised if this argument is not provided when `source` is "unrooted" and parent `ViewElement` has not been initialized before.
    * @param {boolean} [shouldLazyInitialize = undefined] - Whether children `ViewElement` will be lazily registered to the parent `ViewElement`. Default to `undefined`, which means that lazy initialization is enabled when the number of child DOM elements exceeds the threshold.
    */
   consume(
@@ -111,6 +115,12 @@ export class ViewElementProvider implements IViewElementProvider {
     fallbackContainer?: HTMLElement,
     shouldLazyInitialize: boolean = undefined
   ) {
+    if (source instanceof ViewElement) {
+      this.parentViewElement = source;
+      this.getChildViewElementsInternal = () => this.parentViewElement.children_;
+      return;
+    }
+
     if (source instanceof HTMLTemplateElement) {
       source = source.content;
     }
@@ -134,12 +144,36 @@ export class ViewElementProvider implements IViewElementProvider {
         this.parentViewElement = new ViewElement(fallbackContainer, [
           (element) => new ViewElement(element),
         ]);
-      } else {
+      } else if (this.parentViewElement === undefined) {
         throw new ReferenceError('fallbackContainer not provided when needed');
       }
     }
 
+    // source is either an iterable of ViewElement or HTMLElement
+
     const numDomElement: number = (source as any).length;
+
+    const peekResult = peek(source as Iterable<TViewElementLike>);
+    const { done, value } = peekResult.next();
+    if (done) {
+      this.parentViewElement.children_ = [];
+      this.getChildViewElementsInternal = () => this.parentViewElement.children_;
+      return;
+    }
+
+    if (value instanceof ViewElement) {
+      this.parentViewElement.patchChildViewElementsWithViewElements__(
+        peekResult as Iterable<ViewElement>
+      );
+      this.getChildViewElementsInternal = () => this.parentViewElement.children_;
+      return;
+    }
+
+    if (!Array.isArray(source)) {
+      // if source is not Array, peeking the first element will affect the original iterable and we need to reassign it to corrected iterable
+      source = peekResult as Iterable<HTMLElement>;
+    }
+
     if (
       shouldLazyInitialize === true ||
       (shouldLazyInitialize === undefined &&

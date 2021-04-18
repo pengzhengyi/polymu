@@ -251,10 +251,21 @@ export class SyncView extends AbstractViewFunction<TViewElementLike> implements 
 
     this.modifyDomInternal__(() => {
       if (source instanceof HTMLElement) {
-        this.rootViewElement_.patchWithDOM__(source, mode, false, false);
+        // `PatchModeForMatch.CreateAlias` is okay here since `patchWithDOMElement__` will not need to manipulate children DOM elements
+        this.rootViewElement_.patchWithDOMElement__(
+          source,
+          PatchModeForMatch.CreateAlias,
+          false,
+          false
+        );
       } else if (source instanceof ViewElement) {
         // since `ViewElement` is also iterable, it should come before the check for `isIterable`
-        this.rootViewElement_.patchWithViewElement__(source, mode, false, false);
+        this.rootViewElement_.patchWithViewElement__(
+          source,
+          PatchModeForMatch.CloneNode,
+          false,
+          false
+        );
       } else if (isIterable(source)) {
         const peekResult = peek(source as Iterable<TViewElementLike>);
         const { done, value } = peekResult.next();

@@ -17,7 +17,7 @@ describe('View Element', () => {
       <td id="961368" tabindex="-1">Harvard University</td>
     `;
     viewElement = new ViewElement(source, [(element) => new ViewElement(element)]);
-    viewElement.patchWithDOM__(source);
+    viewElement.patchWithDOMElement__(source);
   });
 
   test('unique identifier', () => {
@@ -54,7 +54,7 @@ describe('View Element', () => {
     viewElement.removeChild__(viewElement.children_[0]);
     expect(viewElement.children_.length).toBe(4);
     expect((viewElement as any).children.length).toBe(6);
-    viewElement.patchWithDOM__(source.cloneNode(true) as HTMLElement);
+    viewElement.patchWithDOMElement__(source.cloneNode(true) as HTMLElement);
     expect((viewElement as any).children.length).toBe(6);
     expect(viewElement.children_.length).toBe(6);
     expect((viewElement.children_[0] as any).textContent).toBe('A. J. Kfoury');

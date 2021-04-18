@@ -407,6 +407,7 @@ export class ViewElement<
    *
    * @param {TDomElement} other - The HTML element of the other ViewElement.
    * @param {PatchModeForMatch} [mode=PatchModeForMatch.CreateAlias] - Determines how to update current ViewElement's HTML element.
+   * @param {boolean} [shouldDeepClone=true] - When `mode` is `PatchModeForMatch.CloneNode`, this value determines whether a deep clone is made.
    * @param {IterableIterator<Prop>} [properties] - An iterable of properties. This parameter is only used when `mode === PatchModeForMatch.ModifyProperties`. If not supplied, will update all properties exist in the other ViewElement's HTML element.
    * @param {boolean} [noDetach = true] - Whether current underlying element should be removed from the DOM tree. Default to true, which means it will not be removed.
    * @param {boolean} [noAttach = true] - Whether new element should be added to the DOM tree. Default to true, which means it will not be added.
@@ -414,6 +415,7 @@ export class ViewElement<
   private __patchSelf(
     other: TDomElement,
     mode: PatchModeForMatch = PatchModeForMatch.CreateAlias,
+    shouldDeepClone: boolean = false,
     properties?: IterableIterator<Prop>,
     noDetach: boolean = true,
     noAttach: boolean = true
@@ -427,7 +429,7 @@ export class ViewElement<
         newElement = other;
         break;
       case PatchModeForMatch.CloneNode:
-        this.setForwardingTo__((newElement = other.cloneNode(true) as TDomElement));
+        this.setForwardingTo__((newElement = other.cloneNode(shouldDeepClone) as TDomElement));
         break;
       case PatchModeForMatch.ModifyProperties:
         if (properties) {
@@ -446,7 +448,9 @@ export class ViewElement<
     }
 
     if (!noDetach && !noAttach) {
-      oldElement.replaceWith(newElement);
+      if (oldElement !== newElement) {
+        oldElement.replaceWith(newElement);
+      }
     } else if (!noDetach) {
       // should detach but not attach
       oldElement.remove();
@@ -490,7 +494,7 @@ export class ViewElement<
     noAttach: boolean = true
   ) {
     // patch self
-    this.__patchSelf(other.element_ as TDomElement, mode, undefined, noDetach, noAttach);
+    this.__patchSelf(other.element_ as TDomElement, mode, true, undefined, noDetach, noAttach);
 
     // patch children
     patch(
@@ -508,7 +512,12 @@ export class ViewElement<
         // other ViewElement surplus: append to the end
         this.insertChild__(otherChild, childIndex);
         if (!noAttach) {
-          this.element_.appendChild(otherChild.element_);
+          if (mode !== PatchModeForMatch.CreateAlias && mode !== PatchModeForMatch.CloneNode) {
+            if (!this.element_.contains(otherChild.element_)) {
+              // ! this hack avoids duplicating element
+              this.element_.appendChild(otherChild.element_);
+            }
+          }
         }
       }
     );
@@ -584,14 +593,19 @@ export class ViewElement<
    * @param {boolean} [noDetach = true] - Whether surplus DOM elements of `this._children` will be removed from DOM tree.
    * @param {boolean} [noAttach = true] - Whether surplus DOM elements of `other.children` will be appended
    */
-  patchWithDOM__(
+  patchWithDOMElement__(
     other: TDomElement,
     mode: PatchModeForMatch = PatchModeForMatch.CreateAlias,
     noDetach: boolean = true,
     noAttach: boolean = true
   ) {
     // patch self
-    this.__patchSelf(other, mode, undefined, noDetach, noAttach);
+    this.__patchSelf(other, mode, true, undefined, noDetach, noAttach);
+
+    if (mode === PatchModeForMatch.CreateAlias || mode === PatchModeForMatch.CloneNode) {
+      // when patching with DOM, DOM children are present after the call to `__patchSelf` because of aliasing or deep clone, therefore, no further mutation to the DOM is needed and only updating children ViewElement is necessary
+      noDetach = noAttach = true;
+    }
 
     // patch children
     this.patchChildViewElementsWithDOMElements__(other.children, mode, noDetach, noAttach);
@@ -640,7 +654,7 @@ export class ViewElement<
       this._children,
       elements,
       (child, otherChild) =>
-        child.patchWithDOM__(otherChild as HTMLElement, mode, noDetach, noAttach),
+        child.patchWithDOMElement__(otherChild as HTMLElement, mode, noDetach, noAttach),
       (child, childIndex) => {
         // this ViewElement surplus: remove
         this.removeChildByIndex__(childIndex);
@@ -681,7 +695,7 @@ export class ViewElement<
   setupAutoUpdateChildViewElement() {
     this.element_.addEventListener(ChildListChangeEvent.typeArg, () => {
       // update children ViewElement
-      this.patchWithDOM__(this.element_);
+      this.patchWithDOMElement__(this.element_);
     });
   }
 
