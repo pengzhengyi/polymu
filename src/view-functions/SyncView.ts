@@ -243,17 +243,18 @@ export class SyncView extends AbstractViewFunction<TViewElementLike> implements 
    * @param source - Element or elements used to update current `this.rootViewElement_`.
    */
   sync(source: TViewElementLike | Iterable<TViewElementLike>) {
+    /**
+     * + `PatchModeForMatch.ModifyProperties` is too expensive
+     * + `PatchModeForMatch.CreateAlias` might alias two `ViewElement` during `replaceWith` and cause unintended altogether deletion of underlying element. @example suppose there are two `ViewElement` where the first `ViewElement`'s underlying element has a id "1" while the second "2". When `sync` is called with only the later ViewElement, if with `PatchModeForMatch.CreateAlias`, then the in-place-patch algorithm will change first `ViewElement`'s underlying element to be the one with id "2". Therefore, during deletion of second ViewElement and detaching of its underlying element, both ViewElement will have their underlying DOM element removed.
+     */
+    const mode = PatchModeForMatch.CloneNode;
+
     this.modifyDomInternal__(() => {
       if (source instanceof HTMLElement) {
-        this.rootViewElement_.patchWithDOM__(source, PatchModeForMatch.CreateAlias, false, false);
+        this.rootViewElement_.patchWithDOM__(source, mode, false, false);
       } else if (source instanceof ViewElement) {
         // since `ViewElement` is also iterable, it should come before the check for `isIterable`
-        this.rootViewElement_.patchWithViewElement__(
-          source,
-          PatchModeForMatch.CreateAlias,
-          false,
-          false
-        );
+        this.rootViewElement_.patchWithViewElement__(source, mode, false, false);
       } else if (isIterable(source)) {
         const peekResult = peek(source as Iterable<TViewElementLike>);
         const { done, value } = peekResult.next();
@@ -264,7 +265,7 @@ export class SyncView extends AbstractViewFunction<TViewElementLike> implements 
             // first element is `HTMLElement`
             this.rootViewElement_.patchChildViewElementsWithDOMElements__(
               peekResult as Iterable<HTMLElement>,
-              PatchModeForMatch.CreateAlias,
+              mode,
               false,
               false
             );
@@ -272,7 +273,7 @@ export class SyncView extends AbstractViewFunction<TViewElementLike> implements 
             // first element is `ViewElement`
             this.rootViewElement_.patchChildViewElementsWithViewElements__(
               peekResult as Iterable<ViewElement>,
-              PatchModeForMatch.CreateAlias,
+              mode,
               false,
               false
             );
