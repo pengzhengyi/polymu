@@ -1,3 +1,4 @@
+import { ChildListChangeEvent } from '../dom/CustomEvents';
 import { FilteredView } from '../view-functions/FilteredView';
 import { BaseView, ViewTransformation } from './BaseView';
 import { ViewElement } from './ViewElement';
@@ -87,5 +88,148 @@ describe('BaseView', () => {
     const newView = baseView.view(newSource, false);
 
     expect(target.childElementCount).toEqual(5);
+  });
+
+  test('back propagation dom mutation when added elements is filtered', (done) => {
+    const source: Iterable<HTMLParagraphElement> = createParagraphElement(2);
+
+    const target = document.createElement('div');
+    document.body.appendChild(target);
+
+    const viewTransformations: Array<ViewTransformation> = [new FilteredView<ViewElement>()];
+
+    const baseView = new BaseView(source, target, viewTransformations);
+
+    // before filter function is applied
+    expect(target.childElementCount).toEqual(2);
+
+    (baseView as any).addFilterFunction(
+      'text content equals 1 or 3',
+      (viewElement: ViewElement) =>
+        viewElement.element_.textContent === '1' || viewElement.element_.textContent === '3'
+    );
+
+    // after filter function is applied
+    expect(target.childElementCount).toEqual(1);
+
+    baseView.enableBackPropagation();
+    document.addEventListener(
+      ChildListChangeEvent.typeArg,
+      () => {
+        // before mutations are handled
+        // dom mutation is already handled
+        expect(target.childElementCount).toEqual(2);
+        // dom mutation is not yet processed to update `ViewElement`
+        expect(baseView.viewElementProvider.parentViewElement.children_).toHaveLength(2);
+      },
+      {
+        once: true,
+        capture: true,
+      }
+    );
+    document.addEventListener(
+      ChildListChangeEvent.typeArg,
+      () => {
+        // after mutations are handled
+        expect(target.childElementCount).toEqual(2);
+        expect(baseView.viewElementProvider.parentViewElement.children_).toHaveLength(3);
+        done();
+      },
+      {
+        once: true,
+      }
+    );
+
+    const paragraphWith3 = document.createElement('p');
+    paragraphWith3.textContent = '3';
+    target.appendChild(paragraphWith3);
+  });
+
+  test('back propagation dom mutation with adding node', (done) => {
+    const source: Iterable<HTMLParagraphElement> = createParagraphElement(2);
+
+    const target = document.createElement('div');
+    document.body.appendChild(target);
+
+    const viewTransformations: Array<ViewTransformation> = [];
+
+    const baseView = new BaseView(source, target, viewTransformations);
+
+    expect(target.childElementCount).toEqual(2);
+
+    baseView.enableBackPropagation();
+    document.addEventListener(
+      ChildListChangeEvent.typeArg,
+      () => {
+        // before mutations are handled
+        // dom mutation is already handled
+        expect(target.childElementCount).toEqual(3);
+        // dom mutation is not yet processed to update `ViewElement`
+        expect(baseView.viewElementProvider.parentViewElement.children_).toHaveLength(2);
+      },
+      {
+        once: true,
+        capture: true,
+      }
+    );
+    document.addEventListener(
+      ChildListChangeEvent.typeArg,
+      () => {
+        // after mutations are handled
+        expect(target.childElementCount).toEqual(3);
+        expect(baseView.viewElementProvider.parentViewElement.children_).toHaveLength(3);
+        done();
+      },
+      {
+        once: true,
+      }
+    );
+
+    const newElement = document.createElement('p');
+    newElement.textContent = 'new paragraph';
+    target.appendChild(newElement);
+  });
+
+  test('back propagation dom mutation with removing node', (done) => {
+    const source: Iterable<HTMLParagraphElement> = createParagraphElement(2);
+
+    const target = document.createElement('div');
+    document.body.appendChild(target);
+
+    const viewTransformations: Array<ViewTransformation> = [];
+
+    const baseView = new BaseView(source, target, viewTransformations);
+
+    expect(target.childElementCount).toEqual(2);
+
+    baseView.enableBackPropagation();
+    document.addEventListener(
+      ChildListChangeEvent.typeArg,
+      () => {
+        // before mutations are handled
+        // dom mutation is already handled
+        expect(target.childElementCount).toEqual(0);
+        // dom mutation is not yet processed to update `ViewElement`
+        expect(baseView.viewElementProvider.parentViewElement.children_).toHaveLength(2);
+      },
+      {
+        once: true,
+        capture: true,
+      }
+    );
+    document.addEventListener(
+      ChildListChangeEvent.typeArg,
+      () => {
+        // after mutations are handled
+        expect(target.childElementCount).toEqual(0);
+        expect(baseView.viewElementProvider.parentViewElement.children_).toHaveLength(0);
+        done();
+      },
+      {
+        once: true,
+      }
+    );
+
+    target.innerHTML = '';
   });
 });
