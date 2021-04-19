@@ -82,24 +82,21 @@ export class SyncView extends AbstractViewFunction<TViewElementLike> implements 
    * Create a `SyncView` instance.
    *
    * @param rootElement - The underlying root element. Can either be a `ViewElement` or `HTMLElement`.
+   * @param {boolean} [shouldInitializeMutationHandler = true] - If true, DOM mutation in relevant region should be handled by default mutation handler which will update the children ViewElement accordingly. If false, relevant mutation will be reported as event but no event listener will be registered by this instance. Default to true.
    * @constructs SyncView
    */
-  constructor(rootElement: HTMLElement | ViewElement) {
+  constructor(rootElement: TViewElementLike, shouldInitializeMutationHandler: boolean = true) {
     super();
 
-    if (rootElement instanceof HTMLElement) {
-      /**
-       * Initialize a `ViewElement` from provided DOM element, since we only care about direct child mutation for provided DOM element, we only provide a factory method for `viewElementFactories`
-       */
-      this.rootViewElement_ = new ViewElement(rootElement, [(element) => new ViewElement(element)]);
-    } else {
-      this.rootViewElement_ = rootElement;
-    }
+    this.initializeRootViewElement__(rootElement);
 
     this.rootViewElement_.initializeMutationReporter();
-    this.initializeMutationHandler__();
 
-    this.initializeTaskQueue_();
+    if (shouldInitializeMutationHandler) {
+      this.initializeMutationHandler__();
+    }
+
+    this.initializeTaskQueue__();
 
     this.observe__();
   }
@@ -135,9 +132,25 @@ export class SyncView extends AbstractViewFunction<TViewElementLike> implements 
   }
 
   /**
+   * Initialize `this.rootViewElement_`. This `ViewElement` will be the parent for children `ViewElement`.
+   *
+   * @param rootElement - The underlying root element. Can either be a `ViewElement` or `HTMLElement`.
+   */
+  protected initializeRootViewElement__(rootElement: TViewElementLike) {
+    if (rootElement instanceof HTMLElement) {
+      /**
+       * Initialize a `ViewElement` from provided DOM element, since we only care about direct child mutation for provided DOM element, we only provide a factory method for `viewElementFactories`
+       */
+      this.rootViewElement_ = new ViewElement(rootElement, [(element) => new ViewElement(element)]);
+    } else {
+      this.rootViewElement_ = rootElement;
+    }
+  }
+
+  /**
    * Initialize the task queues executed before and after DOM changes.
    */
-  protected initializeTaskQueue_() {
+  protected initializeTaskQueue__() {
     this.beforeViewUpdateTaskQueue.tasks.push({
       work: () => this.unobserve__(),
       isRecurring: true,
@@ -171,7 +184,7 @@ export class SyncView extends AbstractViewFunction<TViewElementLike> implements 
   protected initializeMutationHandler__() {
     this.rootDomElement.addEventListener(
       ChildListChangeEvent.typeArg,
-      (event: ChildListChangeEvent) => this.onChildListMutation_(event)
+      (event: ChildListChangeEvent) => this.onChildListMutation__(event)
     );
   }
   /**
@@ -181,7 +194,7 @@ export class SyncView extends AbstractViewFunction<TViewElementLike> implements 
    *
    * @param childListChangeEvent - An event containing information about the childlist mutation that triggered this event.
    */
-  protected onChildListMutation_(childListChangeEvent: ChildListChangeEvent) {
+  protected onChildListMutation__(childListChangeEvent: ChildListChangeEvent) {
     if (childListChangeEvent.target !== this.rootDomElement) {
       // only handle mutations to direct children
       return;
@@ -221,7 +234,7 @@ export class SyncView extends AbstractViewFunction<TViewElementLike> implements 
    * @param beforeViewUpdateTaskQueueArgs - Arguments passed to `beforeViewUpdateTaskQueue` when it executes setup work.
    * @param afterViewUpdateTaskQueueArgs - Arguments passed to `afterViewUpdateTaskQueue` when it executes teardown work.
    */
-  protected modifyDomInternal__(
+  modifyDomInternal__(
     action: () => void,
     beforeViewUpdateTaskQueueArgs: any[] = [],
     afterViewUpdateTaskQueueArgs: any[] = []

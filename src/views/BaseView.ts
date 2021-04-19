@@ -9,7 +9,7 @@ import { composeFeatures } from '../composition/composition';
 import { ChildListChangeEvent } from '../dom/CustomEvents';
 import { AbstractViewFunction } from '../view-functions/AbstractViewFunction';
 import { AggregateView } from '../view-functions/AggregateView';
-import { SyncView as _SyncView, TViewElementLike } from '../view-functions/SyncView';
+import { SyncView, TViewElementLike } from '../view-functions/SyncView';
 import { ViewElement } from './ViewElement';
 import { TSourceType, ViewElementProvider } from './ViewElementProvider';
 
@@ -21,14 +21,6 @@ type RenderingViewFunction = /* ScrollView<ViewElement, HTMLElement> | */ SyncVi
  * A union type including all view functions that only transform a `View`. These view functions will have no impact on DOM.
  */
 export type ViewTransformation = Exclude<AbstractViewFunction<ViewElement>, RenderingViewFunction>;
-
-/**
- * A customized `SyncView` which does not handle DOM mutation. This allows DOM mutations to be processed in different ways.
- */
-class SyncView extends _SyncView {
-  /** @override Use custom mutation handling logic */
-  protected initializeMutationHandler__() {}
-}
 
 /**
  * `BaseView` consists of three parts:
@@ -151,7 +143,7 @@ export class BaseView extends AggregateView<TViewElementLike> {
    * @param target - A DOM element which reflects a region of DOM that is synced with `ViewElement` hierarchy.
    */
   protected initializeRenderingView__(target: HTMLElement) {
-    this.renderingView = new SyncView(target);
+    this.renderingView = new SyncView(target, false);
   }
 
   /**
