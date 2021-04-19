@@ -35,7 +35,6 @@ export class AggregateView<TViewElement> extends AbstractViewFunction<TViewEleme
    * @param {Array<AbstractViewFunction<TViewElement>>} [viewFunctions = []] - An array of view function that transforms source view elements of specified type to target view elements of same type.
    * @constructs {ViewFunctionChain<TViewElement>} A pipeline (chain) of view functions.
    */
-
   constructor(viewFunctions: Array<AbstractViewFunction<TViewElement>> = []) {
     super();
 

@@ -232,4 +232,35 @@ describe('BaseView', () => {
 
     target.innerHTML = '';
   });
+
+  test('enable and disable back propagation', (done) => {
+    const source: Iterable<HTMLParagraphElement> = createParagraphElement(2);
+
+    const target = document.createElement('div');
+    document.body.appendChild(target);
+
+    const viewTransformations: Array<ViewTransformation> = [];
+
+    const baseView = new BaseView(source, target, viewTransformations);
+
+    expect(target.childElementCount).toEqual(2);
+    expect(baseView.viewElementProvider.parentViewElement.children_).toHaveLength(2);
+
+    baseView.enableBackPropagation();
+    baseView.disableBackPropagation();
+    document.addEventListener(
+      ChildListChangeEvent.typeArg,
+      () => {
+        // after mutations are handled
+        expect(target.childElementCount).toEqual(3);
+        expect(baseView.viewElementProvider.parentViewElement.children_).toHaveLength(2);
+        done();
+      },
+      {
+        once: true,
+      }
+    );
+
+    target.appendChild(document.createElement('p'));
+  });
 });

@@ -104,9 +104,9 @@ export class ViewElementProvider implements IViewElementProvider {
   }
 
   /**
-   * Consume DOM construct so that current `ViewElementProvider` is able to provide corresponding `ViewElement` construct.
+   * Consume construct so that current `ViewElementProvider` is able to provide corresponding `ViewElement` construct.
    *
-   * @param source - A DOM construct provides DOM element(s) to bootstrap corresponding `ViewElement` hierarchy.
+   * @param source - A construct provides element(s) to bootstrap corresponding `ViewElement` hierarchy.
    * @param {HTMLElement} [fallbackContainer] - An DOM element which will be used to (re)create parent `ViewElement` if `source` is "unrooted". An error will be raised if this argument is not provided when `source` is "unrooted" and parent `ViewElement` has not been initialized before.
    * @param {boolean} [shouldLazyInitialize = undefined] - Whether children `ViewElement` will be lazily registered to the parent `ViewElement`. Default to `undefined`, which means that lazy initialization is enabled when the number of child DOM elements exceeds the threshold.
    */
