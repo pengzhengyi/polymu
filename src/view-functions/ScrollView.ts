@@ -29,6 +29,7 @@ import {
 import { debounceWithCooldown } from '../utils/debounce';
 import { bound } from '../utils/math';
 import { ViewElement } from '../views/ViewElement';
+import { ViewElementChildListMutationReporter } from '../views/ViewElementChildListMutationReporter';
 import { PartialView } from './PartialView';
 
 /**
@@ -130,6 +131,8 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement>
   protected static readonly _renderingViewPropertyName = '_renderingView';
   /** The property name for `_target` */
   protected static readonly _targetPropertyName = '_target';
+  /** The property name for `_targetViewElement` */
+  protected static readonly _targetViewElementPropertyName = '_targetViewElement';
   /** The property name for `_scrollTarget` */
   protected static readonly _scrollTargetPropertyName = '_scrollTarget';
   /** The property name for `_scrollAxis` */
@@ -209,7 +212,7 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement>
    *
    * A circular array is used since it supports efficient implementation of shifting -- add/remove some elements from one end while remove/add same number of elements at the other end.
    */
-  private __circularArray: CircularArray<TDomElement>;
+  protected __circularArray: CircularArray<TDomElement>;
   /**
    * A collection of elements that consist of rendering view. These elements are also actual DOM elements that are children of `this._target`.
    *
@@ -222,9 +225,9 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement>
   protected _renderingViewProperty: Property<Collection<TDomElement>> = new Property(
     ScrollView._renderingViewPropertyName,
     (thisValue, manager) => {
-      let targetView: Collection<TViewElement>;
-      let target: HTMLElement;
-      const convert = this._convert;
+      // The following dependencies are used in delegating calls to `handleReplaceRenderingStrategy__` and `handleShiftRenderingStrategy__` so they need to be hoisted here
+      // Dependency Injection: manager.getPropertyValue('_shiftAmount');
+      // Dependency Injection: manager.getPropertyValue('_target');
       const renderingStrategy: RenderingStrategy = manager.getPropertyValue('_renderingStrategy');
 
       switch (renderingStrategy) {
@@ -232,104 +235,12 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement>
           break;
         case RenderingStrategy.Replace:
           this.modifyRenderingView__(() => {
-            targetView = this._targetView;
-            const scrollPosition = this._scrollPosition;
-
-            if (this.__circularArray === undefined) {
-              // a heuristic to set the initial capacity for circular array
-              const capacity =
-                targetView.length || (targetView as any).materializationLength || 1000;
-              this.__circularArray = new CircularArray(capacity);
-            }
-
-            target = manager.getPropertyValue('_target');
-            const existingElements = Array.from(this._target.children);
-            let existingElementCount = existingElements.length;
-            this.__circularArray.fit(
-              (function* () {
-                for (const viewElement of targetView) {
-                  yield convert(viewElement);
-                }
-              })(),
-              undefined,
-              (element, index) => {
-                if (existingElementCount > 0) {
-                  const existingElement = existingElements[index];
-                  existingElement.replaceWith(element);
-                  existingElementCount--;
-                } else {
-                  target.appendChild(element);
-                }
-              }
-            );
-
-            // remove surplus elements
-            for (; existingElementCount > 0; existingElementCount--) {
-              target.lastElementChild.remove();
-            }
-
-            this._scrollPosition = scrollPosition;
+            this.handleReplaceRenderingStrategy__();
           });
           break;
         case RenderingStrategy.Shift:
           this.modifyRenderingView__(() => {
-            targetView = this._targetView;
-            const shiftAmount: number = manager.getPropertyValue('_shiftAmount');
-            target = manager.getPropertyValue('_target');
-
-            console.assert(
-              this.__circularArray === undefined || !this.__circularArray.isFull,
-              'invalid circular array state when performing shift in target view'
-            );
-
-            const shiftTowardsEnd = shiftAmount > 0;
-            let onEnter: (element: TDomElement, windowIndex: number) => void;
-            if (shiftTowardsEnd) {
-              onEnter = (element) => target.appendChild(element);
-            } else {
-              let lastInsertedElement: TDomElement;
-              onEnter = (element, windowIndex) => {
-                if (windowIndex === 0) {
-                  // inserting first element
-                  target.prepend(element);
-                } else {
-                  // inserting other element
-                  lastInsertedElement.after(element);
-                }
-                lastInsertedElement = element;
-              };
-            }
-            // update circular array based on `shiftAmount`
-            this.__circularArray.shift(
-              shiftAmount,
-              (function* () {
-                if (shiftTowardsEnd) {
-                  // shift towards end
-                  let numViewElement = targetView.length;
-                  if (numViewElement === undefined) {
-                    const viewElements = Array.from(targetView);
-                    numViewElement = viewElements.length;
-                    for (let i = numViewElement - shiftAmount; i < numViewElement; i++) {
-                      yield convert(viewElements[i]);
-                    }
-                  } else {
-                    for (const viewElement of targetView.slice(
-                      numViewElement - shiftAmount,
-                      numViewElement
-                    )) {
-                      yield convert(viewElement);
-                    }
-                  }
-                } else {
-                  // shift towards start, first `shiftAmount` elements of `targetView` will be inserted
-                  for (const viewElement of targetView.slice(0, -shiftAmount)) {
-                    yield convert(viewElement);
-                  }
-                }
-              })(),
-              (element) => element.remove(),
-              onEnter
-            );
+            this.handleShiftRenderingStrategy__();
           });
           break;
       }
@@ -352,6 +263,48 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement>
     // `_target` is "prerequisite free": it is a leaf node in prerequisite graph as its value is modified through exposed setter
     (_, manager) => manager.getPropertyValueSnapshotWithName(ScrollView._targetPropertyName),
     UpdateBehavior.Lazy
+  );
+
+  /**
+   * An observer that monitors child list mutations happening to the `this._target`.
+   */
+  protected _targetChildListMutationReporter: ViewElementChildListMutationReporter;
+
+  /**
+   * A `ViewElement` whose underlying element is `this._target`
+   */
+  protected _targetViewElement: ViewElement;
+  /**
+   * A property that describes `_targetViewElement`. Its value is dependent on `_target`.
+   */
+  protected _targetViewElementProperty: Property<ViewElement> = new Property(
+    ScrollView._targetViewElementPropertyName,
+    (thisValue, manager) => {
+      const target: HTMLElement = manager.getPropertyValue('_target');
+      const targetVersion = manager.getPropertyValueSnapshotVersionWithName(
+        ScrollView._targetPropertyName
+      );
+      thisValue.shouldReuseLastValue = (_, manager) =>
+        manager.isSnapshotVersionUpToDate(ScrollView._targetPropertyName, targetVersion);
+
+      if (target === undefined) {
+        return undefined;
+      }
+
+      return new ViewElement(target, [(element) => new ViewElement(element)]);
+    },
+    UpdateBehavior.Immediate,
+    (oldValue, newValue, thisValue, manager) => {
+      if (oldValue) {
+        this._targetChildListMutationReporter.dispose();
+      }
+
+      if (newValue) {
+        this._targetChildListMutationReporter = new ViewElementChildListMutationReporter(newValue);
+      }
+
+      manager.notifyValueChange(thisValue);
+    }
   );
 
   /** A HTMLElement that constitutes the scrolling area, inside which the scroll bar will be rendered */
@@ -929,6 +882,7 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement>
       this._shiftAmountProperty,
       this._renderingViewProperty,
       this._targetProperty,
+      this._targetViewElementProperty,
       this._scrollTargetProperty,
       this._scrollAxisProperty,
       this._lastScrollPositionProperty,
@@ -1054,6 +1008,117 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement>
     this._endSentinelObserver = new IntersectionObserver(
       (entries) => this.sentinelReachedHandler__(entries),
       endSentinelOptions
+    );
+  }
+
+  /**
+   * When rendering strategy is `Replace`, new rendering view should be generated from target view without utilizing previous rendering view.
+   *
+   * `handleReplaceRenderingStrategy__` will be responsible for creating the new rendering view and mount it to the DOM.
+   */
+  protected handleReplaceRenderingStrategy__() {
+    const targetView: Collection<TViewElement> = this._targetView;
+    const target = this._propertyManager.getPropertyValue('_target');
+    const convert = this._convert;
+    const scrollPosition = this._scrollPosition;
+
+    if (this.__circularArray === undefined) {
+      // a heuristic to set the initial capacity for circular array
+      const capacity = targetView.length || (targetView as any).materializationLength || 1000;
+      this.__circularArray = new CircularArray(capacity);
+    }
+
+    const existingElements = Array.from(this._target.children);
+    let existingElementCount = existingElements.length;
+    this.__circularArray.fit(
+      (function* () {
+        for (const viewElement of targetView) {
+          yield convert(viewElement);
+        }
+      })(),
+      undefined,
+      (element, index) => {
+        if (existingElementCount > 0) {
+          const existingElement = existingElements[index];
+          existingElement.replaceWith(element);
+          existingElementCount--;
+        } else {
+          target.appendChild(element);
+        }
+      }
+    );
+
+    // remove surplus elements
+    for (; existingElementCount > 0; existingElementCount--) {
+      target.lastElementChild.remove();
+    }
+
+    this._scrollPosition = scrollPosition;
+  }
+
+  /**
+   * When rendering strategy is `Shift`, new rendering view can be generated by "shifting" the previous rendering view -- replacing some elements at the beginning or end with some new elements added to the end or beginning.
+   *
+   * `handleShiftRenderingStrategy__` will be responsible for creating the new rendering view and mount it to the DOM.
+   */
+  protected handleShiftRenderingStrategy__() {
+    const targetView: Collection<TViewElement> = this._targetView;
+    const shiftAmount: number = this._propertyManager.getPropertyValue('_shiftAmount');
+    const target = this._propertyManager.getPropertyValue('_target');
+    const convert = this._convert;
+
+    console.assert(
+      this.__circularArray === undefined || !this.__circularArray.isFull,
+      'invalid circular array state when performing shift in target view'
+    );
+
+    const shiftTowardsEnd = shiftAmount > 0;
+    let onEnter: (element: TDomElement, windowIndex: number) => void;
+    if (shiftTowardsEnd) {
+      onEnter = (element) => target.appendChild(element);
+    } else {
+      let lastInsertedElement: TDomElement;
+      onEnter = (element, windowIndex) => {
+        if (windowIndex === 0) {
+          // inserting first element
+          target.prepend(element);
+        } else {
+          // inserting other element
+          lastInsertedElement.after(element);
+        }
+        lastInsertedElement = element;
+      };
+    }
+    // update circular array based on `shiftAmount`
+    this.__circularArray.shift(
+      shiftAmount,
+      (function* () {
+        if (shiftTowardsEnd) {
+          // shift towards end
+          let numViewElement = targetView.length;
+          if (numViewElement === undefined) {
+            const viewElements = Array.from(targetView);
+            numViewElement = viewElements.length;
+            for (let i = numViewElement - shiftAmount; i < numViewElement; i++) {
+              yield convert(viewElements[i]);
+            }
+          } else {
+            for (const viewElement of targetView.slice(
+              numViewElement - shiftAmount,
+              numViewElement
+            )) {
+              yield convert(viewElement);
+            }
+          }
+        } else {
+          // shift towards start, first `shiftAmount` elements of `targetView` will be inserted
+          for (const viewElement of targetView.slice(0, -shiftAmount)) {
+            yield convert(viewElement);
+          }
+        }
+      })(),
+      (element) => element.remove(),
+      onEnter
     );
   }
 
@@ -1185,11 +1250,15 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement>
    * @param modification - A callback that updates the rendering view.
    */
   protected modifyRenderingView__(modification: () => void) {
+    const shouldMuteMutationReporter = this._targetChildListMutationReporter !== undefined;
+
     this.deactivateObservers__();
     this.invoke(ScrollView.beforeRenderingViewUpdateEventName, this);
+    shouldMuteMutationReporter && this._targetChildListMutationReporter.unobserve();
 
     modification();
 
+    shouldMuteMutationReporter && this._targetChildListMutationReporter.observe();
     // allow current rendering view to be reused when RenderingStrategy has remained `NoAction`
     this._propertyManager.setPropertyValueSnapshotSilently(
       this._renderingStrategyProperty,
