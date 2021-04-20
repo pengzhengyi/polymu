@@ -244,7 +244,9 @@ export class BaseView extends AggregateView<TViewElementLike> {
       return;
     }
 
-    let shouldRegenerateView: boolean = this.tryRemoveViewElementFromNodeList__(childListChangeEvent.detail.removedNodes) || this.tryInsertViewElementFromNodeList(childListChangeEvent.detail.addedNodes);
+    let shouldRegenerateView: boolean =
+      this.tryRemoveViewElementFromNodeList__(childListChangeEvent.detail.removedNodes) ||
+      this.tryInsertViewElementFromNodeList(childListChangeEvent.detail.addedNodes);
 
     if (shouldRegenerateView) {
       this.shouldRegenerateView = shouldRegenerateView;
@@ -260,7 +262,6 @@ export class BaseView extends AggregateView<TViewElementLike> {
   protected tryInsertViewElementFromNodeList(addedNodeList: NodeList): boolean {
     // handle nodes inserted to DOM
     let hasInsertedAny = false;
-
 
     /* This map maps `HTMLElement` to the index of the child `ViewElement` containing this `HTMLElement` in `this.viewElementProvider` */
     const domElementToViewElementIndex: Map<HTMLElement, number> = new Map();
@@ -319,8 +320,9 @@ export class BaseView extends AggregateView<TViewElementLike> {
     // handle nodes removed from DOM
     for (const node of removedNodeList) {
       const identifier = (node as HTMLElement).dataset[ViewElement.identifierDatasetName_];
-      const hasOneRemoved = this.viewElementProvider.parentViewElement.removeChildByIdentifier__(identifier) !== null;
-      hasRemovedAny ||= hasOneRemoved;
+      const hasOneRemoved =
+        this.viewElementProvider.parentViewElement.removeChildByIdentifier__(identifier) !== null;
+      hasRemovedAny = hasRemovedAny || hasOneRemoved;
     }
 
     return hasRemovedAny;

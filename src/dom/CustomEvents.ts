@@ -22,7 +22,6 @@
  *    + have a `detail` field which contains data describing the triggering mutation.
  */
 
-
 /**
  * Interface describing the `detail` field of a {@link PropertyChangeEvent}
  *
@@ -54,17 +53,16 @@ export interface PropertyChangeEventDetail {
  * @augments CustomEvent
  */
 export class PropertyChangeEvent extends CustomEvent<PropertyChangeEventDetail> {
-  static readonly typeArg: string = "propertyChange";
+  static readonly typeArg: string = 'propertyChange';
 
   constructor(detail: PropertyChangeEventDetail = null) {
     super(PropertyChangeEvent.typeArg, {
       detail,
       bubbles: true,
-      cancelable: true
+      cancelable: true,
     });
   }
 }
-
 
 /**
  * Interface describing the `detail` field of a {@link CharacterDataChangeEvent}
@@ -102,17 +100,16 @@ export interface CharacterDataChangeEventDetail {
  * @augments CustomEvent
  */
 export class CharacterDataChangeEvent extends CustomEvent<CharacterDataChangeEventDetail> {
-  static readonly typeArg: string = "characterDataChange";
+  static readonly typeArg: string = 'characterDataChange';
 
   constructor(detail: CharacterDataChangeEventDetail = null) {
     super(CharacterDataChangeEvent.typeArg, {
       detail,
       bubbles: true,
-      cancelable: true
+      cancelable: true,
     });
   }
 }
-
 
 /**
  * Interface describing the `detail` field of a {@link ChildListChangeEvent}
@@ -139,13 +136,13 @@ export interface ChildListChangeEventDetail {
  * @augments CustomEvent
  */
 export class ChildListChangeEvent extends CustomEvent<ChildListChangeEventDetail> {
-  static readonly typeArg: string = "childListChange";
+  static readonly typeArg: string = 'childListChange';
 
   constructor(detail: ChildListChangeEventDetail = null) {
     super(ChildListChangeEvent.typeArg, {
       detail,
       bubbles: true,
-      cancelable: true
+      cancelable: true,
     });
   }
 }

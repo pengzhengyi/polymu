@@ -31,7 +31,7 @@ export class TaskQueue {
 
   get work(): (...args: Array<any>) => void {
     const tasks = this.tasks;
-    this.tasks = this.tasks.filter(task => task.isRecurring);
+    this.tasks = this.tasks.filter((task) => task.isRecurring);
     return (...args) => {
       for (const task of tasks) {
         task.work(this, task, ...args);
