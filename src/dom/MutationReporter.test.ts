@@ -214,7 +214,7 @@ describe('implicit characterData in childList mutation', () => {
     target.remove();
   });
 
-  test('change entire observed node\'s HTML', (done) => {
+  test("change entire observed node's HTML", (done) => {
     target.addEventListener(CharacterDataChangeEvent.typeArg, (event: CharacterDataChangeEvent) => {
       const { target, oldValue, newValue } = event.detail;
       expect(oldValue).toBe(targetTextContent);
@@ -243,7 +243,7 @@ describe('implicit characterData in childList mutation', () => {
     `;
   });
 
-  test('change to observed node\'s child node', (done) => {
+  test("change to observed node's child node", (done) => {
     const paragraph = document.getElementById('p1');
     const previousSibling = paragraph.previousSibling;
     const nextSibling = paragraph.nextSibling;

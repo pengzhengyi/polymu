@@ -8,7 +8,7 @@
  * @param {HTMLElement} element - An element to finds its scroll parent.
  * @param {boolean} [includeHidden = false] - Whether an element with overflow(x|y) set to `hidden` will be considered as a scroll parent. {@link https://developer.mozilla.org/en-US/docs/Web/CSS/overflow}
  */
-export function getScrollParent(element: HTMLElement, includeHidden = false) {
+export function getScrollParent(element: HTMLElement, includeHidden = false): Element {
   const fallback = document.scrollingElement || document.body;
   let style = getComputedStyle(element);
   const excludeStaticParent = style.position === 'absolute';
@@ -63,7 +63,7 @@ export function isScrollDirectionTowardsStart(scrollDirection: ScrollDirection):
  * @param scrollDirection - A scroll direction.
  * @returns `true` if the scroll direction is towards end, `false` otherwise.
  */
-export function isScrollDirectionTowardsEnd(scrollDirection: ScrollDirection) {
+export function isScrollDirectionTowardsEnd(scrollDirection: ScrollDirection): boolean {
   switch (scrollDirection) {
     case ScrollDirection.Down:
     case ScrollDirection.Right:

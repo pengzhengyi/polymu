@@ -26,7 +26,7 @@ export function quickSort<T>(
   comparator: (element1: T, element2: T) => number,
   start = 0,
   end: number = array.length
-) {
+): void {
   const difference: number = end - start;
   switch (difference) {
     case 0:
@@ -38,7 +38,7 @@ export function quickSort<T>(
         swap(array, start, start + 1);
       }
       return;
-    default:
+    default: {
       let pivotIndex: number = getRandomInt(start, difference);
       const pivotElement: T = array[pivotIndex];
       if (pivotIndex !== start) {
@@ -62,5 +62,6 @@ export function quickSort<T>(
       array[pivotIndex] = pivotElement;
       quickSort(array, comparator, start, pivotIndex);
       quickSort(array, comparator, pivotIndex + 1, end);
+    }
   }
 }

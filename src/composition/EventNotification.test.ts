@@ -7,7 +7,7 @@ describe('get event notification', () => {
     notifier.subscribe(
       subscriber,
       'increaseCount',
-      (eventName, source, subscriber, ...eventArgs) => subscriber.count++
+      (eventName, source, subscriber, ...eventArgs) => (subscriber as { count: number }).count++
     );
     notifier.invoke('increaseCount');
     expect(subscriber.count).toBe(1);

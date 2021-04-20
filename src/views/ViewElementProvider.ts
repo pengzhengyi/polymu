@@ -115,7 +115,7 @@ export class ViewElementProvider implements IViewElementProvider {
    *
    * @param viewElement - A `ViewElement` which is used to substitute current `parentViewElement` and provide children `ViewElement`.
    */
-  protected consumeViewElement(viewElement: ViewElement) {
+  protected consumeViewElement(viewElement: ViewElement): void {
     this.parentViewElement = viewElement;
     this.getChildViewElementsImplementation = () => this.parentViewElement.children_;
   }
@@ -131,7 +131,7 @@ export class ViewElementProvider implements IViewElementProvider {
     templateElement: HTMLTemplateElement,
     fallbackContainer: HTMLElement,
     shouldLazyInitialize: boolean
-  ) {
+  ): void {
     this.consumeDocumentFragment(templateElement.content, fallbackContainer, shouldLazyInitialize);
   }
 
@@ -146,7 +146,7 @@ export class ViewElementProvider implements IViewElementProvider {
     documentFragment: DocumentFragment,
     fallbackContainer: HTMLElement,
     shouldLazyInitialize: boolean
-  ) {
+  ): void {
     const children: HTMLCollection = documentFragment.children;
 
     if (children.length === 1) {
@@ -167,7 +167,7 @@ export class ViewElementProvider implements IViewElementProvider {
     htmlElement: HTMLElement,
     fallbackContainer: HTMLElement,
     shouldLazyInitialize: boolean
-  ) {
+  ): void {
     this.consumeIterable(htmlElement.children, htmlElement, shouldLazyInitialize);
   }
 
@@ -177,7 +177,7 @@ export class ViewElementProvider implements IViewElementProvider {
    * @param container - A `HTMLElement` which will be used to create `this.parentViewElement`, which will contain all children `ViewElement`.
    * @throws {ReferenceError} When `this.parentViewElement` will be uninitialized.
    */
-  protected createParentViewElement(container: HTMLElement) {
+  protected createParentViewElement(container: HTMLElement): void {
     if (container) {
       this.parentViewElement = new ViewElement(container, [(element) => new ViewElement(element)]);
     } else if (this.parentViewElement === undefined) {
@@ -197,7 +197,7 @@ export class ViewElementProvider implements IViewElementProvider {
     iterable: Iterable<HTMLElement> | HTMLCollection | Iterable<ViewElement>,
     container: HTMLElement,
     shouldLazyInitialize: boolean
-  ) {
+  ): void {
     this.createParentViewElement(container);
 
     // source is either an iterable of ViewElement or HTMLElement
@@ -214,7 +214,7 @@ export class ViewElementProvider implements IViewElementProvider {
   protected shouldLazyInitializeChildViewElements(
     initialDecision: boolean,
     iterableLength: number
-  ) {
+  ): boolean {
     let shouldLazyInitialize = initialDecision;
     if (initialDecision === undefined) {
       if (iterableLength === undefined) {
@@ -243,7 +243,7 @@ export class ViewElementProvider implements IViewElementProvider {
   protected setupChildViewElementsFromIterableOfUnknownType(
     iterable: Iterable<HTMLElement> | HTMLCollection | Iterable<ViewElement>,
     shouldLazyInitialize: boolean
-  ) {
+  ): void {
     // iterable is either an iterable of ViewElement or HTMLElement
     const iterableLength: number = (iterable as any).length;
     // use `iterableLength` to determine whether lazy initialization is preferred
@@ -278,7 +278,7 @@ export class ViewElementProvider implements IViewElementProvider {
   /**
    * Setup the children `ViewElement` of `this.parentViewElement` from an empty iterable.
    */
-  protected setupChildViewElementsFromEmptyIterable() {
+  protected setupChildViewElementsFromEmptyIterable(): void {
     this.parentViewElement.children_ = [];
     this.getChildViewElementsImplementation = () => this.parentViewElement.children_;
   }
@@ -292,7 +292,7 @@ export class ViewElementProvider implements IViewElementProvider {
   protected setupChildViewElementsFromIterableOfViewElement(
     iterable: Iterable<ViewElement>,
     shouldLazyInitialize: boolean
-  ) {
+  ): void {
     // TODO: utilize `shouldLazyInitialize`
     this.parentViewElement.patchChildViewElementsWithViewElements__(iterable);
     this.getChildViewElementsImplementation = () => this.parentViewElement.children_;
@@ -307,7 +307,7 @@ export class ViewElementProvider implements IViewElementProvider {
   protected setupChildViewElementsFromIterableOfHTMLElement(
     iterable: Iterable<HTMLElement>,
     shouldLazyInitialize: boolean
-  ) {
+  ): void {
     if (shouldLazyInitialize) {
       // clear previous children `ViewElement`
       this.parentViewElement.children_ = [];
@@ -350,7 +350,7 @@ export class ViewElementProvider implements IViewElementProvider {
     source: TSourceType,
     fallbackContainer?: HTMLElement,
     shouldLazyInitialize: boolean = undefined
-  ) {
+  ): void {
     // override this flag when there is actually a large number of children ViewElement
     this.hasLargeNumberOfChildViewElement = false;
 

@@ -37,7 +37,7 @@ export function patch<T1, T2>(
   ) => void = undefined,
   iterable1SurplusHandler: (elementFromIterable1: T1, index: number) => void = undefined,
   iterable2SurplusHandler: (elementFromIterable2: T2, index: number) => void = undefined
-) {
+): void {
   let childIndex = 0;
   const iterator2 = iterable2[Symbol.iterator]();
   let iterable2Done = false;
@@ -77,7 +77,7 @@ export function patch<T1, T2>(
  * @param obj - An object to check whether it is iterable.
  * @returns True if the object is iterable. False otherwise.
  */
-export function isIterable(obj: any) {
+export function isIterable(obj: any): boolean {
   // checks for null and undefined
   if (obj === null || obj === undefined) {
     return false;

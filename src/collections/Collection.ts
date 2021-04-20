@@ -71,7 +71,7 @@ export abstract class Collection<TElement> implements Collection<TElement> {
   static get<TElement>(collection: Collection<TElement>, index: number): TElement {
     if (Array.isArray(collection)) {
       // use bracket syntax
-      return collection[index];
+      return (collection as Array<TElement>)[index];
     } else {
       return collection.get(index);
     }
@@ -316,7 +316,7 @@ export class UnmaterializableCollectionProvider<TElement> extends Collection<TEl
     return undefined;
   }
 
-  getMaterializationLength() {
+  getMaterializationLength(): number {
     return 0;
   }
 
@@ -427,7 +427,7 @@ export class LazyCollectionProvider<TElement> extends Collection<TElement> {
    * @param {number} index - Element index in the iterable.
    * @param {TElement} element - The element to be materialized.
    */
-  protected materializeElement(index: number, element: TElement) {
+  protected materializeElement(index: number, element: TElement): void {
     this._materializedCollection[index] = element;
   }
 
@@ -482,7 +482,7 @@ export class LazyCollectionProvider<TElement> extends Collection<TElement> {
     }
   }
 
-  getMaterializationLength() {
+  getMaterializationLength(): number {
     return this._materializedCollection.length;
   }
 

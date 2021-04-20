@@ -419,7 +419,7 @@ export class SlidingWindow<TElement> implements Iterable<TElement>, Collection<T
   _resizeAndSetWindow(
     tentativeStartIndex: number = this._startIndex,
     tentativeEndIndex: number = this._endIndex
-  ) {
+  ): void {
     if (tentativeStartIndex === undefined && tentativeEndIndex === undefined) {
       return;
     }
@@ -515,7 +515,7 @@ export class SlidingWindow<TElement> implements Iterable<TElement>, Collection<T
    *
    * @param {number} shiftAmount - By which amount, the start index and end index will be changed. Due to iterable length constraint, the actual shift amount to each index might be smaller.
    */
-  shiftWindow(shiftAmount: number) {
+  shiftWindow(shiftAmount: number): void {
     if (this._startIndex === undefined && this._endIndex === undefined) {
       return;
     }
@@ -554,7 +554,7 @@ export class SlidingWindow<TElement> implements Iterable<TElement>, Collection<T
    * @param {number} [startIndex=this._startIndex] - The start index of the window. Will be lower bounded by 0. Default to current start index.
    * @param {number} [endIndex=this._endIndex] - The end index of the window. Will be lower bounded by startIndex. Default to current end index.
    */
-  setWindow(startIndex: number = this._startIndex, endIndex: number = this._endIndex) {
+  setWindow(startIndex: number = this._startIndex, endIndex: number = this._endIndex): void {
     if (startIndex === undefined) {
       if (endIndex === undefined) {
         // both start index and end index is `undefined`, nothing needs to be done

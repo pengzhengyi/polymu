@@ -53,7 +53,7 @@ export class MutationReporter {
   private _mutationObserver: MutationObserver;
 
   /** A mapping from observed targets to their observing configuration (MutationObserverInit) */
-  readonly observing: Map<Node, MutationObserverInit> = new Map();
+  readonly observing: Map<Node, MutationObserverInit> = new Map<Node, MutationObserverInit>();
 
   /**
    * The callback to be invoked when mutations are observed. Reassigning this variable will invoke the new callback for future observed mutations.
@@ -238,7 +238,7 @@ export class MutationReporter {
   /**
    * Initialize `this.mutationObserver`.
    */
-  protected initializeMutationObserver__() {
+  protected initializeMutationObserver__(): void {
     this._mutationObserver = new MutationObserver((mutations, observer) =>
       this.__onMutations(mutations, observer)
     );
@@ -282,7 +282,7 @@ export class MutationReporter {
    * The difference from {@link https://developer.mozilla.org/en-US/docs/Web/API/MutationObserver/observe} is the observing target and observing options will be stored in `this.observing`.
    * @public
    */
-  observe(target: Node, options: MutationObserverInit) {
+  observe(target: Node, options: MutationObserverInit): void {
     this.observing.set(target, options);
     this._mutationObserver.observe(target, options);
   }
@@ -297,7 +297,7 @@ export class MutationReporter {
    * @public
    * @param {Node} target - The node to stop watching for mutations. If the node is not observed, nothing will happen. Otherwise, it will no longer be observed.
    */
-  unobserve(target: Node) {
+  unobserve(target: Node): void {
     if (!this.observing.delete(target)) {
       // nothing needed to be done if the target is not being observed
       return;
@@ -333,7 +333,7 @@ export class MutationReporter {
    * Tells the observer to start watching for target mutations according to options for every pair of target and options in `this.observing`.
    * @public
    */
-  protected reobserve__() {
+  protected reobserve__(): void {
     for (const [node, options] of this.observing) {
       this._mutationObserver.observe(node, options);
     }
@@ -347,7 +347,7 @@ export class MutationReporter {
    * @public
    * @param {boolean} [clearMemory = true] - Whether memory of previous observed targets should be cleared.
    */
-  disconnect(clearMemory = true) {
+  disconnect(clearMemory = true): void {
     if (clearMemory) {
       this.observing.clear();
     }
@@ -368,7 +368,7 @@ export class MutationReporter {
    * @param {() => void} callback - A callback to be executed after the observer has disconnected and before the observer is reconnected.
    * @example If needs to reobserve with different options, set the corresponding options in `this.observing` before calling this function.
    */
-  reconnectToExecute(callback: () => void) {
+  reconnectToExecute(callback: () => void): void {
     const mutations = this._mutationObserver.takeRecords();
     this.disconnect(false);
     callback();
@@ -388,7 +388,7 @@ export class MutationReporter {
    * @fires CharacterDataChangeEvent#characterDataChange for text content mutation
    * @fires ChildListChangeEvent#childListChange for children mutation
    */
-  report(mutations: Array<MutationRecord>) {
+  report(mutations: Array<MutationRecord>): void {
     for (const mutation of mutations) {
       let event: Event;
       const target: Node = mutation.target;

@@ -152,7 +152,10 @@ export class BaseView extends AggregateView<TViewElementLike> {
   }
 
   /** @override */
-  protected regenerateView(sourceView: Collection<ViewElement<HTMLElement>>, useCache = true) {
+  protected regenerateView(
+    sourceView: Collection<ViewElement<HTMLElement>>,
+    useCache = true
+  ): void {
     if (!this.shouldRegenerateView && useCache) {
       return;
     }
@@ -180,7 +183,10 @@ export class BaseView extends AggregateView<TViewElementLike> {
    * @param source - A construct used to initialize `this.viewElementProvider`.
    * @param fallbackContainer - A fallback DOM container which will be used to create parent `ViewElement` if such `ViewElement` is not present in `source` -- `source` is unrooted.
    */
-  protected initializeViewElementProvider__(source: TSourceType, fallbackContainer: HTMLElement) {
+  protected initializeViewElementProvider__(
+    source: TSourceType,
+    fallbackContainer: HTMLElement
+  ): void {
     this.viewElementProvider = new ViewElementProvider();
     this.viewElementProvider.consume(source, fallbackContainer);
   }
@@ -205,7 +211,7 @@ export class BaseView extends AggregateView<TViewElementLike> {
   protected initializeRenderingView__(
     target: HTMLElement,
     renderingViewFunctionProvider: RenderingViewFunctionProvider
-  ) {
+  ): void {
     if (renderingViewFunctionProvider === undefined) {
       renderingViewFunctionProvider = this.provideFallbackViewFunctionProvider__();
     }
@@ -216,7 +222,7 @@ export class BaseView extends AggregateView<TViewElementLike> {
   /**
    * Initialize automatic view regeneration mechanism -- when an `shouldRegenerateViewEventName` event notification is sent to current instance, immediately handle it by regenerating view. In other words, such event is dispatched to current instance when a view regeneration is needed.
    */
-  protected initializeAutomaticViewRegeneration__() {
+  protected initializeAutomaticViewRegeneration__(): void {
     /**
      * When `this.shouldRegenerateView` is set to true, immediately regenerate view. This is part of forward propagation.
      */
@@ -232,7 +238,7 @@ export class BaseView extends AggregateView<TViewElementLike> {
    *
    * @param childListChangeEvent - An event containing information about the childlist mutation that triggered this event.
    */
-  protected onChildListMutation__(childListChangeEvent: ChildListChangeEvent) {
+  protected onChildListMutation__(childListChangeEvent: ChildListChangeEvent): void {
     if (childListChangeEvent.target !== this.renderingView.rootDomElement) {
       // only handle mutations to direct children
       return;
@@ -258,7 +264,7 @@ export class BaseView extends AggregateView<TViewElementLike> {
     let hasInsertedAny = false;
 
     /* This map maps `HTMLElement` to the index of the child `ViewElement` containing this `HTMLElement` in `this.viewElementProvider` */
-    const domElementToViewElementIndex: Map<HTMLElement, number> = new Map();
+    const domElementToViewElementIndex = new Map<HTMLElement, number>();
     let lastChildViewElementIndex = 0;
     const parentViewElement: ViewElement = this.viewElementProvider.parentViewElement;
     for (const addedNode of addedNodeList) {
@@ -308,7 +314,7 @@ export class BaseView extends AggregateView<TViewElementLike> {
    * @param removedNodeList - A NodeList containing nodes that are deleted from DOM in the triggering mutation.
    * @returns True if a child `ViewElement` in `this.viewElementProvider` was removed because its underlying element is included in the nodelist. False if none of children `ViewElement` was removed because of this.
    */
-  protected tryRemoveViewElementFromNodeList__(removedNodeList: NodeList) {
+  protected tryRemoveViewElementFromNodeList__(removedNodeList: NodeList): boolean {
     let hasRemovedAny = false;
 
     // handle nodes removed from DOM
@@ -341,7 +347,7 @@ export class BaseView extends AggregateView<TViewElementLike> {
    *
    * After a call to `enableBackPropagation`, `disableBackPropagation` will be defined and can be called to stop this process.
    */
-  enableBackPropagation() {
+  enableBackPropagation(): void {
     const eventHandler = (event: ChildListChangeEvent) => this.onChildListMutation__(event);
 
     this.renderingView.rootDomElement.addEventListener(ChildListChangeEvent.typeArg, eventHandler);

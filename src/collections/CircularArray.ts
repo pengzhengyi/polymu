@@ -119,7 +119,7 @@ export class CircularArray<TElement> implements Collection<TElement> {
    */
   constructor(capacity: number) {
     this._capacity = capacity;
-    this._array = new Array(capacity);
+    this._array = new Array(capacity) as Array<TElement>;
     this._slots = capacity;
   }
 
@@ -158,7 +158,7 @@ export class CircularArray<TElement> implements Collection<TElement> {
    *
    * @param {TElement} element - An element to be added.
    */
-  add(element: TElement) {
+  add(element: TElement): void {
     if (this.isFull) {
       this._array[this._start++] = element;
       this._start %= this.length;
@@ -207,7 +207,7 @@ export class CircularArray<TElement> implements Collection<TElement> {
     iterable: Iterable<TElement>,
     onExit: (element: TElement, windowIndex: number) => void = undefined,
     onEnter: (element: TElement, windowIndex: number) => void = undefined
-  ) {
+  ): void {
     const capacity = this._capacity;
     const numExistingElements = this.length;
 
@@ -296,7 +296,7 @@ export class CircularArray<TElement> implements Collection<TElement> {
     replacement: Iterable<TElement>,
     onExit: (element: TElement, windowIndex: number) => void = () => undefined,
     onEnter: (element: TElement, windowIndex: number) => void = () => undefined
-  ) {
+  ): void {
     let newStart = this._start + shiftAmount;
     if (shiftAmount > 0) {
       // shift towards end
@@ -316,14 +316,14 @@ export class CircularArray<TElement> implements Collection<TElement> {
 
         const iterator = replacement[Symbol.iterator]();
         for (let i = this._start; i < this._capacity; i++) {
-          const { value: replaceElement } = iterator.next();
+          const { value: replaceElement } = iterator.next() as { value: TElement };
           onExit(this._array[i], exitWindowIndex++);
           this._array[i] = replaceElement;
           onEnter(replaceElement, enterWindowIndex++);
         }
 
         for (let i = 0; i < newStart; i++) {
-          const { value: replaceElement } = iterator.next();
+          const { value: replaceElement } = iterator.next() as { value: TElement };
           onExit(this._array[i], exitWindowIndex++);
           this._array[i] = replaceElement;
           onEnter(replaceElement, enterWindowIndex++);
@@ -348,14 +348,14 @@ export class CircularArray<TElement> implements Collection<TElement> {
 
         const iterator = replacement[Symbol.iterator]();
         for (let i = newStart; i < this._capacity; i++) {
-          const { value: replaceElement } = iterator.next();
+          const { value: replaceElement } = iterator.next() as { value: TElement };
           onExit(this._array[i], exitWindowIndex++);
           this._array[i] = replaceElement;
           onEnter(replaceElement, enterWindowIndex++);
         }
 
         for (let i = 0; i < this._start; i++) {
-          const { value: replaceElement } = iterator.next();
+          const { value: replaceElement } = iterator.next() as { value: TElement };
           onExit(this._array[i], exitWindowIndex++);
           this._array[i] = replaceElement;
           onEnter(replaceElement, enterWindowIndex++);

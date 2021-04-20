@@ -185,7 +185,7 @@ export abstract class Abstraction {
    * @param {Record<Prop, Partial<PropertyDescriptor>>} props - An object contains mapping from Prop to PropertyDescriptor.
    * @param {boolean} [reset=false] - Whether existing props will be removed.
    */
-  registerProps__(props: Record<Prop, Partial<PropertyDescriptor>>, reset = false) {
+  registerProps__(props: Record<Prop, Partial<PropertyDescriptor>>, reset = false): void {
     const shouldUpdate = this.__shouldUpdatePropNamesWhenRegisteringProp();
 
     if (reset && this.propNames_) {

@@ -22,7 +22,7 @@ export class ViewElementChildListMutationReporter {
   /**
    * Ask `this.viewElement` to monitor childlist DOM mutations. Only childlist mutations on direct children of its underlying element will be handled.
    */
-  observe() {
+  observe(): void {
     // we only need to track childlist change on direct children of `this.this.viewElement.element_`
     this.viewElement.observe__(this.viewElement.element_, false, undefined, false, true, false);
   }
@@ -30,14 +30,14 @@ export class ViewElementChildListMutationReporter {
   /**
    * Stop monitoring DOM mutations.
    */
-  unobserve() {
+  unobserve(): void {
     this.viewElement.unobserve__(this.viewElement.element_);
   }
 
   /**
    * Perform necessary cleanup procedures.
    */
-  dispose() {
+  dispose(): void {
     this.viewElement.dispose();
   }
 }

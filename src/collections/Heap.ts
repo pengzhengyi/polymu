@@ -107,7 +107,7 @@ export default class Heap<TElement> implements Iterable<TElement> {
    *
    * @param {TElement} element - The element to be added to the heap.
    */
-  protected _bubbleUp(element: TElement) {
+  protected _bubbleUp(element: TElement): void {
     const lastIndex = this._count;
     let toReplaceIndex = lastIndex;
     while (toReplaceIndex > 0) {
@@ -131,7 +131,7 @@ export default class Heap<TElement> implements Iterable<TElement> {
    *
    *    The parent is smaller than both of its children.
    */
-  protected _bubbleDown() {
+  protected _bubbleDown(): void {
     const lastPlace = this._count;
     const lastElement = this._array[lastPlace];
     let toReplaceIndex = 0;
@@ -181,7 +181,7 @@ export default class Heap<TElement> implements Iterable<TElement> {
    * @param {TElement} The element to be added to the heap.
    */
 
-  add(element: TElement) {
+  add(element: TElement): void {
     this._bubbleUp(element);
     this._count++;
   }
@@ -193,7 +193,7 @@ export default class Heap<TElement> implements Iterable<TElement> {
    * @param {Array<TElement>} A list of the element to be added to the heap.
    */
 
-  push(...elements: Array<TElement>) {
+  push(...elements: Array<TElement>): void {
     elements.forEach((element) => this.add(element));
   }
 
@@ -204,7 +204,7 @@ export default class Heap<TElement> implements Iterable<TElement> {
    * @param {Iterable<TElement>} An iterable of the element to be added to the heap.
    */
 
-  extend(elements: Iterable<TElement>) {
+  extend(elements: Iterable<TElement>): void {
     for (const element of elements) {
       this.add(element);
     }
@@ -223,11 +223,12 @@ export default class Heap<TElement> implements Iterable<TElement> {
         return undefined;
       case 1:
         return this._array[--this._count];
-      default:
+      default: {
         const popped = this._array[0];
         this._count--;
         this._bubbleDown();
         return popped;
+      }
     }
   }
 

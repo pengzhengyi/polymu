@@ -8,6 +8,7 @@
         "prepending",
         "proxied",
         "reobserve",
+        "scrollable",
         "unmaterializable"
     ],
     "editor.defaultFormatter": "esbenp.prettier-vscode",

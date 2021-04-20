@@ -5,7 +5,7 @@
  * @param {Task} [task] - The task it belongs to.
  * @param {...*} [args] - Any original arguments that will be passed to this callable.
  */
-type Work = (queue?: TaskQueue, task?: Task, ...args: Array<any>) => void;
+type Work = (queue?: TaskQueue, task?: Task, ...args: Array<unknown>) => void;
 
 /**
  * A task is an execution unit that is
@@ -29,7 +29,7 @@ interface Task {
 export class TaskQueue {
   tasks: Array<Task> = [];
 
-  get work(): (...args: Array<any>) => void {
+  get work(): (...args: Array<unknown>) => void {
     const tasks = this.tasks;
     this.tasks = this.tasks.filter((task) => task.isRecurring);
     return (...args) => {
