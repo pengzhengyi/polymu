@@ -125,8 +125,6 @@ export class BaseView extends AggregateView<TViewElementLike> {
     this.initializeViewElementProvider__(source, document.createElement(target.tagName));
     this.initializeRenderingView__(target, renderingViewFunctionProvider);
 
-    this.initializeAutomaticViewRegeneration__();
-
     /**
      * This invocation of `composeFeatures` will allow exposed methods in `this.renderingView` to be invoked directly on this `BaseView` instance.
      */
@@ -136,6 +134,11 @@ export class BaseView extends AggregateView<TViewElementLike> {
      * Generate and mount the rendering view for first time.
      */
     this.view(undefined, true);
+
+    /**
+     * Trigger view regeneration when needed.
+     */
+    this.initializeAutomaticViewRegeneration__();
   }
 
   /**
@@ -189,6 +192,17 @@ export class BaseView extends AggregateView<TViewElementLike> {
   }
 
   /**
+   * When no explicit `RenderingViewFunctionProvider` is chosen, pick an appropriate one.
+   *
+   * @returns A `RenderingViewFunctionProvider` used to generate `this.renderingView`.
+   */
+  protected provideFallbackViewFunctionProvider__(): RenderingViewFunctionProvider {
+    return this.viewElementProvider.hasLargeNumberOfChildViewElement
+      ? BaseView.SCROLL_VIEW_FACTORY
+      : BaseView.SYNC_VIEW_FACTORY;
+  }
+
+  /**
    * Initialize a RenderingView which will sync view elements to DOM.
    *
    * @param target - A DOM element which reflects a region of DOM that is synced with `ViewElement` hierarchy.
@@ -199,9 +213,7 @@ export class BaseView extends AggregateView<TViewElementLike> {
     renderingViewFunctionProvider: RenderingViewFunctionProvider
   ) {
     if (renderingViewFunctionProvider === undefined) {
-      renderingViewFunctionProvider = this.viewElementProvider.hasLargeNumberOfChildViewElement
-        ? BaseView.SCROLL_VIEW_FACTORY
-        : BaseView.SYNC_VIEW_FACTORY;
+      renderingViewFunctionProvider = this.provideFallbackViewFunctionProvider__();
     }
 
     this.renderingView = renderingViewFunctionProvider(target);
@@ -226,33 +238,41 @@ export class BaseView extends AggregateView<TViewElementLike> {
    *
    * @param childListChangeEvent - An event containing information about the childlist mutation that triggered this event.
    */
-  protected onChildListMutation_(childListChangeEvent: ChildListChangeEvent) {
+  protected onChildListMutation__(childListChangeEvent: ChildListChangeEvent) {
     if (childListChangeEvent.target !== this.renderingView.rootDomElement) {
       // only handle mutations to direct children
       return;
     }
 
-    let shouldRegenerateView: boolean = false;
+    let shouldRegenerateView: boolean = this.tryRemoveViewElementFromNodeList__(childListChangeEvent.detail.removedNodes) || this.tryInsertViewElementFromNodeList(childListChangeEvent.detail.addedNodes);
 
-    // handle nodes removed from DOM
-    for (const removedNode of childListChangeEvent.detail.removedNodes) {
-      const identifier = (removedNode as HTMLElement).dataset[ViewElement.identifierDatasetName_];
-      this.viewElementProvider.parentViewElement.removeChildByIdentifier__(identifier);
-      shouldRegenerateView = true;
+    if (shouldRegenerateView) {
+      this.shouldRegenerateView = shouldRegenerateView;
     }
+  }
 
+  /**
+   * Insert a new `ViewElement` as a child of `this.viewElementProvider`.
+   *
+   * @param addedNodeList - A NodeList containing nodes that are added from DOM in the triggering mutation.
+   * @returns True if a child `ViewElement` was added into `this.viewElementProvider`. False if none was added.
+   */
+  protected tryInsertViewElementFromNodeList(addedNodeList: NodeList): boolean {
     // handle nodes inserted to DOM
+    let hasInsertedAny = false;
+
+
     /* This map maps `HTMLElement` to the index of the child `ViewElement` containing this `HTMLElement` in `this.viewElementProvider` */
     const domElementToViewElementIndex: Map<HTMLElement, number> = new Map();
     let lastChildViewElementIndex: number = 0;
     const parentViewElement: ViewElement = this.viewElementProvider.parentViewElement;
-    for (const addedNode of childListChangeEvent.detail.addedNodes) {
+    for (const addedNode of addedNodeList) {
       if (addedNode.nodeType !== Node.ELEMENT_NODE) {
         // ignore mutations of other types of node (for example, text node)
         continue;
       }
 
-      shouldRegenerateView = true;
+      hasInsertedAny = true;
 
       let childIndex = 1;
       /**
@@ -283,6 +303,27 @@ export class BaseView extends AggregateView<TViewElementLike> {
       domElementToViewElementIndex.set(addedNode as HTMLElement, childIndex);
       parentViewElement.insertChild__(addedNode as HTMLElement, childIndex);
     }
+
+    return hasInsertedAny;
+  }
+
+  /**
+   * Remove a corresponding child `ViewElement` in `this.viewElementProvider` if provided node list contains its underlying element.
+   *
+   * @param removedNodeList - A NodeList containing nodes that are deleted from DOM in the triggering mutation.
+   * @returns True if a child `ViewElement` in `this.viewElementProvider` was removed because its underlying element is included in the nodelist. False if none of children `ViewElement` was removed because of this.
+   */
+  protected tryRemoveViewElementFromNodeList__(removedNodeList: NodeList) {
+    let hasRemovedAny: boolean = false;
+
+    // handle nodes removed from DOM
+    for (const node of removedNodeList) {
+      const identifier = (node as HTMLElement).dataset[ViewElement.identifierDatasetName_];
+      const hasOneRemoved = this.viewElementProvider.parentViewElement.removeChildByIdentifier__(identifier) !== null;
+      hasRemovedAny ||= hasOneRemoved;
+    }
+
+    return hasRemovedAny;
   }
 
   /**
@@ -305,7 +346,7 @@ export class BaseView extends AggregateView<TViewElementLike> {
    * After a call to `enableBackPropagation`, `disableBackPropagation` will be defined and can be called to stop this process.
    */
   enableBackPropagation() {
-    const eventHandler = (event: ChildListChangeEvent) => this.onChildListMutation_(event);
+    const eventHandler = (event: ChildListChangeEvent) => this.onChildListMutation__(event);
 
     this.renderingView.rootDomElement.addEventListener(ChildListChangeEvent.typeArg, eventHandler);
 
