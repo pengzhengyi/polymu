@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Browser extension to improve reading experience",
   "main": "./dist/polymu.js",
-  "module": "./src/View.ts",
+  "module": "./src/polymu.ts",
   "publishConfig": {
     "registry": "https://npm.pkg.github.com/"
   },
