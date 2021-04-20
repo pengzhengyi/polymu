@@ -6,3 +6,5 @@ dist
 *.config.js
 # don't lint nyc coverage output
 coverage
+# don't lint on test files
+*.test.ts
