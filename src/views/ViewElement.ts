@@ -732,4 +732,13 @@ export class ViewElement<
   reconnectToExecute__(callback: () => void) {
     this._mutationReporter.reconnectToExecute(callback);
   }
+
+  /**
+   * Perform any necessary setup steps.
+   */
+  dispose() {
+    if (this._mutationReporter) {
+      this._mutationReporter.disconnect(true);
+    }
+  }
 }

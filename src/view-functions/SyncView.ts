@@ -10,6 +10,7 @@ import { ChildListChangeEvent } from '../dom/CustomEvents';
 import { TaskQueue } from '../TaskQueue';
 import { isIterable, peek } from '../utils/IterableHelper';
 import { PatchModeForMatch, ViewElement } from '../views/ViewElement';
+import { ViewElementChildListMutationReporter } from '../views/ViewElementChildListMutationReporter';
 import { AbstractViewFunction } from './AbstractViewFunction';
 
 /**
@@ -44,6 +45,11 @@ export class SyncView extends AbstractViewFunction<TViewElementLike> implements 
    * ! @override A queue containing tasks executed after updating DOM tree. This queue is different from normal `afterViewUpdateTaskQueue` that is executed when target view is updated.
    */
   afterViewUpdateTaskQueue: TaskQueue = new TaskQueue();
+
+  /**
+   * An observer that monitors child list mutations happening to the underlying DOM element of `this.rootViewElement`.
+   */
+  protected rootViewElementChildListMutationReporter_: ViewElementChildListMutationReporter;
 
   /**
    * The root `ViewElement` whose DOM children will be dynamically synced with `ViewElement` children.
@@ -90,15 +96,16 @@ export class SyncView extends AbstractViewFunction<TViewElementLike> implements 
 
     this.initializeRootViewElement__(rootElement);
 
-    this.rootViewElement_.initializeMutationReporter();
-
     if (shouldInitializeMutationHandler) {
       this.initializeMutationHandler__();
     }
 
     this.initializeTaskQueue__();
 
-    this.observe__();
+    this.rootViewElementChildListMutationReporter_ = new ViewElementChildListMutationReporter(
+      this.rootViewElement_
+    );
+    this.rootViewElementChildListMutationReporter_.observe();
   }
 
   /**
@@ -152,28 +159,13 @@ export class SyncView extends AbstractViewFunction<TViewElementLike> implements 
    */
   protected initializeTaskQueue__() {
     this.beforeViewUpdateTaskQueue.tasks.push({
-      work: () => this.unobserve__(),
+      work: () => this.rootViewElementChildListMutationReporter_.unobserve(),
       isRecurring: true,
     });
     this.afterViewUpdateTaskQueue.tasks.push({
-      work: () => this.observe__(),
+      work: () => this.rootViewElementChildListMutationReporter_.unobserve(),
       isRecurring: true,
     });
-  }
-
-  /**
-   * Ask `this.rootDomElement` to monitor DOM mutations. Only childlist mutations on direct children of `target` will be handled.
-   */
-  protected observe__() {
-    // we only need to track childlist change on direct children of `this.rootDomElement`
-    this.rootViewElement_.observe__(this.rootDomElement, false, undefined, false, true, false);
-  }
-
-  /**
-   * Stop monitoring DOM mutations.
-   */
-  protected unobserve__() {
-    this.rootViewElement_.unobserve__(this.rootDomElement);
   }
 
   /**
@@ -242,6 +234,13 @@ export class SyncView extends AbstractViewFunction<TViewElementLike> implements 
     this.beforeViewUpdateTaskQueue.work(this, ...beforeViewUpdateTaskQueueArgs);
     action();
     this.afterViewUpdateTaskQueue.work(this, ...afterViewUpdateTaskQueueArgs);
+  }
+
+  /**
+   * Perform necessary cleanup tasks.
+   */
+  dispose() {
+    this.rootViewElementChildListMutationReporter_.dispose();
   }
 
   /**
