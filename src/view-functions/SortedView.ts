@@ -92,7 +92,8 @@ class SortedViewHeap<TViewElement> extends Heap<TViewElement> {
 /**
  * Reorders elements according to certain comparison method(s).
  */
-export class SortedView<TViewElement> extends AbstractViewFunction<TViewElement>
+export class SortedView<TViewElement>
+  extends AbstractViewFunction<TViewElement>
   implements IFeatureProvider {
   /** methods that should be exposed since they define the API for `SortedView` */
   features: Array<string> = [

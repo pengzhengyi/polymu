@@ -31,9 +31,9 @@ export interface IViewElementProvider {
  * + caller can check whether materialization finished through `materialized`.
  * + caller can execute custom logic before materialization through `materializationCallback`.
  */
-class LazyCollectionProviderWithMaterializationCallback<TElement> extends LazyCollectionProvider<
+class LazyCollectionProviderWithMaterializationCallback<
   TElement
-> {
+> extends LazyCollectionProvider<TElement> {
   /**
    * A callback that when registered will be called before materialization happens. This can be used to define additional actions to execute during materialization.
    *
@@ -311,9 +311,7 @@ export class ViewElementProvider implements IViewElementProvider {
     if (shouldLazyInitialize) {
       // clear previous children `ViewElement`
       this.parentViewElement.children_ = [];
-      const viewElementCollection = new LazyCollectionProviderWithMaterializationCallback<
-        ViewElement
-      >(
+      const viewElementCollection = new LazyCollectionProviderWithMaterializationCallback<ViewElement>(
         (function* () {
           for (const element of iterable) {
             yield new ViewElement(element as HTMLElement);

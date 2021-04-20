@@ -16,7 +16,8 @@ import { AbstractViewFunction } from './AbstractViewFunction';
  *
  * Besides transforming source view to target view, PartialView also supports indexing the source view using a window index relative to the window start index (`get`), after the source view is defined.
  */
-export class PartialView<TViewElement> extends AbstractViewFunction<TViewElement>
+export class PartialView<TViewElement>
+  extends AbstractViewFunction<TViewElement>
   implements IFeatureProvider {
   /** methods that should be exposed since they define the API for `PartialView` */
   features: Array<string> = ['setWindow', 'shiftWindow'];

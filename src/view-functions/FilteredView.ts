@@ -19,7 +19,8 @@ export type FilterFunction<TViewElement> = (element: TViewElement) => boolean;
 /**
  * Selects elements meeting certain condition(s).
  */
-export class FilteredView<TViewElement> extends AbstractViewFunction<TViewElement>
+export class FilteredView<TViewElement>
+  extends AbstractViewFunction<TViewElement>
   implements IFeatureProvider {
   /** methods that should be exposed since they define the API for `FilteredView` */
   protected features: Array<string> = [

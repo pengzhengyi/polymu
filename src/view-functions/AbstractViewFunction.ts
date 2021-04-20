@@ -29,7 +29,8 @@ import { EventNotifier } from '../composition/EventNotification';
  * To extend `AbstractViewFunction`, derived classes should override `regenerateView` to create target view efficiently.
  */
 
-export abstract class AbstractViewFunction<TViewElement> extends EventNotifier
+export abstract class AbstractViewFunction<TViewElement>
+  extends EventNotifier
   implements ViewFunction<TViewElement>, IFeatureProvider {
   /** a queue containing tasks executed before view update */
   beforeViewUpdateTaskQueue: TaskQueue = new TaskQueue();
