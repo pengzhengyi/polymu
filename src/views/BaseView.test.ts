@@ -2,6 +2,7 @@ import { ChildListChangeEvent } from '../dom/CustomEvents';
 import { FilteredView } from '../view-functions/FilteredView';
 import { BaseView, ViewTransformation } from './BaseView';
 import { ViewElement } from '../view-element/ViewElement';
+import { setupIntersectionObserverMock } from '../view-functions/ScrollView.test';
 
 function* createParagraphElement(count: number): IterableIterator<HTMLParagraphElement> {
   for (let i = 0; i < count; i++) {
@@ -12,6 +13,10 @@ function* createParagraphElement(count: number): IterableIterator<HTMLParagraphE
 }
 
 describe('BaseView', () => {
+  beforeAll(() => {
+    setupIntersectionObserverMock();
+  });
+
   test('exposed features from getFeatures', () => {
     const source = new DocumentFragment();
     for (const element of createParagraphElement(10)) {
@@ -48,7 +53,7 @@ describe('BaseView', () => {
   });
 
   test('auto-update view when add a filter function', () => {
-    const source: Iterable<HTMLParagraphElement> = createParagraphElement(2);
+    const source: Array<HTMLParagraphElement> = [...createParagraphElement(2)];
 
     const target = document.createElement('div');
     document.body.appendChild(target);
@@ -79,6 +84,7 @@ describe('BaseView', () => {
     const viewTransformations: Array<ViewTransformation> = [];
 
     const baseView = new BaseView(source, target, viewTransformations);
+    (baseView as any).setWindow(0, 100);
 
     expect(target.childElementCount).toEqual(2);
     expect(target.children[0].textContent).toEqual('0');
@@ -99,6 +105,7 @@ describe('BaseView', () => {
     const viewTransformations: Array<ViewTransformation> = [new FilteredView<ViewElement>()];
 
     const baseView = new BaseView(source, target, viewTransformations);
+    (baseView as any).setWindow(0, 100);
 
     // before filter function is applied
     expect(target.childElementCount).toEqual(2);
@@ -154,6 +161,7 @@ describe('BaseView', () => {
     const viewTransformations: Array<ViewTransformation> = [];
 
     const baseView = new BaseView(source, target, viewTransformations);
+    (baseView as any).setWindow(0, 100);
 
     expect(target.childElementCount).toEqual(2);
 
@@ -199,6 +207,7 @@ describe('BaseView', () => {
     const viewTransformations: Array<ViewTransformation> = [];
 
     const baseView = new BaseView(source, target, viewTransformations);
+    (baseView as any).setWindow(0, 100);
 
     expect(target.childElementCount).toEqual(2);
 
@@ -242,6 +251,7 @@ describe('BaseView', () => {
     const viewTransformations: Array<ViewTransformation> = [];
 
     const baseView = new BaseView(source, target, viewTransformations);
+    (baseView as any).setWindow(0, 100);
 
     expect(target.childElementCount).toEqual(2);
     expect(baseView.viewElementProvider.parentViewElement.children_).toHaveLength(2);

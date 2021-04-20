@@ -51,6 +51,10 @@ class ScrollView extends _ScrollView<TViewElementLike, HTMLElement> {
  */
 type RenderingViewFunction = ScrollView | SyncView;
 /**
+ * Denotes the type of a callback that constructs a `RenderingViewFunction` from an `HTMLElement`.
+ */
+type RenderingViewFunctionProvider = (element: HTMLElement) => RenderingViewFunction;
+/**
  * A union type including all view functions that only transform a `View`. These view functions will have no impact on DOM.
  */
 export type ViewTransformation = Exclude<AbstractViewFunction<ViewElement>, RenderingViewFunction>;
@@ -69,6 +73,23 @@ export type ViewTransformation = Exclude<AbstractViewFunction<ViewElement>, Rend
  * Since backward propagation is not always desired, it can be enabled and disabled by `enableBackPropagation` and `disableBackPropagation`.
  */
 export class BaseView extends AggregateView<TViewElementLike> {
+  /**
+   * Provide a `RenderingViewFunction` by creating a `SyncView` instance.
+   *
+   * @param element - An element where rendering view is mounted.
+   * @returns A rendering view implementation which is responsible for syncing rendering view elements to the DOM.
+   */
+  static readonly SYNC_VIEW_FACTORY: RenderingViewFunctionProvider = (element: HTMLElement) =>
+    new SyncView(element, false);
+  /**
+   * Provide a `RenderingViewFunction` by creating a `ScrollView` instance.
+   *
+   * @param element - An element where rendering view is mounted.
+   * @returns A rendering view implementation which is responsible for syncing rendering view elements to the DOM.
+   */
+  static readonly SCROLL_VIEW_FACTORY: RenderingViewFunctionProvider = (element: HTMLElement) =>
+    new ScrollView(element);
+
   /**
    * `viewElementProvider` is responsible for providing the source view elements that will undergo view transformation.
    */
@@ -90,24 +111,21 @@ export class BaseView extends AggregateView<TViewElementLike> {
    * @param source - A source that is used to initialize the `viewElementProvider` to provide view elements.
    * @param target - A DOM element that represents a region of DOM tree that is being watched. It will be the destination where rendering view will mount.
    * @param viewTransformations - A series of transformative view functions that will process the view elements from `source` to produce view elements for rendering.
+   * @param renderingViewFunctionProvider - A callback to create a `RenderingViewFunction` from a DOM element. Can be either `BaseView.SCROLL_VIEW_FACTORY` or `BaseView.SYNC_VIEW_FACTORY`. Default to `undefined`, which will choose the former if source contains a lot of `ViewElement`.
    * @constructs BaseView
    */
   constructor(
     source: TSourceType,
     target: HTMLElement,
-    viewTransformations: Array<ViewTransformation> = []
+    viewTransformations: Array<ViewTransformation> = [],
+    renderingViewFunctionProvider: RenderingViewFunctionProvider = undefined
   ) {
     super(viewTransformations);
 
     this.initializeViewElementProvider__(source, document.createElement(target.tagName));
-    this.initializeRenderingView__(target);
+    this.initializeRenderingView__(target, renderingViewFunctionProvider);
 
-    /**
-     * When `this.shouldRegenerateView` is set to true, immediately regenerate view. This is part of forward propagation.
-     */
-    this.subscribe(this, AbstractViewFunction.shouldRegenerateViewEventName, () =>
-      this.view(undefined, true)
-    );
+    this.initializeAutomaticViewRegeneration__();
 
     /**
      * This invocation of `composeFeatures` will allow exposed methods in `this.renderingView` to be invoked directly on this `BaseView` instance.
@@ -174,9 +192,31 @@ export class BaseView extends AggregateView<TViewElementLike> {
    * Initialize a RenderingView which will sync view elements to DOM.
    *
    * @param target - A DOM element which reflects a region of DOM that is synced with `ViewElement` hierarchy.
+   * @param renderingViewFunctionProvider - A callback to create a `RenderingViewFunction` from a DOM element.
    */
-  protected initializeRenderingView__(target: HTMLElement) {
-    this.renderingView = new SyncView(target, false);
+  protected initializeRenderingView__(
+    target: HTMLElement,
+    renderingViewFunctionProvider: RenderingViewFunctionProvider
+  ) {
+    if (renderingViewFunctionProvider === undefined) {
+      renderingViewFunctionProvider = this.viewElementProvider.hasLargeNumberOfChildViewElement
+        ? BaseView.SCROLL_VIEW_FACTORY
+        : BaseView.SYNC_VIEW_FACTORY;
+    }
+
+    this.renderingView = renderingViewFunctionProvider(target);
+  }
+
+  /**
+   * Initialize automatic view regeneration mechanism -- when an `shouldRegenerateViewEventName` event notification is sent to current instance, immediately handle it by regenerating view. In other words, such event is dispatched to current instance when a view regeneration is needed.
+   */
+  protected initializeAutomaticViewRegeneration__() {
+    /**
+     * When `this.shouldRegenerateView` is set to true, immediately regenerate view. This is part of forward propagation.
+     */
+    this.subscribe(this, AbstractViewFunction.shouldRegenerateViewEventName, () =>
+      this.view(undefined, true)
+    );
   }
 
   /**
