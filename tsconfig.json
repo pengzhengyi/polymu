@@ -8,5 +8,6 @@
     "lib": ["dom", "es2020.string", "DOM.Iterable"],
     "sourceMap": true,
     "allowJs": true
-  }
+  },
+  "include": ["src/**/*.ts", "src/dom/mutation-observer.js"]
 }
