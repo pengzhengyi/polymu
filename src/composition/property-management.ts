@@ -129,7 +129,7 @@ export class Property<TPropertyValue> {
     newValue: TPropertyValue,
     thisValue: Property<TPropertyValue>,
     manager: PropertyManager
-  ) {
+  ): void {
     manager.notifyValueChange(thisValue);
   }
   /**
@@ -241,7 +241,11 @@ export class Property<TPropertyValue> {
    * @param {Property<TPropertyValue>} thisValue - A reference to the property where the setter function is associated. Note `thisValue` is different from `this` as `thisValue` refers to current property instance while `this` refers to the object (usually where this property is bound) where this function is invoked in.
    * @param {PropertyManager} manager - A reference to the property manager. Used to update this property's value in manager's cache.
    */
-  setValue(value: TPropertyValue, thisValue: Property<TPropertyValue>, manager: PropertyManager) {
+  setValue(
+    value: TPropertyValue,
+    thisValue: Property<TPropertyValue>,
+    manager: PropertyManager
+  ): void {
     manager.setPropertyValueSnapshot(thisValue, value);
   }
 
@@ -253,17 +257,17 @@ export class Property<TPropertyValue> {
    * @see {@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/defineProperty Object.defineProperty()}
    */
   bind(target: any, manager: PropertyManager) {
-    const thisValue = this;
+    const that = this;
     Object.defineProperty(target, this.name, {
       configurable: true,
       enumerable: true,
       get() {
         // invoke external-facing `getValue` for this property
-        return thisValue.getValue(thisValue, manager);
+        return that.getValue(that, manager);
       },
       set(value: TPropertyValue) {
         // invoke external-facing `setValue` for this property
-        thisValue.setValue(value, thisValue, manager);
+        that.setValue(value, that, manager);
       },
     });
   }
@@ -326,7 +330,7 @@ export class PropertyManager {
    * + D's active dependencies only include C
    * + E has no active dependencies
    */
-  readonly propertyToActiveDependencies: Map<Property<any>, Set<Property<any>>> = new Map();
+  readonly propertyToActiveDependencies = new Map<Property<any>, Set<Property<any>>>();
 
   /**
    * Which dependency tier this property is on. A smaller number indicates a higher position in the dependency graph -- more properties depend on this property than the reverse direction. Dependency tier is used to determine in which order value update will occur.
@@ -341,7 +345,7 @@ export class PropertyManager {
    *
    * Suppose A changed, then B will change, and lastly C will change.
    */
-  readonly propertyToDependencyTier: Map<Property<any>, number> = new Map();
+  readonly propertyToDependencyTier = new Map<Property<any>, number>();
 
   /**
    * Creates a property manager instance.
@@ -534,9 +538,9 @@ export class PropertyManager {
    *
    * @param properties - A group of properties whose dependencies and update behavior should be managed.
    */
-  _analyzeDependencies(properties: Array<Property<any>>) {
+  _analyzeDependencies(properties: Array<Property<any>>): void {
     // a temporary map to store a property's parents in the dependency graph
-    const propertyToPrerequisites: Map<Property<any>, Set<Property<any>>> = new Map();
+    const propertyToPrerequisites = new Map<Property<any>, Set<Property<any>>>();
 
     /**
      * The callback to execute for a property when a subtree in its prerequisite graph has been explored. It is used to compute the dependency level.
@@ -655,7 +659,7 @@ export class PropertyManager {
    *
    * @param property - A property whose value has changed.
    */
-  notifyValueChange(property: Property<any>) {
+  notifyValueChange(property: Property<any>): void {
     if (this.__notifyValueChangeLock === false) {
       // prevent subsequent `notifyValueChange` calls triggered by this call during updating values in dependency graph
       this.__notifyValueChangeLock = true;
@@ -701,7 +705,7 @@ export class PropertyManager {
    * @param target - An object where this property is defined.
    * @see {@link Property#bind} for how each property is bound.
    */
-  bind(target: any) {
+  bind(target: any): void {
     for (const property of this.nameToProperty.values()) {
       property.bind(target, this);
     }

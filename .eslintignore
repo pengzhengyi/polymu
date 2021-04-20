@@ -8,3 +8,5 @@ dist
 coverage
 # don't lint on test files
 *.test.ts
+# don't lint this file which comes from external source
+mutation-observer.js

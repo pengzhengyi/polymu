@@ -39,12 +39,12 @@ export class AggregateView<TViewElement>
   constructor(viewFunctions: Array<AbstractViewFunction<TViewElement>> = []) {
     super();
 
-    const chain = this;
+    const self = this;
     this.viewFunctions_ = viewFunctions;
     for (const viewFunction of viewFunctions) {
       // subscribe chain to target view regeneration of newly added view function
-      viewFunction.subscribe(chain, AbstractViewFunction.shouldRegenerateViewEventName, () =>
-        chain.onViewFunctionWillRegenerateView()
+      viewFunction.subscribe(self, AbstractViewFunction.shouldRegenerateViewEventName, () =>
+        self.onViewFunctionWillRegenerateView()
       );
     }
     this.viewFunctionsProxy_ = new Proxy(this.viewFunctions_, {
@@ -68,7 +68,7 @@ export class AggregateView<TViewElement>
             // unsubscribe chain from last view function if exists
             if (numViewFunction > 0) {
               target[numViewFunction - 1].unsubscribe(
-                chain,
+                self,
                 AbstractViewFunction.shouldRegenerateViewEventName
               );
             }
@@ -80,8 +80,8 @@ export class AggregateView<TViewElement>
               // for loop is used after a call to `Array.push` to avoid the rare case where a TypeError is thrown because the array will become too large
               for (const item of items) {
                 // subscribe chain to target view regeneration of newly added view function
-                item.subscribe(chain, AbstractViewFunction.shouldRegenerateViewEventName, () =>
-                  chain.onViewFunctionWillRegenerateView()
+                item.subscribe(self, AbstractViewFunction.shouldRegenerateViewEventName, () =>
+                  self.onViewFunctionWillRegenerateView()
                 );
               }
 
@@ -90,7 +90,7 @@ export class AggregateView<TViewElement>
           case 'shift':
             // unsubscribes chain from first view function if exists
             if (numViewFunction > 0) {
-              target[0].unsubscribe(chain, AbstractViewFunction.shouldRegenerateViewEventName);
+              target[0].unsubscribe(self, AbstractViewFunction.shouldRegenerateViewEventName);
             }
             break;
           case 'splice':
@@ -108,15 +108,15 @@ export class AggregateView<TViewElement>
               for (const viewFunction of items) {
                 // subscribe chain to target view regeneration of newly added view function
                 viewFunction.subscribe(
-                  chain,
+                  self,
                   AbstractViewFunction.shouldRegenerateViewEventName,
-                  () => chain.onViewFunctionWillRegenerateView()
+                  () => self.onViewFunctionWillRegenerateView()
                 );
               }
               for (const deletedViewFunction of deletedViewFunctions) {
                 // unsubscribe from deleted view functions
                 deletedViewFunction.unsubscribe(
-                  chain,
+                  self,
                   AbstractViewFunction.shouldRegenerateViewEventName
                 );
               }
@@ -130,8 +130,8 @@ export class AggregateView<TViewElement>
               // for loop is used after a call to `Array.push` to avoid the rare case where a TypeError is thrown because the array will become too large
               for (const item of items) {
                 // subscribe chain to target view regeneration of newly added view function
-                item.subscribe(chain, AbstractViewFunction.shouldRegenerateViewEventName, () =>
-                  chain.onViewFunctionWillRegenerateView()
+                item.subscribe(self, AbstractViewFunction.shouldRegenerateViewEventName, () =>
+                  self.onViewFunctionWillRegenerateView()
                 );
               }
 
@@ -163,7 +163,7 @@ export class AggregateView<TViewElement>
    *    + `source` view changed
    *    + target view should be regenerated -- any view function is inserted, modified, removed. In other words, whether the aggregate view function changed.
    */
-  protected regenerateView(sourceView: Collection<TViewElement>, useCache: boolean) {
+  protected regenerateView(sourceView: Collection<TViewElement>, useCache: boolean): void {
     if (useCache && sourceView === this.lastSourceView && !this.shouldRegenerateView) {
       return;
     }
@@ -180,7 +180,7 @@ export class AggregateView<TViewElement>
   /**
    * If a registered view function will need to regenerate target view, this function will be called to signal a target view regeneration is also necessary for the view function chain.
    */
-  protected onViewFunctionWillRegenerateView() {
+  protected onViewFunctionWillRegenerateView(): void {
     this.shouldRegenerateView = true;
   }
 }

@@ -104,7 +104,7 @@ export class SortedView<TViewElement>
   ];
 
   /** a mapping from identifier to a sorting function and its priority */
-  sortingFunctions: Map<any, SortingFunctionWithPriority<TViewElement>> = new Map();
+  sortingFunctions = new Map<any, SortingFunctionWithPriority<TViewElement>>();
 
   /** denotes the current smallest priority associated with sorting function */
   private smallestPriority = 0;
@@ -157,7 +157,7 @@ export class SortedView<TViewElement>
    *    + `source` view changed
    *    + target view should be regenerated -- the sorting function changed
    */
-  protected regenerateView(sourceView: Collection<TViewElement>, useCache: boolean) {
+  protected regenerateView(sourceView: Collection<TViewElement>, useCache: boolean): void {
     if (useCache && sourceView === this.lastSourceView && !this.shouldRegenerateView) {
       // source has not change and sorting functions have not changed => we can reuse current view
       return;

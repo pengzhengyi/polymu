@@ -126,7 +126,7 @@ export class SyncView extends AbstractViewFunction<TViewElementLike> implements 
    * If both conditions are false, nothing will be done -- same target view will be returned.
    * @override
    */
-  protected regenerateView(sourceView: Collection<TViewElementLike>, useCache: boolean) {
+  protected regenerateView(sourceView: Collection<TViewElementLike>, useCache: boolean): void {
     if (useCache && sourceView === this.lastSourceView) {
       // source has not change and sorting functions have not changed => we can reuse current view
       return;
@@ -144,7 +144,7 @@ export class SyncView extends AbstractViewFunction<TViewElementLike> implements 
    *
    * @param rootElement - The underlying root element. Can either be a `ViewElement` or `HTMLElement`.
    */
-  protected initializeRootViewElement__(rootElement: TViewElementLike) {
+  protected initializeRootViewElement__(rootElement: TViewElementLike): void {
     if (rootElement instanceof HTMLElement) {
       /**
        * Initialize a `ViewElement` from provided DOM element, since we only care about direct child mutation for provided DOM element, we only provide a factory method for `viewElementFactories`
@@ -158,7 +158,7 @@ export class SyncView extends AbstractViewFunction<TViewElementLike> implements 
   /**
    * Initialize the task queues executed before and after DOM changes.
    */
-  protected initializeTaskQueue__() {
+  protected initializeTaskQueue__(): void {
     this.beforeViewUpdateTaskQueue.tasks.push({
       work: () => this.rootViewElementChildListMutationReporter_.unobserve(),
       isRecurring: true,
@@ -174,7 +174,7 @@ export class SyncView extends AbstractViewFunction<TViewElementLike> implements 
    *
    * Currently, this method only register a handler for children mutation of `this.rootDomElement`, where `this.childViewElements` will be updated according to the childList mutations.
    */
-  protected initializeMutationHandler__() {
+  protected initializeMutationHandler__(): void {
     this.rootDomElement.addEventListener(
       ChildListChangeEvent.typeArg,
       (event: ChildListChangeEvent) => this.onChildListMutation__(event)
@@ -187,7 +187,7 @@ export class SyncView extends AbstractViewFunction<TViewElementLike> implements 
    *
    * @param childListChangeEvent - An event containing information about the childlist mutation that triggered this event.
    */
-  protected onChildListMutation__(childListChangeEvent: ChildListChangeEvent) {
+  protected onChildListMutation__(childListChangeEvent: ChildListChangeEvent): void {
     if (childListChangeEvent.target !== this.rootDomElement) {
       // only handle mutations to direct children
       return;
@@ -198,7 +198,7 @@ export class SyncView extends AbstractViewFunction<TViewElementLike> implements 
       this.rootViewElement_.removeChildByIdentifier__(identifier);
     }
 
-    const addedNodeToChildIndex: Map<Node, number> = new Map();
+    const addedNodeToChildIndex = new Map<Node, number>();
     for (const addedNode of childListChangeEvent.detail.addedNodes) {
       if (addedNode.nodeType !== Node.ELEMENT_NODE) {
         // ignore mutations of other types of node (for example, text node)
@@ -231,7 +231,7 @@ export class SyncView extends AbstractViewFunction<TViewElementLike> implements 
     action: () => void,
     beforeViewUpdateTaskQueueArgs: any[] = [],
     afterViewUpdateTaskQueueArgs: any[] = []
-  ) {
+  ): void {
     this.beforeViewUpdateTaskQueue.work(this, ...beforeViewUpdateTaskQueueArgs);
     action();
     this.afterViewUpdateTaskQueue.work(this, ...afterViewUpdateTaskQueueArgs);
@@ -240,7 +240,7 @@ export class SyncView extends AbstractViewFunction<TViewElementLike> implements 
   /**
    * Perform necessary cleanup tasks.
    */
-  dispose() {
+  dispose(): void {
     this.rootViewElementChildListMutationReporter_.dispose();
   }
 
@@ -255,7 +255,7 @@ export class SyncView extends AbstractViewFunction<TViewElementLike> implements 
    *
    * @param source - Element or elements used to update current `this.rootViewElement_`.
    */
-  sync(source: TViewElementLike | Iterable<TViewElementLike>) {
+  sync(source: TViewElementLike | Iterable<TViewElementLike>): void {
     /**
      * + `PatchModeForMatch.ModifyProperties` is too expensive
      * + `PatchModeForMatch.CreateAlias` might alias two `ViewElement` during `replaceWith` and cause unintended altogether deletion of underlying element. @example suppose there are two `ViewElement` where the first `ViewElement`'s underlying element has a id "1" while the second "2". When `sync` is called with only the later ViewElement, if with `PatchModeForMatch.CreateAlias`, then the in-place-patch algorithm will change first `ViewElement`'s underlying element to be the one with id "2". Therefore, during deletion of second ViewElement and detaching of its underlying element, both ViewElement will have their underlying DOM element removed.

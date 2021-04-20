@@ -4,7 +4,7 @@
  * This module provides a `PartialView` which represents a view transformation which selects a "window" of the source view.
  */
 
-import { Collection, LazyCollectionProvider } from '../collections/Collection';
+import { Collection } from '../collections/Collection';
 import { ResizeStrategy, SlidingWindow } from '../collections/SlidingWindow';
 import { IFeatureProvider } from '../composition/composition';
 import { AbstractViewFunction } from './AbstractViewFunction';
@@ -162,7 +162,7 @@ export class PartialView<TViewElement>
    *
    * If both conditions are false, nothing will be done -- same target view will be returned.
    */
-  protected regenerateView(sourceView: Collection<TViewElement>, useCache: boolean) {
+  protected regenerateView(sourceView: Collection<TViewElement>, useCache: boolean): void {
     if (sourceView === this.lastSourceView) {
       if (useCache && !this.shouldRegenerateView) {
         return;

@@ -109,7 +109,9 @@ export abstract class Abstraction {
       },
       set(newValue: any) {
         throw new NotImplemented(
-          `Setter for ${property.toString()} has not been implemented: received ${newValue}`
+          `Setter for ${property.toString()} has not been implemented: received ${
+            newValue as string
+          }`
         );
       },
     };

@@ -243,7 +243,7 @@ export class ViewElement<
    * @override
    * @description In addition to changing the forwarding target, this method will also remove the identifier from previous forwarding target's dataset (if exists) and add the identifier to the new forwarding target's dataset.
    */
-  setForwardingTo__(forwardingTo: TDomElement) {
+  setForwardingTo__(forwardingTo: TDomElement): void {
     if (this.forwardingTo_) {
       delete this.forwardingTo_.dataset[ViewElement.identifierDatasetName_];
     }
@@ -280,7 +280,7 @@ export class ViewElement<
    * @param {ViewElement} child - A child ViewElement to be inserted or a HTMLElement to be transformed into a child ViewElement and inserted.
    * @param {number} index - Where the child ViewElement should be inserted. Should be a valid number between [0, this._children.length] where 0 is equivalent to prepending to the start and `this._children.length` is equivalent to appending to the end.
    */
-  insertChild__(child: ViewElement | HTMLElement, index: number = this._children.length) {
+  insertChild__(child: ViewElement | HTMLElement, index: number = this._children.length): void {
     let viewElement: ViewElement;
     if (child instanceof ViewElement) {
       viewElement = child;
@@ -492,7 +492,7 @@ export class ViewElement<
     mode: PatchModeForMatch = PatchModeForMatch.CreateAlias,
     noDetach = true,
     noAttach = true
-  ) {
+  ): void {
     // patch self
     this.__patchSelf(other.element_ as TDomElement, mode, true, undefined, noDetach, noAttach);
 
@@ -553,7 +553,7 @@ export class ViewElement<
     mode: PatchModeForMatch = PatchModeForMatch.CreateAlias,
     noDetach = true,
     noAttach = true
-  ) {
+  ): void {
     // patch children
     patch(
       this._children,
@@ -598,7 +598,7 @@ export class ViewElement<
     mode: PatchModeForMatch = PatchModeForMatch.CreateAlias,
     noDetach = true,
     noAttach = true
-  ) {
+  ): void {
     // patch self
     this.__patchSelf(other, mode, true, undefined, noDetach, noAttach);
 
@@ -633,7 +633,7 @@ export class ViewElement<
     mode: PatchModeForMatch = PatchModeForMatch.CreateAlias,
     noDetach = true,
     noAttach = true
-  ) {
+  ): void {
     let newChildViewElementHandler: (otherChild: Element, childIndex: number) => void;
 
     if (Array.isArray(this._viewElementFactories) && this._viewElementFactories.length === 0) {
@@ -676,7 +676,7 @@ export class ViewElement<
    * @public
    * @param {MutationReporterCallback} [callback] - The callback to be invoked when mutations are observed. It will be invoked with `this` bound to current ViewElement.
    */
-  initializeMutationReporter(callback?: MutationReporterCallback) {
+  initializeMutationReporter(callback?: MutationReporterCallback): void {
     if (this._mutationReporter) {
       this._mutationReporter.disconnect();
     }
@@ -692,7 +692,7 @@ export class ViewElement<
   /**
    * ! This is an inefficient implementation to automatically update `ViewElement` hierarchy in event of DOM tree mutations. In short, calling this method will rebuild the `ViewElement` hierarchy according to the current DOM subtree. A more efficient implementation should utilize information in `mutations` to partially update the `ViewElement` hierarchy.
    */
-  setupAutoUpdateChildViewElement() {
+  setupAutoUpdateChildViewElement(): void {
     this.element_.addEventListener(ChildListChangeEvent.typeArg, () => {
       // update children ViewElement
       this.patchWithDOMElement__(this.element_);
@@ -712,7 +712,7 @@ export class ViewElement<
     shouldObserveCharacterData: boolean,
     shouldObserveChildList: boolean,
     shouldObserveSubtree: boolean
-  ) {
+  ): void {
     const options = MutationReporter.createMutationObserverInit(
       shouldObserveAttributes,
       shouldObserveCharacterData,
@@ -724,19 +724,19 @@ export class ViewElement<
   }
 
   /** @see {@link MutationReporter:MutationReporter#unobserve} */
-  unobserve__(target: Node) {
+  unobserve__(target: Node): void {
     this._mutationReporter.unobserve(target);
   }
 
   /** @see {@link MutationReporter:MutationReporter#reconnectToExecute} */
-  reconnectToExecute__(callback: () => void) {
+  reconnectToExecute__(callback: () => void): void {
     this._mutationReporter.reconnectToExecute(callback);
   }
 
   /**
    * Perform any necessary setup steps.
    */
-  dispose() {
+  dispose(): void {
     if (this._mutationReporter) {
       this._mutationReporter.disconnect(true);
     }

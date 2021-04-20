@@ -33,7 +33,7 @@ export class FilteredView<TViewElement>
   private shouldRefineView = true;
 
   /** A mapping from identifier to filter function */
-  private filterFunctions: Map<any, FilterFunction<TViewElement>> = new Map();
+  private filterFunctions = new Map<any, FilterFunction<TViewElement>>();
 
   /** The aggregate filter function -- combining all filter functions */
   get filter(): FilterFunction<TViewElement> {
@@ -72,7 +72,7 @@ export class FilteredView<TViewElement>
    * If `source` view does not change and only new filter functions have been added, target view will be generated from last target view. In other words, previous target view will be refined to reduce computation.
    * @override
    */
-  protected regenerateView(sourceView: Collection<TViewElement>, useCache: boolean) {
+  protected regenerateView(sourceView: Collection<TViewElement>, useCache: boolean): void {
     if (useCache && sourceView === this.lastSourceView) {
       if (this.shouldRegenerateView) {
         if (this.shouldRefineView) {
@@ -158,7 +158,7 @@ export class FilteredView<TViewElement>
    * @public
    * @returns Whether this operation will cause a regeneration of view. Even this operation does not cause view regeneration, a view regeneration might still happen because of other operations.
    */
-  clearFilterFunction() {
+  clearFilterFunction(): boolean {
     if (this.filterFunctions.size === 0) {
       return false;
     }

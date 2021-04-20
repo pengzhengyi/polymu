@@ -16,7 +16,7 @@
  * @returns The associated property value. `undefined` if no property is registered under provided name.
  */
 
-export function getProperty(element: HTMLElement, propertyName: string) {
+export function getProperty(element: HTMLElement, propertyName: string): any {
   if (element.hasAttribute(propertyName)) {
     return element.getAttribute(propertyName);
   } else {
@@ -45,7 +45,7 @@ export function hasProperty(element: HTMLElement, propertyName: string): boolean
  * @param {any} propertyValue - The value to be registered under the provided name.
  */
 
-export function setProperty(element: HTMLElement, propertyName: string, propertyValue: any) {
+export function setProperty(element: HTMLElement, propertyName: string, propertyValue: any): void {
   if (element.hasAttribute(propertyName)) {
     element.setAttribute(propertyName, propertyValue);
   } else {

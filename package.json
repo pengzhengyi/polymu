@@ -14,7 +14,6 @@
     "build-prod.watch": "npm run build-prod -- --watch",
     "build.watch": "npm run build -- --watch",
     "build": "npm run format && npm run lint && npm run test && npm run build-prod",
-    "build.force": "npm run lint ; npm run format && npm run test && npm run build-prod",
     "test": "jest",
     "test.watch": "npm run test -- --watch",
     "lint": "eslint ./src --color --fix --ext .js,.jsx,.ts,.tsx",

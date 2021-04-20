@@ -33,14 +33,14 @@ export interface IFeatureProvider {
 /**
  * Add features to target. More specifically, it collects features from all the feature providers and register these features as bound functions in target.
  *
- * @param {object} target - Where the features will be registered as class properties.
+ * @param target - Where the features will be registered as class properties.
  * @param {IterableIterator<IFeatureProvider>} featureProvider - An iterable of IFeatureProviders that expose features.
  */
 
 export function composeFeatures(
-  target: object,
+  target: unknown,
   featureProviders: IterableIterator<IFeatureProvider> | Array<IFeatureProvider>
-) {
+): void {
   const props: PropertyDescriptorMap = {};
   for (const featureProvider of featureProviders) {
     for (const feature of featureProvider.getFeatures()) {

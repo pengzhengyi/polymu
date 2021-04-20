@@ -5,10 +5,10 @@ export function getViewportHeight(): number {
   return Math.max(document.documentElement.clientHeight, window.innerHeight || 0);
 }
 // width conversion
-export function vw2px(vw: number) {
+export function vw2px(vw: number): number {
   return (document.documentElement.clientWidth * vw) / 100;
 }
-export function em2px(em: number, fontSize = 16, element: HTMLElement | null = null) {
+export function em2px(em: number, fontSize = 16, element: HTMLElement | null = null): number {
   if (element === null) {
     return fontSize * em;
   } else {

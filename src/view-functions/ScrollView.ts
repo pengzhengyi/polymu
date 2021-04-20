@@ -1134,7 +1134,7 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement>
    * If the source view can fit within a window (`this.shouldPartialRender` is true), then IntersectionObserver will not be activated.
    * @public
    */
-  protected activateObservers__() {
+  protected activateObservers__(): void {
     if (this._shouldPartialRender) {
       this._startFillerObserver.observe(this._startFillerElement);
       this._endFillerObserver.observe(this._endFillerElement);
@@ -1147,7 +1147,7 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement>
    * Deactivates all IntersectionObserver. Usually called when a view update is taking place.
    * @public
    */
-  protected deactivateObservers__() {
+  protected deactivateObservers__(): void {
     this._startFillerObserver.disconnect();
     this._endFillerObserver.disconnect();
     this._startSentinelObserver.disconnect();
@@ -1160,7 +1160,7 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement>
    * @callback
    * @param {Array<IntersectionObserverEntry>} entries - An array of IntersectionObserver entries.
    */
-  protected fillerReachedHandler__(entries: Array<IntersectionObserverEntry>) {
+  protected fillerReachedHandler__(entries: Array<IntersectionObserverEntry>): void {
     entries.forEach((entry) => {
       if (entry.isIntersecting && entry.intersectionRect.height > 0) {
         const newStartIndex = this.getElementIndexFromScrollAmount__();
@@ -1175,7 +1175,7 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement>
    * @callback
    * @param {Array<IntersectionObserverEntry>} entries - An array of IntersectionObserver entries.
    */
-  protected sentinelReachedHandler__(entries: Array<IntersectionObserverEntry>) {
+  protected sentinelReachedHandler__(entries: Array<IntersectionObserverEntry>): void {
     const shiftAmount = Math.floor(this.windowSize / 2);
     const scrollDirection: ScrollDirection = this._scrollDirection;
 
@@ -1200,7 +1200,7 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement>
    * @param oldStartIndex - Previous start index. Used to determine by what amount start index has changed.
    * @param oldEndIndex - Previous end index. Used to determine by what amount end index has changed.
    */
-  protected regenerateViewIfNeeded__(oldStartIndex: number, oldEndIndex: number) {
+  protected regenerateViewIfNeeded__(oldStartIndex: number, oldEndIndex: number): void {
     const startIndexShiftAmount: number = this.startIndex - oldStartIndex;
     const endIndexShiftAmount: number = this.endIndex - oldEndIndex;
     const hasSameShiftAmount: boolean =
@@ -1231,7 +1231,7 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement>
   /**
    * @override
    */
-  protected regenerateView(sourceView: Collection<TViewElement>, useCache: boolean) {
+  protected regenerateView(sourceView: Collection<TViewElement>, useCache: boolean): void {
     if (!useCache || sourceView !== this.lastSourceView) {
       this._propertyManager.setPropertyValueSnapshotSilently(
         this._renderingStrategyProperty,
@@ -1255,7 +1255,7 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement>
    *
    * @param modification - A callback that updates the rendering view.
    */
-  protected modifyRenderingView__(modification: () => void) {
+  protected modifyRenderingView__(modification: () => void): void {
     const shouldMuteMutationReporter = this._targetChildListMutationReporter !== undefined;
 
     this.deactivateObservers__();
@@ -1283,7 +1283,7 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement>
    *
    * @param {number} [scrollAmount = this.scrollPosition] - How far scrolled from page top.
    */
-  protected getElementIndexFromScrollAmount__(scrollAmount: number = this._scrollPosition) {
+  protected getElementIndexFromScrollAmount__(scrollAmount: number = this._scrollPosition): number {
     const position = Math.max(scrollAmount - this._startFillerOffset, 0);
     return bound(Math.floor(position / this._elementLength), 0, this._renderingView.length - 1);
   }
@@ -1300,7 +1300,7 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement>
    * @param {number} elementIndex - The index of an element to scroll to. It should be a safe index: neither less than 0 nor equal or greater than the number of elements.
    * @param {number} offset - The amount to adjust the final scroll position. See the formula.
    */
-  scrollToElementIndex(elementIndex: number, offset = 0) {
+  scrollToElementIndex(elementIndex: number, offset = 0): void {
     this._scrollPosition = this._elementLength * elementIndex + this._startFillerOffset + offset;
   }
 

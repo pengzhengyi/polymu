@@ -120,7 +120,7 @@ export abstract class AbstractViewFunction<TViewElement>
    * @param {Collection<TViewElement>} sourceView - An Collection of elements of certain type representing the source view.
    * @param {boolean} useCache - Whether previous target view (cache) can be reused giving same source view and same transformation. A `true` value for `useCache` should force a view generation.
    */
-  protected regenerateView(sourceView: Collection<TViewElement>, useCache: boolean) {
+  protected regenerateView(sourceView: Collection<TViewElement>, useCache: boolean): void {
     this.shouldRegenerateView = false;
     this._lastSourceView = sourceView;
   }

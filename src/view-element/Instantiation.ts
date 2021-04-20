@@ -124,7 +124,7 @@ export class ForwardingInstantiation extends Abstraction {
    * @param {boolean} [reset=false] - Whether existing props will be removed.
    * @description __override__ The overriding function allows access functions in ForwardingPropertyDescriptor to receive two additional arguments: `forwardingTo` and `thisArgument`.
    */
-  registerProps__(props: Record<Prop, Partial<ForwardingPropertyDescriptor>>, reset = false) {
+  registerProps__(props: Record<Prop, Partial<ForwardingPropertyDescriptor>>, reset = false): void {
     /** props will be registered in {@link ./Abstraction.Abstraction} */
     super.registerProps__(
       ForwardingInstantiation.__transformPropertyDescriptors(props, this),
@@ -143,7 +143,7 @@ export class ForwardingInstantiation extends Abstraction {
    * @public
    * @param {any} forwardingTo - A target to forward access / modification on registered properties.
    */
-  setForwardingTo__(forwardingTo: any) {
+  setForwardingTo__(forwardingTo: any): void {
     /**
      * `forwardingTo_` is
      *
@@ -254,7 +254,10 @@ export class DomForwardingInstantiation<
    * @param {boolean} [reset=false] - Whether existing props will be removed.
    * @description __override__ The overriding function will replace falsy descriptor values in `props` with default property descriptor {@link DomForwardingInstantiation.__fillDefaultDescriptor}.
    */
-  registerProps__(props: Record<string, Partial<ForwardingPropertyDescriptor>>, reset = false) {
+  registerProps__(
+    props: Record<string, Partial<ForwardingPropertyDescriptor>>,
+    reset = false
+  ): void {
     // super refers to {@link ForwardingInstantiation}
     super.registerProps__(DomForwardingInstantiation.__fillDefaultDescriptor(props), reset);
   }
@@ -427,7 +430,7 @@ export class DomFallthroughInstantiation<TDomElement extends HTMLElement = HTMLE
 
       ownKeys(target: DomFallthroughInstantiation<TDomElement>) {
         const keys = new Set(Reflect.ownKeys(target));
-        for (const elementKey in Reflect.ownKeys(target.element_)) {
+        for (const elementKey of Reflect.ownKeys(target.element_)) {
           keys.add(elementKey);
         }
         return Array.from(keys);
