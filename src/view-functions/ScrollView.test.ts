@@ -2,7 +2,7 @@ import { Collection } from '../collections/Collection';
 import { ChildListChangeEvent } from '../dom/CustomEvents';
 import { ScrollView } from './ScrollView';
 
-function setupIntersectionObserverMock({
+export function setupIntersectionObserverMock({
   observe = () => null,
   unobserve = () => null,
   disconnect = () => null,
