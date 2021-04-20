@@ -1019,7 +1019,7 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement>
    */
   protected handleReplaceRenderingStrategy__() {
     const targetView: Collection<TViewElement> = this._targetView;
-    const target = this._propertyManager.getPropertyValue('_target');
+    const target: HTMLElement = this._propertyManager.getPropertyValue('_target');
     const convert = this._convert;
     const scrollPosition = this._scrollPosition;
 
@@ -1029,8 +1029,11 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement>
       this.__circularArray = new CircularArray(capacity);
     }
 
-    const existingElements = Array.from(this._target.children);
-    let existingElementCount = existingElements.length;
+    /**
+     * Since `replaceWith` might be called to replace a child of target with another child of target, `target.childElementCount` might change unexpectedly
+     */
+    const existingElements = target.children;
+    let newElementCount = 0;
     this.__circularArray.fit(
       (function* () {
         for (const viewElement of targetView) {
@@ -1039,10 +1042,10 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement>
       })(),
       undefined,
       (element, index) => {
-        if (existingElementCount > 0) {
-          const existingElement = existingElements[index];
+        newElementCount++;
+        let existingElement = existingElements[index];
+        if (existingElement) {
           existingElement.replaceWith(element);
-          existingElementCount--;
         } else {
           target.appendChild(element);
         }
@@ -1050,7 +1053,9 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement>
     );
 
     // remove surplus elements
-    for (; existingElementCount > 0; existingElementCount--) {
+    const existingElementCount = target.childElementCount;
+    let numSurplusElementCount = existingElementCount - newElementCount;
+    for (; numSurplusElementCount > 0; numSurplusElementCount--) {
       target.lastElementChild.remove();
     }
 
