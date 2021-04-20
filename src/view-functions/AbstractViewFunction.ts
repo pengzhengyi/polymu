@@ -11,7 +11,7 @@
  */
 
 import { ViewFunction } from './ViewFunction';
-import { TaskQueue } from '../TaskQueue';
+import { TaskQueue } from '../collections/TaskQueue';
 import { IFeatureProvider } from '../composition/composition';
 import { Collection } from '../collections/Collection';
 import { EventNotifier } from '../composition/EventNotification';

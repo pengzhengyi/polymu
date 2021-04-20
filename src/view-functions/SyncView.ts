@@ -7,7 +7,7 @@
 import { Collection } from '../collections/Collection';
 import { IFeatureProvider } from '../composition/composition';
 import { ChildListChangeEvent } from '../dom/CustomEvents';
-import { TaskQueue } from '../TaskQueue';
+import { TaskQueue } from '../collections/TaskQueue';
 import { isIterable, peek } from '../utils/IterableHelper';
 import { PatchModeForMatch, ViewElement } from '../view-element/ViewElement';
 import { ViewElementChildListMutationReporter } from '../views/ViewElementChildListMutationReporter';

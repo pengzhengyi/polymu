@@ -1,12 +1,12 @@
-import { TaskQueue } from "./TaskQueue";
+import { TaskQueue } from './TaskQueue';
 
-describe("Task Queue", () => {
-  test("recurring task", () => {
+describe('Task Queue', () => {
+  test('recurring task', () => {
     let sum = 0;
     const taskQueue = new TaskQueue();
     taskQueue.tasks.push({
-      work: () => sum += 1,
-      isRecurring: true
+      work: () => (sum += 1),
+      isRecurring: true,
     });
 
     // execute once
@@ -19,12 +19,12 @@ describe("Task Queue", () => {
     expect(sum).toBe(2);
   });
 
-  test("one-time task", () => {
+  test('one-time task', () => {
     let sum = 0;
     const taskQueue = new TaskQueue();
     taskQueue.tasks.push({
-      work: () => sum += 1,
-      isRecurring: false
+      work: () => (sum += 1),
+      isRecurring: false,
     });
 
     // execute once
