@@ -3,7 +3,7 @@ const path = require('path');
 module.exports = [
   'source-map'
 ].map(devtool => ({
-  entry: './src/polymu.ts',
+  entry: './src/views/BaseView.ts',
   devtool: 'inline-source-map',
   module: {
     rules: [
@@ -18,7 +18,7 @@ module.exports = [
     extensions: [ '.tsx', '.ts', '.js' ],
   },
   output: {
-    filename: 'polymu.js',
+    filename: '[name].js',
     path: path.resolve(__dirname, 'dist'),
     library: 'polymu',
   },
