@@ -23,8 +23,8 @@ describe('Testing Prop', () => {
     expect((instantiation as any).field).toBeNull();
     (instantiation as any).field = 'foo';
     expect((instantiation as any).field).toBe('foo');
-    expect(mockGetter.mock.calls.length).toBe(2);
-    expect(mockSetter.mock.calls.length).toBe(1);
+    expect(mockGetter.mock.calls).toHaveLength(2);
+    expect(mockSetter.mock.calls).toHaveLength(1);
   });
 
   test('Iteration', () => {

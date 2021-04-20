@@ -6,7 +6,7 @@ describe('PartialView', () => {
     const pv = new PartialView<number>(0, 4);
     // default view
     expect([...pv.view(array)]).toEqual([0, 1, 2, 3, 4]);
-    expect(pv.length).toBe(5);
+    expect(pv).toHaveLength(5);
     expect(pv.reachedStart).toBe(true);
     expect(pv.reachedEnd).toBe(false);
     expect(pv.windowSize).toBe(5);
@@ -22,7 +22,7 @@ describe('PartialView', () => {
     expect([...pv.view(array)]).toEqual([5, 6, 7, 8, 9]);
     expect(pv.shiftWindow(-5)).toBe(true);
     expect([...pv.view(array)]).toEqual([0, 1, 2, 3, 4]);
-    expect(pv.length).toBe(5);
+    expect(pv).toHaveLength(5);
     expect(pv.reachedStart).toBe(true);
     expect(pv.startIndex).toBe(0);
 
@@ -37,6 +37,6 @@ describe('PartialView', () => {
     expect(pv.startIndex).toBe(0);
     expect(pv.endIndex).toBe(4);
     expect(pv.windowSize).toBe(5);
-    expect(pv.length).toBe(3);
+    expect(pv).toHaveLength(3);
   });
 });

@@ -29,15 +29,15 @@ describe('SyncView', () => {
     child2.textContent = 'Child 2';
 
     const targetView = syncView.view([child1, child2]);
-    expect(targetView.length).toEqual(2);
+    expect(targetView).toHaveLength(2);
     expect((Collection.get(targetView, 0) as HTMLElement).textContent).toEqual('Child 1');
     expect((Collection.get(targetView, 1) as HTMLElement).textContent).toEqual('Child 2');
   });
 
   test('onMutation', (done) => {
     expect(syncView.rootDomElement).toBe(rootDomElement);
-    expect(syncView.childViewElements.length).toEqual(0);
-    expect(syncView.childDomElements.length).toEqual(0);
+    expect(syncView.childViewElements).toHaveLength(0);
+    expect(syncView.childDomElements).toHaveLength(0);
 
     document.addEventListener(
       ChildListChangeEvent.typeArg,
@@ -46,7 +46,7 @@ describe('SyncView', () => {
         // 1 since `appendChild` is executed
         expect(rootDomElement.childElementCount).toEqual(1);
         // 0 because the DOM mutation has not been processed to update ViewElement
-        expect(syncView.childViewElements.length).toEqual(0);
+        expect(syncView.childViewElements).toHaveLength(0);
       },
       {
         once: true,
@@ -59,8 +59,8 @@ describe('SyncView', () => {
       () => {
         // after mutations are handled
         expect(rootDomElement.childElementCount).toEqual(1);
-        expect(syncView.childViewElements.length).toEqual(1);
-        expect(syncView.childDomElements.length).toEqual(1);
+        expect(syncView.childViewElements).toHaveLength(1);
+        expect(syncView.childDomElements).toHaveLength(1);
 
         window.setTimeout(() => {
           const child2 = document.createElement('p');
@@ -72,12 +72,12 @@ describe('SyncView', () => {
             () => {
               // after mutations are handled
               expect(rootDomElement.childElementCount).toEqual(2);
-              expect(syncView.childViewElements.length).toEqual(2);
-              expect(syncView.childDomElements.length).toEqual(2);
+              expect(syncView.childViewElements).toHaveLength(2);
+              expect(syncView.childDomElements).toHaveLength(2);
 
               window.setTimeout(() => {
-                expect(syncView.childViewElements.length).toEqual(2);
-                expect(syncView.childDomElements.length).toEqual(2);
+                expect(syncView.childViewElements).toHaveLength(2);
+                expect(syncView.childDomElements).toHaveLength(2);
 
                 // remove child
                 child1.remove();
@@ -86,8 +86,8 @@ describe('SyncView', () => {
                   () => {
                     // after mutations are handled
                     expect(rootDomElement.childElementCount).toEqual(1);
-                    expect(syncView.childViewElements.length).toEqual(1);
-                    expect(syncView.childDomElements.length).toEqual(1);
+                    expect(syncView.childViewElements).toHaveLength(1);
+                    expect(syncView.childDomElements).toHaveLength(1);
                     done();
                   },
                   {

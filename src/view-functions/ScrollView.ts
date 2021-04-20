@@ -396,7 +396,7 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement>
   );
 
   /** previous scroll position, used to determine the scroll direction */
-  protected _lastScrollPosition: number = 0;
+  protected _lastScrollPosition = 0;
   /**
    * A property describes `_lastScrollPosition`. For first-time retrieval and every time scroll axis has changed, 0 will be returned. In other cases, `shouldReuseLastValue` will evaluate to true and the value set in `_scrollDirection` will be used.
    */
@@ -952,7 +952,7 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement>
    * @example If the container of filler element is a ordered list (ol), then filler element will be a list item (li).
    */
   protected guessFillerTagName__(containerTagName: string) {
-    let tagName: string = 'div';
+    let tagName = 'div';
     switch (containerTagName) {
       case 'ol':
       case 'ul':
@@ -1043,7 +1043,7 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement>
       undefined,
       (element, index) => {
         newElementCount++;
-        let existingElement = existingElements[index];
+        const existingElement = existingElements[index];
         if (existingElement) {
           existingElement.replaceWith(element);
         } else {
@@ -1300,7 +1300,7 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement>
    * @param {number} elementIndex - The index of an element to scroll to. It should be a safe index: neither less than 0 nor equal or greater than the number of elements.
    * @param {number} offset - The amount to adjust the final scroll position. See the formula.
    */
-  scrollToElementIndex(elementIndex: number, offset: number = 0) {
+  scrollToElementIndex(elementIndex: number, offset = 0) {
     this._scrollPosition = this._elementLength * elementIndex + this._startFillerOffset + offset;
   }
 
@@ -1310,7 +1310,7 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement>
   setWindow(
     startIndex: number = this.startIndex,
     endIndex: number = this.endIndex,
-    noEventNotification: boolean = false
+    noEventNotification = false
   ): boolean {
     const oldStartIndex = this.startIndex;
     const oldEndIndex = this.endIndex;
@@ -1326,7 +1326,7 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement>
   /**
    * @override
    */
-  shiftWindow(shiftAmount: number, noEventNotification: boolean = false): boolean {
+  shiftWindow(shiftAmount: number, noEventNotification = false): boolean {
     const oldStartIndex = this.startIndex;
     const oldEndIndex = this.endIndex;
 

@@ -12,7 +12,7 @@ describe('Task Queue', () => {
     // execute once
     taskQueue.work();
     expect(sum).toBe(1);
-    expect(taskQueue.tasks.length).toBe(1);
+    expect(taskQueue.tasks).toHaveLength(1);
 
     // recurring task can be executed multiple times
     taskQueue.work();
@@ -30,7 +30,7 @@ describe('Task Queue', () => {
     // execute once
     taskQueue.work();
     expect(sum).toBe(1);
-    expect(taskQueue.tasks.length).toBe(0);
+    expect(taskQueue.tasks).toHaveLength(0);
 
     // no task will be executed since queue is empty
     taskQueue.work();

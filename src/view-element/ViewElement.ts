@@ -112,14 +112,14 @@ export class ViewElement<
    */
   private get _childViewElementFactory(): ViewElementFactory {
     if (Array.isArray(this._viewElementFactories)) {
-      const builders = this._viewElementFactories as Array<ViewElementFactory>;
+      const builders = this._viewElementFactories;
       if (builders.length === 0) {
         return null;
       }
       const builder = this._viewElementFactories[0];
       return (element: HTMLElement) => builder(element, this, builders.slice(1));
     } else {
-      const builder = this._viewElementFactories as ViewElementFactory;
+      const builder = this._viewElementFactories;
       return (element: HTMLElement) => builder(element, this, builder);
     }
   }
@@ -231,7 +231,7 @@ export class ViewElement<
   static getElementByIdentifier__(
     identifier: string,
     root: Document | DocumentFragment | Element = document,
-    selectors: string = ''
+    selectors = ''
   ): HTMLElement {
     return root.querySelector(
       `${selectors}[data-${ViewElement.identifierDatasetName_}="${identifier}"`
@@ -389,7 +389,7 @@ export class ViewElement<
    */
   operateOnRange__<T>(
     operation: (viewElement: ViewElement, childIndex: number, rangeIndex: number) => T,
-    start: number = 0,
+    start = 0,
     end: number = this._children.length
   ): Array<T> {
     const result: Array<T> = [];
@@ -415,12 +415,12 @@ export class ViewElement<
   private __patchSelf(
     other: TDomElement,
     mode: PatchModeForMatch = PatchModeForMatch.CreateAlias,
-    shouldDeepClone: boolean = false,
+    shouldDeepClone = false,
     properties?: IterableIterator<Prop>,
-    noDetach: boolean = true,
-    noAttach: boolean = true
+    noDetach = true,
+    noAttach = true
   ) {
-    let oldElement = this.element_;
+    const oldElement = this.element_;
     let newElement: TDomElement;
 
     switch (mode) {
@@ -490,8 +490,8 @@ export class ViewElement<
   patchWithViewElement__(
     other: ViewElement,
     mode: PatchModeForMatch = PatchModeForMatch.CreateAlias,
-    noDetach: boolean = true,
-    noAttach: boolean = true
+    noDetach = true,
+    noAttach = true
   ) {
     // patch self
     this.__patchSelf(other.element_ as TDomElement, mode, true, undefined, noDetach, noAttach);
@@ -551,8 +551,8 @@ export class ViewElement<
   patchChildViewElementsWithViewElements__(
     elements: Iterable<ViewElement>,
     mode: PatchModeForMatch = PatchModeForMatch.CreateAlias,
-    noDetach: boolean = true,
-    noAttach: boolean = true
+    noDetach = true,
+    noAttach = true
   ) {
     // patch children
     patch(
@@ -596,8 +596,8 @@ export class ViewElement<
   patchWithDOMElement__(
     other: TDomElement,
     mode: PatchModeForMatch = PatchModeForMatch.CreateAlias,
-    noDetach: boolean = true,
-    noAttach: boolean = true
+    noDetach = true,
+    noAttach = true
   ) {
     // patch self
     this.__patchSelf(other, mode, true, undefined, noDetach, noAttach);
@@ -631,8 +631,8 @@ export class ViewElement<
   patchChildViewElementsWithDOMElements__(
     elements: Iterable<HTMLElement> | HTMLCollection,
     mode: PatchModeForMatch = PatchModeForMatch.CreateAlias,
-    noDetach: boolean = true,
-    noAttach: boolean = true
+    noDetach = true,
+    noAttach = true
   ) {
     let newChildViewElementHandler: (otherChild: Element, childIndex: number) => void;
 

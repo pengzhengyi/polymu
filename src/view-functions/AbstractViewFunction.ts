@@ -42,7 +42,7 @@ export abstract class AbstractViewFunction<TViewElement>
    *
    * For example, consider a `SortedView` that reorders a collection of item and a renderer which returns the top N items. When a new sorting function is added to the `SortedView`, in other words, the `SortedView` needs to generate a different list of recommendation, the renderer will be notified through the event and it can request an actual generation of target view through `SortedView`'s `view` function. After the new target view is produced, the renderer can then returns a different set of top N items.
    */
-  static shouldRegenerateViewEventName: string = 'willRegenerateView';
+  static shouldRegenerateViewEventName = 'willRegenerateView';
 
   /**
    * Whether target view should be regenerated even if source view is the same as `lastSourceView`
@@ -51,7 +51,7 @@ export abstract class AbstractViewFunction<TViewElement>
    *
    * `_shouldRegenerateView` is `true` initially since target view must be `regenerated` as there is no meaningful reference to prior target view for first time.
    */
-  protected _shouldRegenerateView: boolean = true;
+  protected _shouldRegenerateView = true;
 
   protected get shouldRegenerateView(): boolean {
     return this._shouldRegenerateView;
@@ -100,7 +100,7 @@ export abstract class AbstractViewFunction<TViewElement>
    * @override
    * @description View is lazily generated. In other words, last target view is cached and reused if possible.
    */
-  view(sourceView: Collection<TViewElement>, useCache: boolean = true): Collection<TViewElement> {
+  view(sourceView: Collection<TViewElement>, useCache = true): Collection<TViewElement> {
     this.regenerateView(sourceView, useCache);
     return this.targetView;
   }

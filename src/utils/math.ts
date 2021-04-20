@@ -12,7 +12,7 @@
  */
 export function bound(
   n: number,
-  lowerBound: number = 0,
+  lowerBound = 0,
   upperBound: number = Number.POSITIVE_INFINITY
 ): number {
   return Math.min(upperBound, Math.max(lowerBound, n));

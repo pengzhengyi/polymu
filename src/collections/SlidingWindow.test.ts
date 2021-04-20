@@ -12,7 +12,7 @@ describe('SlidingWindow', () => {
     expect(window.startIndex).toEqual(0);
     expect(window.endIndex).toEqual(2);
     expect(window.windowSize).toEqual(3);
-    expect(window.length).toEqual(3);
+    expect(window).toHaveLength(3);
     expect(window.isWindowEmpty).toBe(false);
     expect(window.isWindowFull).toBe(true);
     expect(window.numElementBefore).toEqual(0);
@@ -28,7 +28,7 @@ describe('SlidingWindow', () => {
     expect(window.startIndex).toEqual(2);
     expect(window.endIndex).toEqual(4);
     expect(window.windowSize).toEqual(3);
-    expect(window.length).toEqual(3);
+    expect(window).toHaveLength(3);
     expect(window.isWindowEmpty).toBe(false);
     expect(window.isWindowFull).toBe(true);
     expect(window.numElementBefore).toEqual(2);
@@ -88,7 +88,7 @@ describe('SlidingWindow', () => {
     expect(window.startIndex).toEqual(1);
     expect(window.endIndex).toEqual(3);
     expect(window.windowSize).toEqual(3);
-    expect(window.length).toEqual(3);
+    expect(window).toHaveLength(3);
     expect(window.isWindowEmpty).toBe(false);
     expect(window.isWindowFull).toBe(true);
     expect(window.numElementBefore).toEqual(1);
@@ -129,7 +129,7 @@ describe('SlidingWindow', () => {
     expect(window.startIndex).toEqual(1);
     expect(window.endIndex).toEqual(4);
     expect(window.windowSize).toEqual(4);
-    expect(window.length).toEqual(4);
+    expect(window).toHaveLength(4);
     expect(window.isWindowEmpty).toBe(false);
     expect(window.isWindowFull).toBe(true);
     expect(window.numElementBefore).toEqual(1);
@@ -146,7 +146,7 @@ describe('SlidingWindow', () => {
     expect(window.startIndex).toEqual(0);
     expect(window.endIndex).toEqual(2);
     expect(window.windowSize).toEqual(3);
-    expect(window.length).toEqual(3);
+    expect(window).toHaveLength(3);
     expect(window.isWindowEmpty).toBe(false);
     expect(window.isWindowFull).toBe(true);
     expect(window.numElementBefore).toEqual(0);
@@ -193,7 +193,7 @@ describe('SlidingWindow', () => {
     expect(window.startIndex).toEqual(0);
     expect(window.endIndex).toEqual(2);
     expect(window.windowSize).toEqual(3);
-    expect(window.length).toEqual(3);
+    expect(window).toHaveLength(3);
     expect(window.isWindowEmpty).toBe(false);
     expect(window.isWindowFull).toBe(true);
     expect(window.numElementBefore).toEqual(0);
@@ -206,7 +206,7 @@ describe('SlidingWindow', () => {
     expect(window.startIndex).toEqual(0);
     expect(window.endIndex).toEqual(2);
     expect(window.windowSize).toEqual(3);
-    expect(window.length).toEqual(3);
+    expect(window).toHaveLength(3);
     expect(window.isWindowEmpty).toBe(false);
     expect(window.isWindowFull).toBe(true);
     expect(window.numElementBefore).toEqual(0);
@@ -234,7 +234,7 @@ describe('SlidingWindow', () => {
     expect(window.startIndex).toEqual(4);
     expect(window.endIndex).toEqual(4);
     expect(window.windowSize).toEqual(1);
-    expect(window.length).toEqual(1);
+    expect(window).toHaveLength(1);
     expect(window.isWindowEmpty).toBe(false);
     expect(window.isWindowFull).toBe(true);
     expect(window.numElementBefore).toEqual(4);
@@ -247,7 +247,7 @@ describe('SlidingWindow', () => {
     expect(window2.startIndex).toEqual(2);
     expect(window2.endIndex).toEqual(2);
     expect(window2.windowSize).toEqual(1);
-    expect(window2.length).toEqual(1);
+    expect(window2).toHaveLength(1);
     expect(window2.isWindowEmpty).toBe(false);
     expect(window2.isWindowFull).toBe(true);
     expect(window2.numElementBefore).toEqual(2);
@@ -262,7 +262,7 @@ describe('SlidingWindow', () => {
     expect(window.startIndex).toEqual(2);
     expect(window.endIndex).toEqual(4);
     expect(window.windowSize).toEqual(3);
-    expect(window.length).toEqual(3);
+    expect(window).toHaveLength(3);
     expect(window.isWindowEmpty).toBe(false);
     expect(window.isWindowFull).toBe(true);
     expect(window.numElementBefore).toEqual(2);
@@ -275,7 +275,7 @@ describe('SlidingWindow', () => {
     expect(window2.startIndex).toEqual(0);
     expect(window2.endIndex).toEqual(4);
     expect(window2.windowSize).toEqual(5);
-    expect(window2.length).toEqual(3);
+    expect(window2).toHaveLength(3);
     expect(window2.isWindowEmpty).toBe(false);
     expect(window2.isWindowFull).toBe(false);
     expect(window2.numElementBefore).toEqual(0);
@@ -288,7 +288,7 @@ describe('SlidingWindow', () => {
     expect(window3.startIndex).toEqual(0);
     expect(window3.endIndex).toEqual(4);
     expect(window3.windowSize).toEqual(5);
-    expect(window3.length).toEqual(3);
+    expect(window3).toHaveLength(3);
     expect(window3.isWindowEmpty).toBe(false);
     expect(window3.isWindowFull).toBe(false);
     expect(window3.numElementBefore).toEqual(0);
@@ -303,7 +303,7 @@ describe('SlidingWindow', () => {
     expect(window.startIndex).toEqual(2);
     expect(window.endIndex).toEqual(4);
     expect(window.windowSize).toEqual(3);
-    expect(window.length).toEqual(3);
+    expect(window).toHaveLength(3);
     expect(window.isWindowEmpty).toBe(false);
     expect(window.isWindowFull).toBe(true);
     expect(window.numElementBefore).toEqual(2);
@@ -316,7 +316,7 @@ describe('SlidingWindow', () => {
     expect(window2.startIndex).toEqual(0);
     expect(window2.endIndex).toEqual(2);
     expect(window2.windowSize).toEqual(3);
-    expect(window2.length).toEqual(3);
+    expect(window2).toHaveLength(3);
     expect(window2.isWindowEmpty).toBe(false);
     expect(window2.isWindowFull).toBe(true);
     expect(window2.numElementBefore).toEqual(0);
@@ -329,7 +329,7 @@ describe('SlidingWindow', () => {
     expect(window3.startIndex).toEqual(0);
     expect(window3.endIndex).toEqual(2);
     expect(window3.windowSize).toEqual(3);
-    expect(window3.length).toEqual(3);
+    expect(window3).toHaveLength(3);
     expect(window3.isWindowEmpty).toBe(false);
     expect(window3.isWindowFull).toBe(true);
     expect(window3.numElementBefore).toEqual(0);
@@ -348,7 +348,7 @@ describe('SlidingWindow', () => {
     expect(window.startIndex).toEqual(0);
     expect(window.endIndex).toEqual(7);
     expect(window.windowSize).toEqual(8);
-    expect(window.length).toEqual(5);
+    expect(window).toHaveLength(5);
     expect(window.isWindowEmpty).toBe(false);
     expect(window.isWindowFull).toBe(false);
     expect(window.numElementBefore).toEqual(0);
@@ -364,7 +364,7 @@ describe('SlidingWindow', () => {
     expect(window.startIndex).toEqual(0);
     expect(window.endIndex).toEqual(7);
     expect(window.windowSize).toEqual(8);
-    expect(window.length).toEqual(5);
+    expect(window).toHaveLength(5);
     expect(window.isWindowEmpty).toBe(false);
     expect(window.isWindowFull).toBe(false);
     expect(window.numElementBefore).toEqual(0);
@@ -380,7 +380,7 @@ describe('SlidingWindow', () => {
     expect(window.startIndex).toEqual(0);
     expect(window.endIndex).toEqual(4);
     expect(window.windowSize).toEqual(5);
-    expect(window.length).toEqual(5);
+    expect(window).toHaveLength(5);
     expect(window.isWindowEmpty).toBe(false);
     expect(window.isWindowFull).toBe(true);
     expect(window.numElementBefore).toEqual(0);

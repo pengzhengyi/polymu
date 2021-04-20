@@ -8,7 +8,7 @@
  * @param {HTMLElement} element - An element to finds its scroll parent.
  * @param {boolean} [includeHidden = false] - Whether an element with overflow(x|y) set to `hidden` will be considered as a scroll parent. {@link https://developer.mozilla.org/en-US/docs/Web/CSS/overflow}
  */
-export function getScrollParent(element: HTMLElement, includeHidden: boolean = false) {
+export function getScrollParent(element: HTMLElement, includeHidden = false) {
   const fallback = document.scrollingElement || document.body;
   let style = getComputedStyle(element);
   const excludeStaticParent = style.position === 'absolute';

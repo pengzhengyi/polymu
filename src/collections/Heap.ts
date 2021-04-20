@@ -20,7 +20,7 @@ export default class Heap<TElement> implements Iterable<TElement> {
    * The number of elements stored in the heap.
    */
 
-  protected _count: number = 0;
+  protected _count = 0;
 
   /**
    * The maximum number of elements can be stored in the heap without resizing.
@@ -49,7 +49,7 @@ export default class Heap<TElement> implements Iterable<TElement> {
    * @constructs Heap
    */
 
-  constructor(protected _comparator: SortingFunction<TElement>, capacity: number = 0) {
+  constructor(protected _comparator: SortingFunction<TElement>, capacity = 0) {
     this._array = new Array<TElement>(capacity);
   }
 

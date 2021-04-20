@@ -48,7 +48,7 @@ class SortedViewHeap<TViewElement> extends Heap<TViewElement> {
    *    `[1, 2, 3, 6, 7, 4, 5]` represents a balanced min heap but not a fully sorted min heap.
    */
 
-  isFullySorted: boolean = false;
+  isFullySorted = false;
 
   /**
    * The underlying array that represents the heap.
@@ -107,7 +107,7 @@ export class SortedView<TViewElement>
   sortingFunctions: Map<any, SortingFunctionWithPriority<TViewElement>> = new Map();
 
   /** denotes the current smallest priority associated with sorting function */
-  private smallestPriority: number = 0;
+  private smallestPriority = 0;
 
   private heap: SortedViewHeap<TViewElement>;
 

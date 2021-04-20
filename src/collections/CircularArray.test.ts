@@ -4,20 +4,20 @@ describe('CircularArray test', () => {
   test('basic adding', () => {
     const circularArray = new CircularArray(3);
     expect(circularArray.capacity).toEqual(3);
-    expect(circularArray.length).toEqual(0);
+    expect(circularArray).toHaveLength(0);
     expect(circularArray.isEmpty).toBe(true);
     expect(circularArray.isFull).toBe(false);
     expect(Array.from(circularArray)).toEqual([]);
 
     circularArray.add(1);
-    expect(circularArray.length).toEqual(1);
+    expect(circularArray).toHaveLength(1);
     expect(1).toEqual(circularArray.get(0));
     expect(circularArray.isEmpty).toBe(false);
     expect(circularArray.isFull).toBe(false);
     expect(Array.from(circularArray)).toEqual([1]);
 
     circularArray.add(2);
-    expect(circularArray.length).toEqual(2);
+    expect(circularArray).toHaveLength(2);
     expect(1).toEqual(circularArray.get(0));
     expect(2).toEqual(circularArray.get(1));
     expect(circularArray.isEmpty).toBe(false);
@@ -25,7 +25,7 @@ describe('CircularArray test', () => {
     expect(Array.from(circularArray)).toEqual([1, 2]);
 
     circularArray.add(3);
-    expect(circularArray.length).toEqual(3);
+    expect(circularArray).toHaveLength(3);
     expect(1).toEqual(circularArray.get(0));
     expect(2).toEqual(circularArray.get(1));
     expect(3).toEqual(circularArray.get(2));
@@ -34,7 +34,7 @@ describe('CircularArray test', () => {
     expect(Array.from(circularArray)).toEqual([1, 2, 3]);
 
     circularArray.add(4);
-    expect(circularArray.length).toEqual(3);
+    expect(circularArray).toHaveLength(3);
     expect(2).toEqual(circularArray.get(0));
     expect(3).toEqual(circularArray.get(1));
     expect(4).toEqual(circularArray.get(2));
@@ -43,7 +43,7 @@ describe('CircularArray test', () => {
     expect(Array.from(circularArray)).toEqual([2, 3, 4]);
 
     circularArray.add(5);
-    expect(circularArray.length).toEqual(3);
+    expect(circularArray).toHaveLength(3);
     expect(3).toEqual(circularArray.get(0));
     expect(4).toEqual(circularArray.get(1));
     expect(5).toEqual(circularArray.get(2));
@@ -52,7 +52,7 @@ describe('CircularArray test', () => {
     expect(Array.from(circularArray)).toEqual([3, 4, 5]);
 
     circularArray.add(6);
-    expect(circularArray.length).toEqual(3);
+    expect(circularArray).toHaveLength(3);
     expect(4).toEqual(circularArray.get(0));
     expect(5).toEqual(circularArray.get(1));
     expect(6).toEqual(circularArray.get(2));
@@ -62,7 +62,7 @@ describe('CircularArray test', () => {
     expect(Array.from(circularArray.slice(0, 2))).toEqual([4, 5]);
 
     circularArray.add(7);
-    expect(circularArray.length).toEqual(3);
+    expect(circularArray).toHaveLength(3);
     expect(5).toEqual(circularArray.get(0));
     expect(6).toEqual(circularArray.get(1));
     expect(7).toEqual(circularArray.get(2));
@@ -77,14 +77,14 @@ describe('CircularArray test', () => {
     circularArray.add(1);
     circularArray.add(2);
     circularArray.add(3);
-    expect(circularArray.length).toEqual(3);
+    expect(circularArray).toHaveLength(3);
     expect(circularArray.capacity).toEqual(3);
     expect(1).toEqual(circularArray.get(0));
     expect(2).toEqual(circularArray.get(1));
     expect(3).toEqual(circularArray.get(2));
 
     circularArray.capacity = 5;
-    expect(circularArray.length).toEqual(3);
+    expect(circularArray).toHaveLength(3);
     expect(circularArray.capacity).toEqual(5);
     expect(1).toEqual(circularArray.get(0));
     expect(2).toEqual(circularArray.get(1));
@@ -93,17 +93,17 @@ describe('CircularArray test', () => {
     circularArray.add(4);
     circularArray.add(5);
     circularArray.add(6);
-    expect(circularArray.length).toEqual(5);
+    expect(circularArray).toHaveLength(5);
     expect(circularArray.capacity).toEqual(5);
     expect(Array.from(circularArray)).toEqual([2, 3, 4, 5, 6]);
 
     circularArray.capacity = 2;
-    expect(circularArray.length).toEqual(2);
+    expect(circularArray).toHaveLength(2);
     expect(circularArray.capacity).toEqual(2);
     expect(Array.from(circularArray)).toEqual([2, 3]);
 
     circularArray.capacity = 4;
-    expect(circularArray.length).toEqual(2);
+    expect(circularArray).toHaveLength(2);
     expect(circularArray.capacity).toEqual(4);
     expect(Array.from(circularArray)).toEqual([2, 3]);
 
@@ -111,17 +111,17 @@ describe('CircularArray test', () => {
     circularArray.add(5);
     circularArray.add(6);
     circularArray.add(7);
-    expect(circularArray.length).toEqual(4);
+    expect(circularArray).toHaveLength(4);
     expect(circularArray.capacity).toEqual(4);
     expect(Array.from(circularArray)).toEqual([4, 5, 6, 7]);
 
     circularArray.capacity = 5;
-    expect(circularArray.length).toEqual(4);
+    expect(circularArray).toHaveLength(4);
     expect(circularArray.capacity).toEqual(5);
     expect(Array.from(circularArray)).toEqual([4, 5, 6, 7]);
 
     circularArray.capacity = 3;
-    expect(circularArray.length).toEqual(3);
+    expect(circularArray).toHaveLength(3);
     expect(circularArray.capacity).toEqual(3);
     expect(Array.from(circularArray)).toEqual([4, 5, 6]);
   });
@@ -143,8 +143,8 @@ describe('CircularArray test', () => {
     expect(circularArray.get(2)).toEqual('u');
     expect(circularArray.get(3)).toEqual('v');
     expect(circularArray.get(4)).toEqual('w');
-    expect(onEnter.mock.calls.length).toBe(3);
-    expect(onExit.mock.calls.length).toBe(3);
+    expect(onEnter.mock.calls).toHaveLength(3);
+    expect(onExit.mock.calls).toHaveLength(3);
     expect(onEnter.mock.calls[0]).toEqual(['s', 0]);
     expect(onEnter.mock.calls[1]).toEqual(['t', 1]);
     expect(onEnter.mock.calls[2]).toEqual(['u', 2]);
@@ -172,8 +172,8 @@ describe('CircularArray test', () => {
     expect(circularArray.get(3)).toEqual('r');
     expect(circularArray.get(4)).toEqual('s');
 
-    expect(onEnter.mock.calls.length).toBe(4);
-    expect(onExit.mock.calls.length).toBe(4);
+    expect(onEnter.mock.calls).toHaveLength(4);
+    expect(onExit.mock.calls).toHaveLength(4);
     expect(onEnter.mock.calls[0]).toEqual(['o', 0]);
     expect(onEnter.mock.calls[1]).toEqual(['p', 1]);
     expect(onEnter.mock.calls[2]).toEqual(['q', 2]);
@@ -202,8 +202,8 @@ describe('CircularArray test', () => {
     expect(circularArray.get(3)).toEqual('f');
     expect(circularArray.get(4)).toEqual('g');
 
-    expect(onEnter.mock.calls.length).toBe(2);
-    expect(onExit.mock.calls.length).toBe(2);
+    expect(onEnter.mock.calls).toHaveLength(2);
+    expect(onExit.mock.calls).toHaveLength(2);
     expect(onEnter.mock.calls[0]).toEqual(['f', 3]);
     expect(onEnter.mock.calls[1]).toEqual(['g', 4]);
     expect(onExit.mock.calls[0]).toEqual(['a', 0]);
@@ -229,8 +229,8 @@ describe('CircularArray test', () => {
     expect(circularArray.get(3)).toEqual('j');
     expect(circularArray.get(4)).toEqual('k');
 
-    expect(onEnter.mock.calls.length).toBe(4);
-    expect(onExit.mock.calls.length).toBe(4);
+    expect(onEnter.mock.calls).toHaveLength(4);
+    expect(onExit.mock.calls).toHaveLength(4);
     expect(onEnter.mock.calls[0]).toEqual(['h', 1]);
     expect(onEnter.mock.calls[1]).toEqual(['i', 2]);
     expect(onEnter.mock.calls[2]).toEqual(['j', 3]);
@@ -254,9 +254,9 @@ describe('CircularArray test', () => {
     expect(circularArray.get(4)).toEqual('e');
 
     expect(circularArray.isFull).toBe(true);
-    expect(circularArray.length).toBe(5);
-    expect(onEnter.mock.calls.length).toBe(5);
-    expect(onExit.mock.calls.length).toBe(0);
+    expect(circularArray).toHaveLength(5);
+    expect(onEnter.mock.calls).toHaveLength(5);
+    expect(onExit.mock.calls).toHaveLength(0);
     expect(onEnter.mock.calls[0]).toEqual(['a', 0]);
     expect(onEnter.mock.calls[1]).toEqual(['b', 1]);
     expect(onEnter.mock.calls[2]).toEqual(['c', 2]);
@@ -281,9 +281,9 @@ describe('CircularArray test', () => {
     expect(circularArray.get(2)).toEqual('F');
 
     expect(circularArray.isFull).toBe(false);
-    expect(circularArray.length).toBe(3);
-    expect(onEnter.mock.calls.length).toBe(3);
-    expect(onExit.mock.calls.length).toBe(5);
+    expect(circularArray).toHaveLength(3);
+    expect(onEnter.mock.calls).toHaveLength(3);
+    expect(onExit.mock.calls).toHaveLength(5);
     expect(onEnter.mock.calls[0]).toEqual(['D', 0]);
     expect(onEnter.mock.calls[1]).toEqual(['E', 1]);
     expect(onEnter.mock.calls[2]).toEqual(['F', 2]);
@@ -297,17 +297,17 @@ describe('CircularArray test', () => {
     }
 
     expect(circularArray.isFull).toBe(true);
-    expect(circularArray.length).toBe(5);
+    expect(circularArray).toHaveLength(5);
     onEnter = jest.fn();
     onExit = jest.fn();
     const iterable = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j'];
     circularArray.fit(iterable, onExit, onEnter);
 
     expect(circularArray.isFull).toBe(true);
-    expect(circularArray.length).toBe(10);
+    expect(circularArray).toHaveLength(10);
     expect([...circularArray.slice(2, 6)]).toEqual(['c', 'd', 'e', 'f']);
-    expect(onEnter.mock.calls.length).toBe(10);
-    expect(onExit.mock.calls.length).toBe(5);
+    expect(onEnter.mock.calls).toHaveLength(10);
+    expect(onExit.mock.calls).toHaveLength(5);
     expect(onEnter.mock.calls.map((call) => call[0])).toEqual(iterable);
     expect(new Set(onExit.mock.calls.map((call) => call[0]))).toEqual(new Set(['RANDOM']));
   });

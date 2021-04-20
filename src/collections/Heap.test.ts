@@ -15,7 +15,7 @@ describe('Heap sort', () => {
   test('empty heap', () => {
     heap = new Heap(comparator, 10);
 
-    expect(heap.length).toBe(0);
+    expect(heap).toHaveLength(0);
     expect(heap.capacity).toBe(10);
     expect(heap.peek()).toBeUndefined();
     expect(heap.pop()).toBeUndefined();
@@ -23,15 +23,15 @@ describe('Heap sort', () => {
 
   test('single-element heap', () => {
     heap = new Heap(comparator, 1);
-    expect(heap.length).toBe(0);
+    expect(heap).toHaveLength(0);
     heap.push(10);
-    expect(heap.length).toBe(1);
+    expect(heap).toHaveLength(1);
     expect(heap.peek()).toBe(10);
     expect(Array.from(heap)).toEqual([10]);
-    expect(heap.length).toBe(1);
+    expect(heap).toHaveLength(1);
 
     expect(heap.pop()).toBe(10);
-    expect(heap.length).toBe(0);
+    expect(heap).toHaveLength(0);
   });
 
   test('basic sorting', () => {

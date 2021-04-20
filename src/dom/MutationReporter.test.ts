@@ -18,7 +18,7 @@ describe('Attribute Change', () => {
   });
 
   test('Attribute change and catch event', (done) => {
-    let isFirst: boolean = true;
+    let isFirst = true;
 
     element.addEventListener(PropertyChangeEvent.typeArg, function (event: PropertyChangeEvent) {
       const { attributeName, oldAttributeValue } = event.detail;
@@ -60,9 +60,9 @@ describe('ChildList change', () => {
     const child = document.createElement('div');
     const reporter = new MutationReporter((correctedMutations, observer, mutations, _reporter) => {
       expect(correctedMutations[0].type).toBe('childList');
-      expect(correctedMutations[0].addedNodes.length).toBe(1);
+      expect(correctedMutations[0].addedNodes).toHaveLength(1);
       expect(correctedMutations[0].addedNodes[0]).toBe(child);
-      expect(correctedMutations[0].removedNodes.length).toBe(0);
+      expect(correctedMutations[0].removedNodes).toHaveLength(0);
       done();
     });
 
@@ -74,8 +74,8 @@ describe('ChildList change', () => {
     const child = document.createElement('div');
     parent.addEventListener(ChildListChangeEvent.typeArg, function (event: ChildListChangeEvent) {
       const { addedNodes, removedNodes, previousSibling, nextSibling } = event.detail;
-      expect(addedNodes.length).toBe(0);
-      expect(removedNodes.length).toBe(1);
+      expect(addedNodes).toHaveLength(0);
+      expect(removedNodes).toHaveLength(1);
       expect(previousSibling).toBeFalsy();
       expect(nextSibling).toBeFalsy();
       expect(removedNodes[0]).toBe(child);
@@ -83,7 +83,7 @@ describe('ChildList change', () => {
     });
 
     const reporter = new MutationReporter((correctedMutations, observer, mutations, _reporter) => {
-      expect(correctedMutations.length).toBe(1);
+      expect(correctedMutations).toHaveLength(1);
       _reporter.report(correctedMutations);
     });
 
@@ -106,8 +106,8 @@ describe('Character Change', () => {
     const reporter = new MutationReporter((correctedMutations, observer, mutations, _reporter) => {
       expect(correctedMutations).toBeDefined();
 
-      expect(correctedMutations.length).toBe(2);
-      expect(mutations.length).toBe(1);
+      expect(correctedMutations).toHaveLength(2);
+      expect(mutations).toHaveLength(1);
 
       const mutationTypes = new Set(correctedMutations.map((mutation) => mutation.type));
       expect(mutationTypes).toEqual(new Set(['characterData', 'childList']));
@@ -214,7 +214,7 @@ describe('implicit characterData in childList mutation', () => {
     target.remove();
   });
 
-  test("change entire observed node's HTML", (done) => {
+  test('change entire observed node\'s HTML', (done) => {
     target.addEventListener(CharacterDataChangeEvent.typeArg, (event: CharacterDataChangeEvent) => {
       const { target, oldValue, newValue } = event.detail;
       expect(oldValue).toBe(targetTextContent);
@@ -223,7 +223,7 @@ describe('implicit characterData in childList mutation', () => {
     });
 
     const reporter = new MutationReporter((mutations, observer, originalMutations, reporter) => {
-      expect(mutations.length).toBe(2);
+      expect(mutations).toHaveLength(2);
       const mutationTypes = new Set(mutations.map((mutation) => mutation.type));
       expect(mutationTypes).toEqual(new Set(['characterData', 'childList']));
       const characterMutation = mutations[0].type === 'characterData' ? mutations[0] : mutations[1];
@@ -232,8 +232,8 @@ describe('implicit characterData in childList mutation', () => {
       expect(childMutation.target).toBe(target);
       expect(childMutation.previousSibling).toBeNull();
       expect(childMutation.nextSibling).toBeNull();
-      expect(childMutation.addedNodes.length).toBe(target.childNodes.length);
-      expect(childMutation.removedNodes.length).toBe(numTargetChildNode);
+      expect(childMutation.addedNodes).toHaveLength(target.childNodes.length);
+      expect(childMutation.removedNodes).toHaveLength(numTargetChildNode);
       reporter.report(mutations);
     });
     reporter.observe(target, MutationReporter.createMutationObserverInit(false, true, false));
@@ -243,7 +243,7 @@ describe('implicit characterData in childList mutation', () => {
     `;
   });
 
-  test("change to observed node's child node", (done) => {
+  test('change to observed node\'s child node', (done) => {
     const paragraph = document.getElementById('p1');
     const previousSibling = paragraph.previousSibling;
     const nextSibling = paragraph.nextSibling;
@@ -256,7 +256,7 @@ describe('implicit characterData in childList mutation', () => {
     });
 
     const reporter = new MutationReporter((mutations, observer, originalMutations, reporter) => {
-      expect(mutations.length).toBe(2);
+      expect(mutations).toHaveLength(2);
       const mutationTypes = new Set(mutations.map((mutation) => mutation.type));
       expect(mutationTypes).toEqual(new Set(['characterData', 'childList']));
       const characterMutation = mutations[0].type === 'characterData' ? mutations[0] : mutations[1];
@@ -266,8 +266,8 @@ describe('implicit characterData in childList mutation', () => {
 
       expect(childMutation.previousSibling).toBe(previousSibling);
       expect(childMutation.nextSibling).toBe(nextSibling);
-      expect(childMutation.addedNodes.length).toBe(1);
-      expect(childMutation.removedNodes.length).toBe(1);
+      expect(childMutation.addedNodes).toHaveLength(1);
+      expect(childMutation.removedNodes).toHaveLength(1);
       reporter.report(mutations);
     });
     reporter.observe(target, MutationReporter.createMutationObserverInit(false, true, false));

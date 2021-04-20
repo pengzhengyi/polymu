@@ -59,14 +59,14 @@ describe('AggregateView', () => {
 
     const eventHandler = jest.fn();
     vc.subscribe({}, AbstractViewFunction.shouldRegenerateViewEventName, eventHandler);
-    expect(eventHandler.mock.calls.length).toBe(0);
+    expect(eventHandler.mock.calls).toHaveLength(0);
 
     expect([...vc.view([1, 2, 3, 4, 5])]).toEqual([1, 2, 3, 4, 5]);
     sv.addSortingFunction('desc', (n1, n2) => n2 - n1, 1);
-    expect(eventHandler.mock.calls.length).toBe(1);
+    expect(eventHandler.mock.calls).toHaveLength(1);
     expect([...vc.view([1, 2, 3, 4, 5])]).toEqual([5, 4, 3, 2, 1]);
     sv.deleteSortingFunction('desc');
-    expect(eventHandler.mock.calls.length).toBe(2);
+    expect(eventHandler.mock.calls).toHaveLength(2);
   });
 
   test('exposed features', () => {
@@ -87,74 +87,74 @@ describe('AggregateView', () => {
   test('pushing and popping view functions in AggregateView', () => {
     const vc = new AggregateView<number>();
     const fv = new FilteredView<number>();
-    expect(vc.viewFunctions.length).toEqual(0);
+    expect(vc.viewFunctions).toHaveLength(0);
     vc.viewFunctions.push(fv);
 
-    expect(vc.viewFunctions.length).toEqual(1);
+    expect(vc.viewFunctions).toHaveLength(1);
     const array = Array.from(Array(100).keys());
     let targetView = Array.from(vc.view(array));
-    expect(targetView.length).toBe(100);
+    expect(targetView).toHaveLength(100);
 
     fv.addFilterFunction('less than 10', (number) => number < 10);
     targetView = Array.from(vc.view(array));
-    expect(targetView.length).toBe(10);
+    expect(targetView).toHaveLength(10);
 
     expect(vc.viewFunctions.pop()).toBe(fv);
-    expect(vc.viewFunctions.length).toEqual(0);
+    expect(vc.viewFunctions).toHaveLength(0);
 
     targetView = Array.from(vc.view(array));
-    expect(targetView.length).toBe(100);
+    expect(targetView).toHaveLength(100);
   });
 
   test('shifting and unshifting view functions in AggregateView', () => {
     const vc = new AggregateView<number>();
     const fv = new FilteredView<number>();
-    expect(vc.viewFunctions.length).toEqual(0);
+    expect(vc.viewFunctions).toHaveLength(0);
     vc.viewFunctions.unshift(fv);
 
-    expect(vc.viewFunctions.length).toEqual(1);
+    expect(vc.viewFunctions).toHaveLength(1);
     const array = Array.from(Array(100).keys());
     let targetView = Array.from(vc.view(array));
-    expect(targetView.length).toBe(100);
+    expect(targetView).toHaveLength(100);
 
     fv.addFilterFunction('less than 10', (number) => number < 10);
     targetView = Array.from(vc.view(array));
-    expect(targetView.length).toBe(10);
+    expect(targetView).toHaveLength(10);
 
     expect(vc.viewFunctions.shift()).toBe(fv);
     expect(vc.viewFunctions.shift()).toBeUndefined();
-    expect(vc.viewFunctions.length).toEqual(0);
+    expect(vc.viewFunctions).toHaveLength(0);
 
     targetView = Array.from(vc.view(array));
-    expect(targetView.length).toBe(100);
+    expect(targetView).toHaveLength(100);
   });
 
   test('splicing view functions in AggregateView', () => {
     const vc = new AggregateView<number>();
     const fv = new FilteredView<number>();
-    expect(vc.viewFunctions.length).toEqual(0);
+    expect(vc.viewFunctions).toHaveLength(0);
     vc.viewFunctions.splice(0, 0, fv);
 
-    expect(vc.viewFunctions.length).toEqual(1);
+    expect(vc.viewFunctions).toHaveLength(1);
     const array = Array.from(Array(100).keys());
     let targetView = Array.from(vc.view(array));
-    expect(targetView.length).toBe(100);
+    expect(targetView).toHaveLength(100);
 
     fv.addFilterFunction('less than 10', (number) => number < 10);
     targetView = Array.from(vc.view(array));
-    expect(targetView.length).toBe(10);
+    expect(targetView).toHaveLength(10);
 
     expect(vc.viewFunctions.splice(0, 1)).toEqual([fv]);
-    expect(vc.viewFunctions.length).toEqual(0);
+    expect(vc.viewFunctions).toHaveLength(0);
 
     targetView = Array.from(vc.view(array));
-    expect(targetView.length).toBe(100);
+    expect(targetView).toHaveLength(100);
   });
 
   test('unsupported operations in view functions', () => {
     const vc = new AggregateView<number>();
     const fv = new FilteredView<number>();
-    expect(vc.viewFunctions.length).toEqual(0);
+    expect(vc.viewFunctions).toHaveLength(0);
 
     expect(() => vc.viewFunctions.fill(fv)).toThrowError('not supported');
     expect(() => vc.viewFunctions.copyWithin(5, 0, 2)).toThrowError('not supported');

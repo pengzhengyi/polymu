@@ -24,7 +24,7 @@ function getRandomInt(min: number, difference: number) {
 export function quickSort<T>(
   array: Array<T>,
   comparator: (element1: T, element2: T) => number,
-  start: number = 0,
+  start = 0,
   end: number = array.length
 ) {
   const difference: number = end - start;

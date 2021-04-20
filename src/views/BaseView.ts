@@ -149,7 +149,7 @@ export class BaseView extends AggregateView<TViewElementLike> {
    */
   view(
     sourceView: Collection<TViewElementLike>,
-    useCache: boolean = true
+    useCache = true
   ): Collection<TViewElementLike> {
     return super.view(sourceView, useCache);
   }
@@ -157,7 +157,7 @@ export class BaseView extends AggregateView<TViewElementLike> {
   /** @override */
   protected regenerateView(
     sourceView: Collection<ViewElement<HTMLElement>>,
-    useCache: boolean = true
+    useCache = true
   ) {
     if (!this.shouldRegenerateView && useCache) {
       return;
@@ -244,7 +244,7 @@ export class BaseView extends AggregateView<TViewElementLike> {
       return;
     }
 
-    let shouldRegenerateView: boolean =
+    const shouldRegenerateView: boolean =
       this.tryRemoveViewElementFromNodeList__(childListChangeEvent.detail.removedNodes) ||
       this.tryInsertViewElementFromNodeList(childListChangeEvent.detail.addedNodes);
 
@@ -265,7 +265,7 @@ export class BaseView extends AggregateView<TViewElementLike> {
 
     /* This map maps `HTMLElement` to the index of the child `ViewElement` containing this `HTMLElement` in `this.viewElementProvider` */
     const domElementToViewElementIndex: Map<HTMLElement, number> = new Map();
-    let lastChildViewElementIndex: number = 0;
+    let lastChildViewElementIndex = 0;
     const parentViewElement: ViewElement = this.viewElementProvider.parentViewElement;
     for (const addedNode of addedNodeList) {
       if (addedNode.nodeType !== Node.ELEMENT_NODE) {
@@ -315,7 +315,7 @@ export class BaseView extends AggregateView<TViewElementLike> {
    * @returns True if a child `ViewElement` in `this.viewElementProvider` was removed because its underlying element is included in the nodelist. False if none of children `ViewElement` was removed because of this.
    */
   protected tryRemoveViewElementFromNodeList__(removedNodeList: NodeList) {
-    let hasRemovedAny: boolean = false;
+    let hasRemovedAny = false;
 
     // handle nodes removed from DOM
     for (const node of removedNodeList) {

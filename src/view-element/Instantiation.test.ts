@@ -100,7 +100,7 @@ describe('DomFallthroughInstantiation', () => {
   test('get and set property', () => {
     expect((instantiation as any).id).toBe('target');
     expect((instantiation as any).textContent).toBe('Hello World!');
-    expect((instantiation as any).children.length).toBe(0);
+    expect((instantiation as any).children).toHaveLength(0);
 
     instantiation.asDomElement__().id = 'polymu';
     expect(forwardingTarget.id).toBe('polymu');

@@ -94,7 +94,7 @@ export class MutationReporter {
     shouldObserveAttributes: boolean,
     shouldObserveCharacterData: boolean,
     shouldObserveChildList: boolean,
-    shouldObserveSubtree: boolean = false,
+    shouldObserveSubtree = false,
     attributeFilter: Array<string> = undefined
   ): MutationObserverInit {
     const mutationObserverInit: MutationObserverInit = {};
@@ -347,7 +347,7 @@ export class MutationReporter {
    * @public
    * @param {boolean} [clearMemory = true] - Whether memory of previous observed targets should be cleared.
    */
-  disconnect(clearMemory: boolean = true) {
+  disconnect(clearMemory = true) {
     if (clearMemory) {
       this.observing.clear();
     }

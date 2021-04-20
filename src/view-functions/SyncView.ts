@@ -91,7 +91,7 @@ export class SyncView extends AbstractViewFunction<TViewElementLike> implements 
    * @param {boolean} [shouldInitializeMutationHandler = true] - If true, DOM mutation in relevant region should be handled by default mutation handler which will update the children ViewElement accordingly. If false, relevant mutation will be reported as event but no event listener will be registered by this instance. Default to true.
    * @constructs SyncView
    */
-  constructor(rootElement: TViewElementLike, shouldInitializeMutationHandler: boolean = true) {
+  constructor(rootElement: TViewElementLike, shouldInitializeMutationHandler = true) {
     super();
 
     this.initializeRootViewElement__(rootElement);
@@ -280,7 +280,7 @@ export class SyncView extends AbstractViewFunction<TViewElementLike> implements 
           false
         );
       } else if (isIterable(source)) {
-        const peekResult = peek(source as Iterable<TViewElementLike>);
+        const peekResult = peek(source );
         const { done, value } = peekResult.next();
 
         if (!done) {

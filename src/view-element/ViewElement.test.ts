@@ -30,7 +30,7 @@ describe('View Element', () => {
     const identifiers: Array<string> = viewElement.operateOnRange__(
       (viewElement) => viewElement.identifier_
     );
-    expect(identifiers.length).toBe(6);
+    expect(identifiers).toHaveLength(6);
     const table = document.createElement('table');
     table.appendChild(source);
     document.body.appendChild(table);
@@ -39,9 +39,9 @@ describe('View Element', () => {
 
   test('Access Properties', () => {
     // no explicit key registered
-    expect(Object.keys(viewElement).length).toBe(0);
-    expect((viewElement as any).children.length).toBe(6);
-    expect(viewElement.children_.length).toBe(6);
+    expect(Object.keys(viewElement)).toHaveLength(0);
+    expect((viewElement as any).children).toHaveLength(6);
+    expect(viewElement.children_).toHaveLength(6);
     expect(viewElement.element_).toBe(source);
     expect((viewElement.children_[0] as any).textContent).toBe('A. J. Kfoury');
     expect((viewElement.children_[2] as any).textContent).toBe('1999');
@@ -52,11 +52,11 @@ describe('View Element', () => {
   test('create view element to accommodate DOM child', () => {
     viewElement.removeChildByIndex__(0);
     viewElement.removeChild__(viewElement.children_[0]);
-    expect(viewElement.children_.length).toBe(4);
-    expect((viewElement as any).children.length).toBe(6);
+    expect(viewElement.children_).toHaveLength(4);
+    expect((viewElement as any).children).toHaveLength(6);
     viewElement.patchWithDOMElement__(source.cloneNode(true) as HTMLElement);
-    expect((viewElement as any).children.length).toBe(6);
-    expect(viewElement.children_.length).toBe(6);
+    expect((viewElement as any).children).toHaveLength(6);
+    expect(viewElement.children_).toHaveLength(6);
     expect((viewElement.children_[0] as any).textContent).toBe('A. J. Kfoury');
     expect((viewElement.children_[2] as any).textContent).toBe('1999');
     expect((viewElement.children_[4] as any).id).toBe('961365');
@@ -74,9 +74,9 @@ describe('View Element', () => {
     const vm: ViewElement = new ViewElement(listElement, [(element) => new ViewElement(element)]);
     vm.patchChildViewElementsWithDOMElements__(listElement.children);
     // original data
-    expect((vm as any).children.length).toBe(6);
+    expect((vm as any).children).toHaveLength(6);
     expect(vm.element_).toBe(listElement);
-    expect(vm.children_.length).toBe(6);
+    expect(vm.children_).toHaveLength(6);
     expect((vm.children_[0] as any).textContent).toBe('item 0');
     expect((vm.children_[2] as any).textContent).toBe('item 2');
     expect((vm.children_[4] as any).textContent).toBe('item 4');
@@ -91,7 +91,7 @@ describe('View Element', () => {
         // 5 list items since innerHTML has been executed
         expect(vm.element_.childElementCount).toBe(5);
         // 6 child ViewElement since listener registered at `vm.element_` is not executed
-        expect(vm.children_.length).toBe(6);
+        expect(vm.children_).toHaveLength(6);
       },
       {
         once: true,
@@ -104,7 +104,7 @@ describe('View Element', () => {
       () => {
         // after mutations are handled
         expect(vm.element_.childElementCount).toBe(5);
-        expect(vm.children_.length).toBe(5);
+        expect(vm.children_).toHaveLength(5);
         expect(vm.element_).toBe(listElement);
         expect((vm.children_[0] as any).textContent).toBe('0');
         expect((vm.children_[2] as any).textContent).toBe('2');
@@ -118,6 +118,6 @@ describe('View Element', () => {
 
     vm.observe__(vm.element_, false, undefined, false, true, false);
     // change to new data
-    listElement.innerHTML = `<li>0</li><li>1</li><li>2</li><li>3</li><li>4</li>`;
+    listElement.innerHTML = '<li>0</li><li>1</li><li>2</li><li>3</li><li>4</li>';
   });
 });

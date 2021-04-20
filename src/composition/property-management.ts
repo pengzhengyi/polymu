@@ -286,7 +286,7 @@ export class PropertyManager {
    *
    * Since there is only a single process interacting with the manager, another call to `notifyValueChange` implies the subsequent value change is caused by antecedent value change, the one that is responsible for the call to `notifyValueChange` that takes the lock. Therefore, subsequent `notifyValueChange` calls, while the lock is occupied, can be ignored as these value change are handled by the `notifyValueChange` that occupies the lock.
    */
-  private __notifyValueChangeLock: boolean = false;
+  private __notifyValueChangeLock = false;
 
   /**
    * A map contains mapping from property name to properties. Can be used internally to find property use its string name.
@@ -495,7 +495,7 @@ export class PropertyManager {
    */
   __analyzePropertyPrerequisites(
     property: Property<any>,
-    _propagateImmediateUpdateBehavior: boolean = true
+    _propagateImmediateUpdateBehavior = true
   ): Set<Property<any>> {
     const prerequisiteProperties: Set<Property<any>> = new Set();
 

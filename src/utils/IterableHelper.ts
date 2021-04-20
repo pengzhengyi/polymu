@@ -40,7 +40,7 @@ export function patch<T1, T2>(
 ) {
   let childIndex = 0;
   const iterator2 = iterable2[Symbol.iterator]();
-  let iterable2Done: boolean = false;
+  let iterable2Done = false;
   let elementFromIterable2: T2;
 
   for (const elementFromIterable1 of iterable1) {

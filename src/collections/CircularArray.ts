@@ -25,7 +25,7 @@ export class CircularArray<TElement> implements Collection<TElement> {
   /** The maximum number of elements that could be stored in this circular array */
   protected _capacity: number;
   /** Index of first element(if any) */
-  protected _start: number = 0;
+  protected _start = 0;
   /** The number of unoccupied slots */
   protected _slots: number;
   /** The underlying data structure, where elements are actually stored */
@@ -316,14 +316,14 @@ export class CircularArray<TElement> implements Collection<TElement> {
 
         const iterator = replacement[Symbol.iterator]();
         for (let i = this._start; i < this._capacity; i++) {
-          let { value: replaceElement } = iterator.next();
+          const { value: replaceElement } = iterator.next();
           onExit(this._array[i], exitWindowIndex++);
           this._array[i] = replaceElement;
           onEnter(replaceElement, enterWindowIndex++);
         }
 
         for (let i = 0; i < newStart; i++) {
-          let { value: replaceElement } = iterator.next();
+          const { value: replaceElement } = iterator.next();
           onExit(this._array[i], exitWindowIndex++);
           this._array[i] = replaceElement;
           onEnter(replaceElement, enterWindowIndex++);
@@ -348,14 +348,14 @@ export class CircularArray<TElement> implements Collection<TElement> {
 
         const iterator = replacement[Symbol.iterator]();
         for (let i = newStart; i < this._capacity; i++) {
-          let { value: replaceElement } = iterator.next();
+          const { value: replaceElement } = iterator.next();
           onExit(this._array[i], exitWindowIndex++);
           this._array[i] = replaceElement;
           onEnter(replaceElement, enterWindowIndex++);
         }
 
         for (let i = 0; i < this._start; i++) {
-          let { value: replaceElement } = iterator.next();
+          const { value: replaceElement } = iterator.next();
           onExit(this._array[i], exitWindowIndex++);
           this._array[i] = replaceElement;
           onEnter(replaceElement, enterWindowIndex++);

@@ -197,7 +197,7 @@ export class PartialView<TViewElement>
   setWindow(
     startIndex: number = this.startIndex,
     endIndex: number = this.endIndex,
-    noEventNotification: boolean = false
+    noEventNotification = false
   ): boolean {
     const oldStartIndex = this.startIndex;
     const oldEndIndex = this.endIndex;
@@ -231,7 +231,7 @@ export class PartialView<TViewElement>
    * @param {boolean } noEventNotification - @see {@link PartialView#setWindow}. This determines whether the call to `setWindow` can result in event notification.
    * @returns {boolean} Whether this operation will be responsible for a regeneration of view. Even this operation does not cause view regeneration, a view regeneration might still happen because of other view generation triggering events.
    */
-  shiftWindow(shiftAmount: number, noEventNotification: boolean = false): boolean {
+  shiftWindow(shiftAmount: number, noEventNotification = false): boolean {
     const oldStartIndex = this.startIndex;
     const oldEndIndex = this.endIndex;
 

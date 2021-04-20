@@ -16,7 +16,7 @@ describe('UnmaterializableCollectionProvider', () => {
     for (const element of collection) {
       expect(element).toEqual(iterable[i++]);
     }
-    expect(collection.length).toEqual(5);
+    expect(collection).toHaveLength(5);
 
     i = 0;
     for (const element of collection) {
@@ -104,6 +104,6 @@ describe('LazyCollectionProvider', () => {
     expect(Array.from(collection.slice(1, 100))).toEqual([2, 3, 4, 5]);
     expect(Collection.get(collection, 4)).toEqual(5);
     expect(Array.from(collection)).toEqual([1, 2, 3, 4, 5]);
-    expect(collection.length).toEqual(5);
+    expect(collection).toHaveLength(5);
   });
 });

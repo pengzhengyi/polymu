@@ -88,7 +88,7 @@ export class ViewElementProvider implements IViewElementProvider {
   /**
    * A threshold above which lazy initialization will be applied. When lazy initialization is applied, children `ViewElement` will not be added to parent `ViewElement` immediately. Rather it will be added before this `ViewElement` is about to be iterated over.
    */
-  static LAZY_INITIALIZATION_THRESHOLD: number = 1000;
+  static LAZY_INITIALIZATION_THRESHOLD = 1000;
 
   /** @override */
   parentViewElement: ViewElement;
@@ -147,7 +147,7 @@ export class ViewElementProvider implements IViewElementProvider {
     fallbackContainer: HTMLElement,
     shouldLazyInitialize: boolean
   ) {
-    let children: HTMLCollection = documentFragment.children;
+    const children: HTMLCollection = documentFragment.children;
 
     if (children.length === 1) {
       this.consumeHTMLElement(children[0] as HTMLElement, fallbackContainer, shouldLazyInitialize);
@@ -314,7 +314,7 @@ export class ViewElementProvider implements IViewElementProvider {
       const viewElementCollection = new LazyCollectionProviderWithMaterializationCallback<ViewElement>(
         (function* () {
           for (const element of iterable) {
-            yield new ViewElement(element as HTMLElement);
+            yield new ViewElement(element);
           }
         })()
       );

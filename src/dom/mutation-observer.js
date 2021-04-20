@@ -10,12 +10,12 @@ let MutationObserver = window.MutationObserver
 
 let WeakMap = window.WeakMap;
 
-if (typeof WeakMap === "undefined") {
+if (typeof WeakMap === 'undefined') {
   const defineProperty = Object.defineProperty;
   let counter = Date.now() % 1e9;
 
   WeakMap = function() {
-    this.name = "__st" + (Math.random() * 1e9 >>> 0) + (counter++ + "__");
+    this.name = '__st' + (Math.random() * 1e9 >>> 0) + (counter++ + '__');
   };
 
   WeakMap.prototype = {
@@ -32,7 +32,7 @@ if (typeof WeakMap === "undefined") {
       return (entry = key[this.name]) && entry[0] === key ?
           entry[1] : undefined;
     },
-    "delete": function(key) {
+    'delete': function(key) {
       const entry = key[this.name];
       if (!entry) return false;
       const hasValue = entry[0] === key;
@@ -56,7 +56,7 @@ let setImmediate = window.msSetImmediate;
 if (!setImmediate) {
   let setImmediateQueue = [];
   const sentinel = String(Math.random());
-  window.addEventListener("message", function(e) {
+  window.addEventListener('message', function(e) {
     if (e.data === sentinel) {
       const queue = setImmediateQueue;
       setImmediateQueue = [];
@@ -67,7 +67,7 @@ if (!setImmediate) {
   });
   setImmediate = function(func) {
     setImmediateQueue.push(func);
-    window.postMessage(sentinel, "*");
+    window.postMessage(sentinel, '*');
   };
 }
 
@@ -394,16 +394,16 @@ Registration.prototype = {
   addListeners_: function(node) {
     const options = this.options;
     if (options.attributes)
-      node.addEventListener("DOMAttrModified", this, true);
+      node.addEventListener('DOMAttrModified', this, true);
 
     if (options.characterData)
-      node.addEventListener("DOMCharacterDataModified", this, true);
+      node.addEventListener('DOMCharacterDataModified', this, true);
 
     if (options.childList)
-      node.addEventListener("DOMNodeInserted", this, true);
+      node.addEventListener('DOMNodeInserted', this, true);
 
     if (options.childList || options.subtree)
-      node.addEventListener("DOMNodeRemoved", this, true);
+      node.addEventListener('DOMNodeRemoved', this, true);
   },
 
   removeListeners: function() {
@@ -413,16 +413,16 @@ Registration.prototype = {
   removeListeners_: function(node) {
     const options = this.options;
     if (options.attributes)
-      node.removeEventListener("DOMAttrModified", this, true);
+      node.removeEventListener('DOMAttrModified', this, true);
 
     if (options.characterData)
-      node.removeEventListener("DOMCharacterDataModified", this, true);
+      node.removeEventListener('DOMCharacterDataModified', this, true);
 
     if (options.childList)
-      node.removeEventListener("DOMNodeInserted", this, true);
+      node.removeEventListener('DOMNodeInserted', this, true);
 
     if (options.childList || options.subtree)
-      node.removeEventListener("DOMNodeRemoved", this, true);
+      node.removeEventListener('DOMNodeRemoved', this, true);
   },
 
   /**
@@ -474,7 +474,7 @@ Registration.prototype = {
     e.stopImmediatePropagation();
 
     switch (e.type) {
-      case "DOMAttrModified":
+      case 'DOMAttrModified':
         // http://dom.spec.whatwg.org/#concept-mo-queue-attributes
 
         var name = e.attrName;
@@ -482,13 +482,13 @@ Registration.prototype = {
         var target = e.target;
 
         // 1.
-        var record = new getRecord("attributes", target);
+        var record = new getRecord('attributes', target);
         record.attributeName = name;
         record.attributeNamespace = namespace;
 
         // 2.
         var oldValue = null;
-        if (!(typeof MutationEvent !== "undefined" && e.attrChange === MutationEvent.ADDITION))
+        if (!(typeof MutationEvent !== 'undefined' && e.attrChange === MutationEvent.ADDITION))
           oldValue = e.prevValue;
 
         forEachAncestorAndObserverEnqueueRecord(target, function(options) {
@@ -512,12 +512,12 @@ Registration.prototype = {
 
         break;
 
-      case "DOMCharacterDataModified":
+      case 'DOMCharacterDataModified':
         // http://dom.spec.whatwg.org/#concept-mo-queue-characterdata
         var target = e.target;
 
         // 1.
-        var record = getRecord("characterData", target);
+        var record = getRecord('characterData', target);
 
         // 2.
         var oldValue = e.prevValue;
@@ -538,15 +538,15 @@ Registration.prototype = {
 
         break;
 
-      case "DOMNodeRemoved":
+      case 'DOMNodeRemoved':
         this.addTransientObserver(e.target);
         // Fall through.
-      case "DOMNodeInserted":
+      case 'DOMNodeInserted':
         // http://dom.spec.whatwg.org/#concept-mo-queue-childlist
         var target = e.relatedNode;
         var changedNode = e.target;
         var addedNodes, removedNodes;
-        if (e.type === "DOMNodeInserted") {
+        if (e.type === 'DOMNodeInserted') {
           addedNodes = [changedNode];
           removedNodes = [];
         } else {
@@ -558,7 +558,7 @@ Registration.prototype = {
         var nextSibling = changedNode.nextSibling;
 
         // 1.
-        var record = getRecord("childList", target);
+        var record = getRecord('childList', target);
         record.addedNodes = addedNodes;
         record.removedNodes = removedNodes;
         record.previousSibling = previousSibling;

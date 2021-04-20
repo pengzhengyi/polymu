@@ -126,7 +126,7 @@ export class ForwardingInstantiation extends Abstraction {
    */
   registerProps__(
     props: Record<Prop, Partial<ForwardingPropertyDescriptor>>,
-    reset: boolean = false
+    reset = false
   ) {
     /** props will be registered in {@link ./Abstraction.Abstraction} */
     super.registerProps__(
@@ -259,7 +259,7 @@ export class DomForwardingInstantiation<
    */
   registerProps__(
     props: Record<string, Partial<ForwardingPropertyDescriptor>>,
-    reset: boolean = false
+    reset = false
   ) {
     // super refers to {@link ForwardingInstantiation}
     super.registerProps__(DomForwardingInstantiation.__fillDefaultDescriptor(props), reset);

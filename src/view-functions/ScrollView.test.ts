@@ -34,7 +34,7 @@ beforeAll(() => {
 describe('ScrollView initialization', () => {
   let target: HTMLElement;
   let scrollView: ScrollView<HTMLParagraphElement, HTMLParagraphElement>;
-  let paragraphs: Array<HTMLParagraphElement> = Array.from(
+  const paragraphs: Array<HTMLParagraphElement> = Array.from(
     (function* () {
       for (let i = 0; i < 200; i++) {
         const element: HTMLParagraphElement = document.createElement('p');
