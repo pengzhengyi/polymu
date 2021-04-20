@@ -280,7 +280,7 @@ export class SyncView extends AbstractViewFunction<TViewElementLike> implements 
           false
         );
       } else if (isIterable(source)) {
-        const peekResult = peek(source );
+        const peekResult = peek(source);
         const { done, value } = peekResult.next();
 
         if (!done) {

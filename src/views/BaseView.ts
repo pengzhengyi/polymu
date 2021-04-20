@@ -147,18 +147,12 @@ export class BaseView extends AggregateView<TViewElementLike> {
    * @param useCache - When `useCache` is `true`, `sourceView` is ignored and view elements from `this.viewElementProvider` will be used. When `useCache` is `false`, `sourceView` will both provide the view elements and used to update `this.viewElementProvider`.
    * @returns
    */
-  view(
-    sourceView: Collection<TViewElementLike>,
-    useCache = true
-  ): Collection<TViewElementLike> {
+  view(sourceView: Collection<TViewElementLike>, useCache = true): Collection<TViewElementLike> {
     return super.view(sourceView, useCache);
   }
 
   /** @override */
-  protected regenerateView(
-    sourceView: Collection<ViewElement<HTMLElement>>,
-    useCache = true
-  ) {
+  protected regenerateView(sourceView: Collection<ViewElement<HTMLElement>>, useCache = true) {
     if (!this.shouldRegenerateView && useCache) {
       return;
     }

@@ -124,10 +124,7 @@ export class ForwardingInstantiation extends Abstraction {
    * @param {boolean} [reset=false] - Whether existing props will be removed.
    * @description __override__ The overriding function allows access functions in ForwardingPropertyDescriptor to receive two additional arguments: `forwardingTo` and `thisArgument`.
    */
-  registerProps__(
-    props: Record<Prop, Partial<ForwardingPropertyDescriptor>>,
-    reset = false
-  ) {
+  registerProps__(props: Record<Prop, Partial<ForwardingPropertyDescriptor>>, reset = false) {
     /** props will be registered in {@link ./Abstraction.Abstraction} */
     super.registerProps__(
       ForwardingInstantiation.__transformPropertyDescriptors(props, this),
@@ -257,10 +254,7 @@ export class DomForwardingInstantiation<
    * @param {boolean} [reset=false] - Whether existing props will be removed.
    * @description __override__ The overriding function will replace falsy descriptor values in `props` with default property descriptor {@link DomForwardingInstantiation.__fillDefaultDescriptor}.
    */
-  registerProps__(
-    props: Record<string, Partial<ForwardingPropertyDescriptor>>,
-    reset = false
-  ) {
+  registerProps__(props: Record<string, Partial<ForwardingPropertyDescriptor>>, reset = false) {
     // super refers to {@link ForwardingInstantiation}
     super.registerProps__(DomForwardingInstantiation.__fillDefaultDescriptor(props), reset);
   }
