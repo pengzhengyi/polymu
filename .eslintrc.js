@@ -30,6 +30,14 @@ module.exports = {
         'minimumDescriptionLength': 5,
       },
     ],
+    '@typescript-eslint/no-this-alias': [
+      'error',
+      {
+        allowedNames: ['self', 'that'], // Allow `const that = this` and `const self = this`
+      },
+    ],
+    '@typescript-eslint/no-unsafe-assignment': 'warn',
+    '@typescript-eslint/no-unsafe-member-access': 'warn',
     'jest/no-disabled-tests': 'warn',
     'jest/no-focused-tests': 'error',
     'jest/no-identical-title': 'error',
