@@ -28,7 +28,7 @@ import {
 } from '../dom/scroll';
 import { debounceWithCooldown } from '../utils/debounce';
 import { bound } from '../utils/math';
-import { ViewElement } from '../views/ViewElement';
+import { ViewElement } from '../view-element/ViewElement';
 import { ViewElementChildListMutationReporter } from '../views/ViewElementChildListMutationReporter';
 import { PartialView } from './PartialView';
 

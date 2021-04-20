@@ -1,5 +1,5 @@
-import { Prop } from '../Abstraction';
-import { DomFallthroughInstantiation } from '../Instantiation';
+import { Prop } from './Abstraction';
+import { DomFallthroughInstantiation } from './Instantiation';
 import { MutationReporter, MutationReporterCallback } from '../dom/MutationReporter';
 import { v4 as uuid } from 'uuid';
 import { patch } from '../utils/IterableHelper';

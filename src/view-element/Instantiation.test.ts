@@ -3,7 +3,7 @@ import {
   DomForwardingInstantiation,
   ForwardingInstantiation,
 } from './Instantiation';
-import { NotImplemented } from './utils/errors';
+import { NotImplemented } from '../utils/errors';
 
 describe('set forwarding target', () => {
   const forwardingTarget = { id: 'foo' };

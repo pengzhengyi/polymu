@@ -9,7 +9,7 @@ import { IFeatureProvider } from '../composition/composition';
 import { ChildListChangeEvent } from '../dom/CustomEvents';
 import { TaskQueue } from '../TaskQueue';
 import { isIterable, peek } from '../utils/IterableHelper';
-import { PatchModeForMatch, ViewElement } from '../views/ViewElement';
+import { PatchModeForMatch, ViewElement } from '../view-element/ViewElement';
 import { ViewElementChildListMutationReporter } from '../views/ViewElementChildListMutationReporter';
 import { AbstractViewFunction } from './AbstractViewFunction';
 

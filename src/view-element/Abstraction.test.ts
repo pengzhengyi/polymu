@@ -1,5 +1,5 @@
 import { Abstraction } from './Abstraction';
-import { NotImplemented } from './utils/errors';
+import { NotImplemented } from '../utils/errors';
 
 class TestInstantiation extends Abstraction {}
 

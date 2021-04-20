@@ -9,14 +9,47 @@ import { composeFeatures } from '../composition/composition';
 import { ChildListChangeEvent } from '../dom/CustomEvents';
 import { AbstractViewFunction } from '../view-functions/AbstractViewFunction';
 import { AggregateView } from '../view-functions/AggregateView';
+import { ScrollView as _ScrollView } from '../view-functions/ScrollView';
 import { SyncView, TViewElementLike } from '../view-functions/SyncView';
-import { ViewElement } from './ViewElement';
+import { ViewElement } from '../view-element/ViewElement';
 import { TSourceType, ViewElementProvider } from './ViewElementProvider';
+
+/**
+ * A customized ScrollView which provides `rootDomElement` and type arguments.
+ */
+class ScrollView extends _ScrollView<TViewElementLike, HTMLElement> {
+  /**
+   * Exposes `this._target`.
+   * @returns The target DOM element where rendering view will be mounted.
+   */
+  get rootDomElement(): HTMLElement {
+    return this._target;
+  }
+
+  /**
+   * @override
+   * Create an instance of `ScrollView`.
+   * @param target - The target DOM element where rendering view will be mounted.
+   * @constructs ScrollView
+   */
+  constructor(target: HTMLElement) {
+    super({
+      convert: (viewElementLike: TViewElementLike) => {
+        if (viewElementLike instanceof ViewElement) {
+          return viewElementLike.element_;
+        } else {
+          return viewElementLike;
+        }
+      },
+      target,
+    });
+  }
+}
 
 /**
  * A union type including all view functions that can be classified as rendering a View. More specifically, these view functions will have direct influence on DOM.
  */
-type RenderingViewFunction = /* ScrollView<ViewElement, HTMLElement> | */ SyncView;
+type RenderingViewFunction = ScrollView | SyncView;
 /**
  * A union type including all view functions that only transform a `View`. These view functions will have no impact on DOM.
  */

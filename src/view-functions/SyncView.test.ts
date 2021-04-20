@@ -1,6 +1,6 @@
 import { Collection } from '../collections/Collection';
 import { ChildListChangeEvent } from '../dom/CustomEvents';
-import { ViewElement } from '../views/ViewElement';
+import { ViewElement } from '../view-element/ViewElement';
 import { SyncView } from './SyncView';
 
 describe('SyncView', () => {

@@ -7,7 +7,7 @@
 import { Collection, LazyCollectionProvider } from '../collections/Collection';
 import { peek } from '../utils/IterableHelper';
 import { TViewElementLike } from '../view-functions/SyncView';
-import { ViewElement } from './ViewElement';
+import { ViewElement } from '../view-element/ViewElement';
 
 /**
  * This interface abstracts out a provider that returns parent `ViewElement` and child `ViewElement` on demand. This parent-child relationship can also be viewed as a container-item relationship -- all child `ViewElement` are contained/registered in parent `ViewElement`.

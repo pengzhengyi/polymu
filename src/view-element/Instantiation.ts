@@ -8,7 +8,7 @@
  */
 
 import { Abstraction, Prop } from './Abstraction';
-import { getProperty, setProperty } from './dom/properties';
+import { getProperty, setProperty } from '../dom/properties';
 
 /**
  * Strips the getter-setter pair of functions from PropertyDescriptor so that access functions type annotations can be overridden.

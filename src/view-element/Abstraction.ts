@@ -7,7 +7,7 @@
  * Read {@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Functions/get getter} and {@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Functions/set setter} for inspiration.
  */
 
-import { NotImplemented } from './utils/errors';
+import { NotImplemented } from '../utils/errors';
 
 /**
  * The key name of a property.

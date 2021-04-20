@@ -1,7 +1,7 @@
 import { ChildListChangeEvent } from '../dom/CustomEvents';
 import { FilteredView } from '../view-functions/FilteredView';
 import { BaseView, ViewTransformation } from './BaseView';
-import { ViewElement } from './ViewElement';
+import { ViewElement } from '../view-element/ViewElement';
 
 function* createParagraphElement(count: number): IterableIterator<HTMLParagraphElement> {
   for (let i = 0; i < count; i++) {

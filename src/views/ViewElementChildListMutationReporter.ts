@@ -2,7 +2,7 @@
  * This module provides a simple utility class that can be used to monitor child list mutations happening to a ViewElement's underlying element.
  */
 
-import { ViewElement } from './ViewElement';
+import { ViewElement } from '../view-element/ViewElement';
 
 /**
  * `ViewElementChildListMutationReporter` allow monitoring child list mutations happening to a ViewElement's underlying element. When such mutations are observed, they will be reported in corresponding custom event -- `ChildListChangeEvent`.

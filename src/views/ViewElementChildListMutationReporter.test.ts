@@ -1,5 +1,5 @@
 import { ChildListChangeEvent } from '../dom/CustomEvents';
-import { ViewElement } from './ViewElement';
+import { ViewElement } from '../view-element/ViewElement';
 import { ViewElementChildListMutationReporter } from './ViewElementChildListMutationReporter';
 
 describe('ViewElementChildListMutationReporter', () => {

@@ -1,4 +1,4 @@
-import { ViewElement } from './ViewElement';
+import { ViewElement } from '../view-element/ViewElement';
 import { ViewElementProvider } from './ViewElementProvider';
 
 function createListElement(numChild: number): HTMLOListElement {
