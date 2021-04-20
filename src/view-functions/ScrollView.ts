@@ -301,6 +301,7 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement>
 
       if (newValue) {
         this._targetChildListMutationReporter = new ViewElementChildListMutationReporter(newValue);
+        this._targetChildListMutationReporter.observe();
       }
 
       manager.notifyValueChange(thisValue);
