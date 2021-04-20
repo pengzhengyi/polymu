@@ -100,11 +100,12 @@ export class SyncView extends AbstractViewFunction<TViewElementLike> implements 
       this.initializeMutationHandler__();
     }
 
-    this.initializeTaskQueue__();
-
     this.rootViewElementChildListMutationReporter_ = new ViewElementChildListMutationReporter(
       this.rootViewElement_
     );
+
+    this.initializeTaskQueue__();
+
     this.rootViewElementChildListMutationReporter_.observe();
   }
 
@@ -163,7 +164,7 @@ export class SyncView extends AbstractViewFunction<TViewElementLike> implements 
       isRecurring: true,
     });
     this.afterViewUpdateTaskQueue.tasks.push({
-      work: () => this.rootViewElementChildListMutationReporter_.unobserve(),
+      work: () => this.rootViewElementChildListMutationReporter_.observe(),
       isRecurring: true,
     });
   }
