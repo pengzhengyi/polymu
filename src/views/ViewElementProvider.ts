@@ -73,10 +73,10 @@ class LazyCollectionProviderWithMaterializationCallback<TElement> extends LazyCo
 export type TSourceType =
   | HTMLTemplateElement
   | DocumentFragment
-  | HTMLCollection
   | HTMLElement
-  | Iterable<HTMLElement>
   | ViewElement
+  | Iterable<HTMLElement>
+  | HTMLCollection
   | Iterable<ViewElement>;
 
 /**
@@ -88,19 +88,257 @@ export class ViewElementProvider implements IViewElementProvider {
   /**
    * A threshold above which lazy initialization will be applied. When lazy initialization is applied, children `ViewElement` will not be added to parent `ViewElement` immediately. Rather it will be added before this `ViewElement` is about to be iterated over.
    */
-  static LAZY_INITIALIZATION_THRESHOLD: number = 10000;
+  static LAZY_INITIALIZATION_THRESHOLD: number = 1000;
 
   /** @override */
   parentViewElement: ViewElement;
 
   /**
+   * Whether this `ViewElementProvider` provides a large number of children `ViewElement`.
+   *
+   * ! When the number of child `ViewElement` cannot be determined, it will be assumed to be large.
+   */
+  hasLargeNumberOfChildViewElement: boolean;
+
+  /**
    * Internal implementation to provide children `ViewElement`.
    */
-  protected getChildViewElementsInternal: () => Collection<ViewElement>;
+  protected getChildViewElementsImplementation: () => Collection<ViewElement>;
 
   /** @override */
   get childViewElements(): Collection<ViewElement> {
-    return this.getChildViewElementsInternal();
+    return this.getChildViewElementsImplementation();
+  }
+
+  /**
+   * Consume a `ViewElement` to update current `ViewElementProvider`.
+   *
+   * @param viewElement - A `ViewElement` which is used to substitute current `parentViewElement` and provide children `ViewElement`.
+   */
+  protected consumeViewElement(viewElement: ViewElement) {
+    this.parentViewElement = viewElement;
+    this.getChildViewElementsImplementation = () => this.parentViewElement.children_;
+  }
+
+  /**
+   * Consume a `HTMLTemplateElement` ({@link https://developer.mozilla.org/en-US/docs/Web/HTML/Element/template `<template>`}) to update current `ViewElementProvider`.
+   *
+   * @param templateElement - A template element whose content should be used to update current `ViewElementProvider`.
+   * @param fallbackContainer - {@alias this.consume#fallbackContainer}
+   * @param shouldLazyInitialize - {@alias this.consume#shouldLazyInitialize}
+   */
+  protected consumeHTMLTemplateElement(
+    templateElement: HTMLTemplateElement,
+    fallbackContainer: HTMLElement,
+    shouldLazyInitialize: boolean
+  ) {
+    this.consumeDocumentFragment(templateElement.content, fallbackContainer, shouldLazyInitialize);
+  }
+
+  /**
+   * Consume a {@link https://developer.mozilla.org/en-US/docs/Web/API/DocumentFragment `DocumentFragment`} to update current `ViewElementProvider`.
+   *
+   * @param documentFragment - A document fragment whose children should be used to update current `ViewElementProvider`.
+   * @param fallbackContainer - {@alias this.consume#fallbackContainer}
+   * @param shouldLazyInitialize - {@alias this.consume#shouldLazyInitialize}
+   */
+  protected consumeDocumentFragment(
+    documentFragment: DocumentFragment,
+    fallbackContainer: HTMLElement,
+    shouldLazyInitialize: boolean
+  ) {
+    let children: HTMLCollection = documentFragment.children;
+
+    if (children.length === 1) {
+      this.consumeHTMLElement(children[0] as HTMLElement, fallbackContainer, shouldLazyInitialize);
+    } else {
+      this.consumeIterable(children, fallbackContainer, shouldLazyInitialize);
+    }
+  }
+
+  /**
+   * Consume a `HTMLElement` to update current `ViewElementProvider`.
+   *
+   * @param htmlElement - A `HTMLElement` which itself will become the new parent `ViewElement` and whose children will become the new children `ViewElement`.
+   * @param fallbackContainer - {@alias this.consume#fallbackContainer} This parameter is ignored as `htmlElement` itself will become the container.
+   * @param shouldLazyInitialize - {@alias this.consume#shouldLazyInitialize}
+   */
+  protected consumeHTMLElement(
+    htmlElement: HTMLElement,
+    fallbackContainer: HTMLElement,
+    shouldLazyInitialize: boolean
+  ) {
+    this.consumeIterable(htmlElement.children, htmlElement, shouldLazyInitialize);
+  }
+
+  /**
+   * Create `this.parentViewElement` using provided `HTMLElement`.
+   *
+   * @param container - A `HTMLElement` which will be used to create `this.parentViewElement`, which will contain all children `ViewElement`.
+   * @throws {ReferenceError} When `this.parentViewElement` will be uninitialized.
+   */
+  protected createParentViewElement(container: HTMLElement) {
+    if (container) {
+      this.parentViewElement = new ViewElement(container, [(element) => new ViewElement(element)]);
+    } else if (this.parentViewElement === undefined) {
+      // throw an error if `parentViewElement` will left uninitialized
+      throw new ReferenceError('fallbackContainer not provided when needed');
+    }
+  }
+
+  /**
+   * Consume a `HTMLElement` to update current `ViewElementProvider`.
+   *
+   * @param htmlElement - A `HTMLElement` which itself will become the new parent `ViewElement` and whose children will become the new children `ViewElement`.
+   * @param container - {@alias this.consume#fallbackContainer} A `HTMLElement` which will be used to initialize `this.parentViewElement`.
+   * @param shouldLazyInitialize - {@alias this.consume#shouldLazyInitialize}
+   */
+  protected consumeIterable(
+    iterable: Iterable<HTMLElement> | HTMLCollection | Iterable<ViewElement>,
+    container: HTMLElement,
+    shouldLazyInitialize: boolean
+  ) {
+    this.createParentViewElement(container);
+
+    // source is either an iterable of ViewElement or HTMLElement
+    this.setupChildViewElementsFromIterableOfUnknownType(iterable, shouldLazyInitialize);
+  }
+
+  /**
+   * Determine whether children ViewElement of `this.parentViewElement` should be initialized lazily.
+   *
+   * @param iterableLength - The length of iterable. Can be undefined if iterable does not have a defined `length`.
+   * @param initialDecision - An initial decision for whether lazy initialization is needed. If `initialDecision` is either `true` of `false`, this will become the final decision. If it is `undefined`, then the decision will be made based on the `iterableLength`.
+   * @returns Whether Children ViewElement should be initialized lazily.
+   */
+  protected shouldLazyInitializeChildViewElements(
+    initialDecision: boolean,
+    iterableLength: number
+  ) {
+    let shouldLazyInitialize = initialDecision;
+    if (initialDecision === undefined) {
+      if (iterableLength === undefined) {
+        // when we do not know the length, we conservatively choose to lazily initialize
+        shouldLazyInitialize = true;
+      } else if (iterableLength >= ViewElementProvider.LAZY_INITIALIZATION_THRESHOLD) {
+        shouldLazyInitialize = true;
+      } else {
+        shouldLazyInitialize = false;
+      }
+    }
+
+    if (shouldLazyInitialize) {
+      this.hasLargeNumberOfChildViewElement = true;
+    }
+
+    return shouldLazyInitialize;
+  }
+
+  /**
+   * Setup the children `ViewElement` of `this.parentViewElement` from an iterable of element whose type is either `HTMLElement` or `ViewElement`.
+   *
+   * @param iterable - An iterable of either `HTMLElement` or `ViewElement`. This iterable will be used to properly setup `this.childViewElements`.
+   * @param shouldLazyInitialize - {@alias this.consume#shouldLazyInitialize}
+   */
+  protected setupChildViewElementsFromIterableOfUnknownType(
+    iterable: Iterable<HTMLElement> | HTMLCollection | Iterable<ViewElement>,
+    shouldLazyInitialize: boolean
+  ) {
+    // iterable is either an iterable of ViewElement or HTMLElement
+    const iterableLength: number = (iterable as any).length;
+    // use `iterableLength` to determine whether lazy initialization is preferred
+    shouldLazyInitialize = this.shouldLazyInitializeChildViewElements(
+      shouldLazyInitialize,
+      iterableLength
+    );
+
+    const peekResult = peek(iterable as Iterable<TViewElementLike>);
+    const { done, value } = peekResult.next();
+    if (done) {
+      this.setupChildViewElementsFromEmptyIterable();
+      return;
+    }
+
+    if (value instanceof ViewElement) {
+      this.setupChildViewElementsFromIterableOfViewElement(
+        peekResult as Iterable<ViewElement>,
+        shouldLazyInitialize
+      );
+      return;
+    }
+
+    if (!Array.isArray(iterable)) {
+      // if source is not Array, peeking the first element will affect the original iterable and we need to reassign it to corrected iterable
+      iterable = peekResult as Iterable<HTMLElement>;
+    }
+
+    this.setupChildViewElementsFromIterableOfHTMLElement(iterable, shouldLazyInitialize);
+  }
+
+  /**
+   * Setup the children `ViewElement` of `this.parentViewElement` from an empty iterable.
+   */
+  protected setupChildViewElementsFromEmptyIterable() {
+    this.parentViewElement.children_ = [];
+    this.getChildViewElementsImplementation = () => this.parentViewElement.children_;
+  }
+
+  /**
+   * Setup the children `ViewElement` of `this.parentViewElement` from an iterable of `ViewElement`.
+   *
+   * @param iterable - An iterable of `ViewElement` used to properly setup `this.childViewElements`.
+   * @param shouldLazyInitialize - Whether children `ViewElement` of `this.parentViewElement` should be lazily initialized. This value is either `true` or `false`.
+   */
+  protected setupChildViewElementsFromIterableOfViewElement(
+    iterable: Iterable<ViewElement>,
+    shouldLazyInitialize: boolean
+  ) {
+    // TODO: utilize `shouldLazyInitialize`
+    this.parentViewElement.patchChildViewElementsWithViewElements__(iterable);
+    this.getChildViewElementsImplementation = () => this.parentViewElement.children_;
+  }
+
+  /**
+   * Setup the children `ViewElement` of `this.parentViewElement` from an iterable of `HTMLElement`.
+   *
+   * @param iterable - An iterable of `HTMLElement` used to properly setup `this.childViewElements`.
+   * @param shouldLazyInitialize - Whether children `ViewElement` of `this.parentViewElement` should be lazily initialized. This value is either `true` or `false`.
+   */
+  protected setupChildViewElementsFromIterableOfHTMLElement(
+    iterable: Iterable<HTMLElement>,
+    shouldLazyInitialize: boolean
+  ) {
+    if (shouldLazyInitialize) {
+      // clear previous children `ViewElement`
+      this.parentViewElement.children_ = [];
+      const viewElementCollection = new LazyCollectionProviderWithMaterializationCallback<
+        ViewElement
+      >(
+        (function* () {
+          for (const element of iterable) {
+            yield new ViewElement(element as HTMLElement);
+          }
+        })()
+      );
+      /**
+       * Instead of inserting a just-materialized view element at specified index, we append it at the end. This is because (1) materialization happen in order so next materialized element should be added as last view element child of `parentViewElement` (2) mutation of children `ViewElement` might happen during materialization so inserting at original place might create unexpected effect. For example, if a child ViewElement was removed, inserting at original place will create an empty slot.
+       */
+      viewElementCollection.materializationCallback = (_, child) =>
+        this.parentViewElement.insertChild__(child);
+      this.getChildViewElementsImplementation = () => {
+        if (viewElementCollection.materialized) {
+          // all ViewElement has been registered under `parentViewElement`
+          this.getChildViewElementsImplementation = () => this.parentViewElement.children_;
+          return this.parentViewElement.children_;
+        } else {
+          return viewElementCollection;
+        }
+      };
+    } else {
+      // create all ViewElement immediately
+      this.parentViewElement.patchChildViewElementsWithDOMElements__(iterable);
+      this.getChildViewElementsImplementation = () => this.parentViewElement.children_;
+    }
   }
 
   /**
@@ -115,99 +353,19 @@ export class ViewElementProvider implements IViewElementProvider {
     fallbackContainer?: HTMLElement,
     shouldLazyInitialize: boolean = undefined
   ) {
+    // override this flag when there is actually a large number of children ViewElement
+    this.hasLargeNumberOfChildViewElement = false;
+
     if (source instanceof ViewElement) {
-      this.parentViewElement = source;
-      this.getChildViewElementsInternal = () => this.parentViewElement.children_;
-      return;
-    }
-
-    if (source instanceof HTMLTemplateElement) {
-      source = source.content;
-    }
-
-    if (source instanceof DocumentFragment) {
-      let children: HTMLCollection = source.children;
-
-      if (children.length === 1) {
-        source = children[0] as HTMLElement;
-      } else {
-        source = children;
-      }
-    }
-
-    if (source instanceof HTMLElement) {
-      this.parentViewElement = new ViewElement(source, [(element) => new ViewElement(element)]);
-      source = source.children;
+      this.consumeViewElement(source);
+    } else if (source instanceof HTMLTemplateElement) {
+      this.consumeHTMLTemplateElement(source, fallbackContainer, shouldLazyInitialize);
+    } else if (source instanceof DocumentFragment) {
+      this.consumeDocumentFragment(source, fallbackContainer, shouldLazyInitialize);
+    } else if (source instanceof HTMLElement) {
+      this.consumeHTMLElement(source, undefined, shouldLazyInitialize);
     } else {
-      // no provided parent DOM element, use the fallback one
-      if (fallbackContainer) {
-        this.parentViewElement = new ViewElement(fallbackContainer, [
-          (element) => new ViewElement(element),
-        ]);
-      } else if (this.parentViewElement === undefined) {
-        throw new ReferenceError('fallbackContainer not provided when needed');
-      }
-    }
-
-    // source is either an iterable of ViewElement or HTMLElement
-
-    const numDomElement: number = (source as any).length;
-
-    const peekResult = peek(source as Iterable<TViewElementLike>);
-    const { done, value } = peekResult.next();
-    if (done) {
-      this.parentViewElement.children_ = [];
-      this.getChildViewElementsInternal = () => this.parentViewElement.children_;
-      return;
-    }
-
-    if (value instanceof ViewElement) {
-      this.parentViewElement.patchChildViewElementsWithViewElements__(
-        peekResult as Iterable<ViewElement>
-      );
-      this.getChildViewElementsInternal = () => this.parentViewElement.children_;
-      return;
-    }
-
-    if (!Array.isArray(source)) {
-      // if source is not Array, peeking the first element will affect the original iterable and we need to reassign it to corrected iterable
-      source = peekResult as Iterable<HTMLElement>;
-    }
-
-    if (
-      shouldLazyInitialize === true ||
-      (shouldLazyInitialize === undefined &&
-        (numDomElement ===
-          undefined /* when we do not know the length, we conservatively choose to lazily initialize */ ||
-          numDomElement >= ViewElementProvider.LAZY_INITIALIZATION_THRESHOLD))
-    ) {
-      const viewElementCollection = new LazyCollectionProviderWithMaterializationCallback<
-        ViewElement
-      >(
-        (function* () {
-          for (const element of source) {
-            yield new ViewElement(element as HTMLElement);
-          }
-        })()
-      );
-      /**
-       * Instead of inserting a just-materialized view element at specified index, we append it at the end. This is because (1) materialization happen in order so next materialized element should be added as last view element child of `parentViewElement` (2) mutation of children `ViewElement` might happen during materialization so inserting at original place might create unexpected effect. For example, if a child ViewElement was removed, inserting at original place will create an empty slot.
-       */
-      viewElementCollection.materializationCallback = (_, child) =>
-        this.parentViewElement.insertChild__(child);
-      this.getChildViewElementsInternal = () => {
-        if (viewElementCollection.materialized) {
-          // all ViewElement has been registered under `parentViewElement`
-          this.getChildViewElementsInternal = () => this.parentViewElement.children_;
-          return this.parentViewElement.children_;
-        } else {
-          return viewElementCollection;
-        }
-      };
-    } else {
-      // create all ViewElement immediately
-      this.parentViewElement.patchChildViewElementsWithDOMElements__(source);
-      this.getChildViewElementsInternal = () => this.parentViewElement.children_;
+      this.consumeIterable(source, fallbackContainer, shouldLazyInitialize);
     }
   }
 }

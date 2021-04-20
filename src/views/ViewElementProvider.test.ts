@@ -21,6 +21,8 @@ describe('ViewElementProvider', () => {
     const viewElementProvider: ViewElementProvider = new ViewElementProvider();
     viewElementProvider.consume(templateElement);
 
+    expect(viewElementProvider.hasLargeNumberOfChildViewElement).toBe(false);
+
     expect(viewElementProvider.parentViewElement.element_.id).toEqual('container-list');
     expect(viewElementProvider.childViewElements).toHaveLength(10);
   });
@@ -50,6 +52,9 @@ describe('ViewElementProvider', () => {
 
     const viewElementProvider: ViewElementProvider = new ViewElementProvider();
     viewElementProvider.consume(listElement, undefined, true);
+
+    expect(viewElementProvider.hasLargeNumberOfChildViewElement).toBe(true);
+
     expect(viewElementProvider.parentViewElement.element_.id).toEqual('container-list');
 
     // before materialization, no ViewElement has been added as child
