@@ -3,7 +3,6 @@
   "version": "1.0.0",
   "description": "Browser extension to improve reading experience",
   "main": "./dist/polymu.js",
-  "module": "./src/polymu.ts",
   "publishConfig": {
     "registry": "https://npm.pkg.github.com/"
   },
@@ -51,8 +50,7 @@
     "ts-jest": "^26.2.0",
     "ts-loader": "^9.0.2",
     "typescript": "^4.0.2",
-    "webpack": "^5.34.0",
-    "webpack-cli": "^4.6.0"
+    "webpack": "^5.34.0"
   },
   "dependencies": {
     "@types/uuid": "^8.3.0",
