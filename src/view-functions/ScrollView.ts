@@ -141,8 +141,6 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement>
   protected static readonly _lastScrollPositionPropertyName = '_lastScrollPosition';
   /** The property name for `_elementLength` */
   protected static readonly _elementLengthPropertyName = '_elementLength';
-  /** The property name for `_shouldPartialRender` */
-  protected static readonly _shouldPartialRenderPropertyName = '_shouldPartialRender';
   /** The property name for `_startFillerElement` */
   protected static readonly _startFillerElementPropertyName = '_startFillerElement';
   /** The property name for `_startFillerLength` */
@@ -534,35 +532,6 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement>
   );
 
   /**
-   * Whether the source view should be partially rendered -- a fixed window of the source view is rendered while other regions of the source view is accessible through scrolling.
-   *
-   * Source view will not be partially rendered if the number of elements in source view is smaller than the window size. In other words, source view can entirely fit in the window. In this scenario, scrolling will not result substitution of elements in the window (scroll monitoring will be turned off).
-   */
-  protected _shouldPartialRender: boolean;
-  /**
-   * A property that describes the behavior of `_shouldPartialRender`.
-   */
-  protected _shouldPartialRenderProperty: Property<boolean> = new Property(
-    ScrollView._shouldPartialRenderPropertyName,
-    (thisValue, manager) => {
-      const renderingView = manager.getPropertyValue(
-        '_renderingView'
-      ) as CircularArray<TDomElement>;
-      const renderingViewVersion = manager.getPropertyValueSnapshotVersionWithName(
-        ScrollView._renderingViewPropertyName
-      );
-      thisValue.shouldReuseLastValue = (_, manager) =>
-        manager.isSnapshotVersionUpToDate(
-          ScrollView._renderingViewPropertyName,
-          renderingViewVersion
-        );
-
-      return renderingView && renderingView.isFull;
-    },
-    UpdateBehavior.Lazy
-  );
-
-  /**
    * A filler element to
    *
    *    + emulate full length of the target view
@@ -864,7 +833,6 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement>
       this._scrollAxisProperty,
       this._lastScrollPositionProperty,
       this._elementLengthProperty,
-      this._shouldPartialRenderProperty,
       this._startFillerElementProperty,
       this._startFillerLengthProperty,
       this._startFillerOffsetProperty,
@@ -1175,7 +1143,12 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement>
    * @public
    */
   protected activateObservers__(): void {
-    if (this._shouldPartialRender) {
+    /**
+     * Whether the source view should be partially rendered -- a fixed window of the source view is rendered while other regions of the source view is accessible through scrolling.
+     *
+     * Source view will not be partially rendered if the number of elements in rendering view is smaller than the window size. In other words, source view can entirely fit in the window. In this scenario, scrolling will not result substitution of elements in the window (scroll monitoring will be turned off).
+     */
+    if (this.isWindowFull) {
       this._startFillerObserver.observe(this._startFillerElement);
       this._endFillerObserver.observe(this._endFillerElement);
       this._startSentinelObserver.observe(this._startSentinelElement);
@@ -1202,7 +1175,10 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement>
    */
   protected fillerReachedHandler__(entries: Array<IntersectionObserverEntry>): void {
     entries.forEach((entry) => {
-      if (entry.isIntersecting && entry.intersectionRect.height > 0) {
+      if (
+        entry.isIntersecting &&
+        /* short circuit scenario when at the container top */ entry.intersectionRect.height > 0
+      ) {
         const newStartIndex = this.getElementIndexFromScrollAmount__();
         this._shiftAmount = newStartIndex - this.startIndex;
       }
