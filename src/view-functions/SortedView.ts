@@ -104,7 +104,7 @@ export class SortedView<TViewElement>
   ];
 
   /** a mapping from identifier to a sorting function and its priority */
-  sortingFunctions = new Map<any, SortingFunctionWithPriority<TViewElement>>();
+  sortingFunctions = new Map<unknown, SortingFunctionWithPriority<TViewElement>>();
 
   /** denotes the current smallest priority associated with sorting function */
   private smallestPriority = 0;
@@ -194,13 +194,13 @@ export class SortedView<TViewElement>
    * Will trigger a regeneration of view if different sorting function or same sorting function with a different priority was bound to the key.
    *
    * @public
-   * @param {any} key - An identifier.
+   * @param key - An identifier.
    * @param {SortingFunction<TViewElement>} sortingFunction - A function to determine how elements from source view should be ordered in the target view.
    * @param {number} [priority = this.smallestPriority - 1] - The priority of newly-bound sorting function. The higher the priority, the more important the sorting function. Default to add a least important sorting function.
    * @returns Whether this operation will cause a regeneration of view. Even this operation does not cause view regeneration, a view regeneration might still happen because of other operations.
    */
   addSortingFunction(
-    key: any,
+    key: unknown,
     sortingFunction: SortingFunction<TViewElement>,
     priority: number = this.smallestPriority - 1
   ): boolean {
@@ -224,10 +224,10 @@ export class SortedView<TViewElement>
    * Will trigger a regeneration of view if a sorting function is actually deleted.
    *
    * @public
-   * @param {any} key - An identifier.
+   * @param key - An identifier.
    * @returns Whether this operation will cause a regeneration of view. Even this operation does not cause view regeneration, a view regeneration might still happen because of other operations.
    */
-  deleteSortingFunction(key: any): boolean {
+  deleteSortingFunction(key: string): boolean {
     if (this.sortingFunctions.delete(key)) {
       return (this.shouldRegenerateView = true);
     }
@@ -258,10 +258,10 @@ export class SortedView<TViewElement>
    * If any sorting function priority is changed, a regeneration of view will be triggered.
    *
    * @public
-   * @param {Map<any, number} reordering - A mapping from identifier to new priority number.
+   * @param {Map<unknown, number} reordering - A mapping from identifier to new priority number.
    * @returns Whether this operation will cause a regeneration of view. Even this operation does not cause view regeneration, a view regeneration might still happen because of other operations.
    */
-  reorderSortingFunction(reordering: Map<any, number>): boolean {
+  reorderSortingFunction(reordering: Map<unknown, number>): boolean {
     let shouldRegenerateView = false;
 
     for (const [key, newPriority] of reordering) {

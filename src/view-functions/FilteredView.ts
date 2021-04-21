@@ -33,7 +33,7 @@ export class FilteredView<TViewElement>
   private shouldRefineView = true;
 
   /** A mapping from identifier to filter function */
-  private filterFunctions = new Map<any, FilterFunction<TViewElement>>();
+  private filterFunctions = new Map<unknown, FilterFunction<TViewElement>>();
 
   /** The aggregate filter function -- combining all filter functions */
   get filter(): FilterFunction<TViewElement> {
@@ -114,11 +114,11 @@ export class FilteredView<TViewElement>
    * Will cause **refinement** if only filter functions have been added `this.filterFunctions`.
    *
    * @public
-   * @param {any} key - An identifier.
+   * @param key - An identifier.
    * @param {FilterFunction<TViewElement>} filterFunction - A function to determine whether an element in the source view should be kept in the target view.
    * @returns Whether this operation will cause a regeneration of view. Even this operation does not cause view regeneration, a view regeneration might still happen because of other operations.
    */
-  addFilterFunction(key: any, filterFunction: FilterFunction<TViewElement>): boolean {
+  addFilterFunction(key: unknown, filterFunction: FilterFunction<TViewElement>): boolean {
     if (this.filterFunctions.get(key) === filterFunction) {
       // no action is taken when same filter function is registered
       return false;
@@ -139,10 +139,10 @@ export class FilteredView<TViewElement>
    * Will trigger a non-refinement regeneration of view if a filter function is actually deleted.
    *
    * @public
-   * @param {any} key - An identifier.
+   * @param key - An identifier.
    * @returns Whether this operation will cause a regeneration of view. Even this operation does not cause view regeneration, a view regeneration might still happen because of other operations.
    */
-  deleteFilterFunction(key: any): boolean {
+  deleteFilterFunction(key: unknown): boolean {
     if (this.filterFunctions.delete(key)) {
       this.shouldRefineView = false;
       return (this.shouldRegenerateView = true);
