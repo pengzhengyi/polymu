@@ -750,7 +750,7 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement>
       const endFillerElementVersion = manager.getPropertyValueSnapshotVersionWithName(
         ScrollView._endFillerElementPropertyName
       );
-      const elementLength = manager.getPropertyValue('_elementLength') as number;
+      // Dependency Injection: manager.getPropertyValue('_elementLength') as number;
       const elementLengthVersion = manager.getPropertyValueSnapshotVersionWithName(
         ScrollView._elementLengthPropertyName
       );
@@ -765,19 +765,7 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement>
           elementLengthVersion
         );
 
-      let numElementAfter = this.numElementAfter;
-      if (numElementAfter === undefined) {
-        return undefined;
-      } else if (numElementAfter === null) {
-        const lastSourceView = this.lastSourceView;
-        if (lastSourceView instanceof LazyCollectionProvider) {
-          numElementAfter = Collection.getMaterializationLength(lastSourceView) - this.endIndex - 1;
-        } else {
-          numElementAfter = null;
-        }
-      }
-      // TODO: when we do not know whether there are any elements after rendered view, 1000 is used as a magic number here to mean that there might be elements so we reserve some area for scroll.
-      return numElementAfter * elementLength || 1000;
+      return this.estimateEndFillerLength__();
     },
     UpdateBehavior.Immediate,
     (_, newValue, thisValue, _manager) => {
@@ -1040,6 +1028,27 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement>
     }
 
     return fillerElement;
+  }
+
+  /**
+   * Estimate the length of end filler. This length is used to emulate full scroll height.
+   *
+   * @returns The estimated length for the end filler.
+   */
+  protected estimateEndFillerLength__(): number {
+    const elementLength = this._elementLength;
+
+    if (elementLength === undefined || elementLength === null) {
+      return 0;
+    }
+
+    let numElementAfter = this.numElementAfter;
+    if (numElementAfter === undefined || numElementAfter === null) {
+      // though we do not know whether there are any elements after rendered view, since there might be elements, we still reserve some area for scroll.
+      numElementAfter = 2 * this.windowSize;
+    }
+
+    return elementLength * numElementAfter;
   }
 
   /**
