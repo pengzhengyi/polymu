@@ -276,6 +276,15 @@ export class UnmaterializableCollectionProvider<TElement> extends Collection<TEl
   }
 
   /**
+   * Provide a hint of actual iterable length. Setting the length will not affect the materialization process.
+   *
+   * @param hint - The length of iterable.
+   */
+  set length(hint: number) {
+    this._length = hint;
+  }
+
+  /**
    * Invokes `AbstractCollectionProvider#constructor` with `Prohibit` MaterializationStrategy.
    *
    * @param {Iterable<TElement>} iterable - An iterable of collection elements. This iterable must be repeatedly iterable.
@@ -383,6 +392,15 @@ export class LazyCollectionProvider<TElement> extends Collection<TElement> {
     }
 
     return this._length;
+  }
+
+  /**
+   * Provide a hint of actual iterable length. Setting the length will not affect the materialization process.
+   *
+   * @param hint - The length of iterable.
+   */
+  set length(hint: number) {
+    this._length = hint;
   }
 
   /** stores the iteration context (last iteration continuation) */

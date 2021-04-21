@@ -12,6 +12,7 @@ import {
   LazyCollectionProvider,
   UnmaterializableCollectionProvider,
 } from './collections/Collection';
+import { ViewTransformation } from './view-functions/ViewTransformation';
 
 export {
   ViewElement,
@@ -22,6 +23,7 @@ export {
   SortedView,
   SyncView,
   BaseView,
+  ViewTransformation,
   CSS_CLASSNAMES,
   Collection,
   LazyCollectionProvider,
