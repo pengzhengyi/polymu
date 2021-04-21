@@ -1,12 +1,14 @@
 {
   "compilerOptions": {
-    "outDir": "./dist/",
+    "outDir": "./lib/",
     "esModuleInterop": true,
     "noImplicitAny": true,
     "module": "ESNext",
     "target": "ES2018",
     "lib": ["dom", "es2020.string", "DOM.Iterable"],
     "sourceMap": true,
+    "declaration": true,
+    "declarationMap": true,
     "allowJs": true
   },
   "include": ["src/**/*.ts"]
