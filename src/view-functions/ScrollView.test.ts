@@ -1,4 +1,5 @@
 import { Collection } from '../collections/Collection';
+import { endFillerClass, startFillerClass } from '../constants/css-classes';
 import { ChildListChangeEvent } from '../dom/CustomEvents';
 import { ScrollView } from './ScrollView';
 
@@ -63,6 +64,13 @@ describe('ScrollView initialization', () => {
     expect(scrollView.startSentinelIndex).toBeFalsy();
     expect(scrollView.endIndex).toBeFalsy();
     expect(scrollView.endSentinelIndex).toBeFalsy();
+  });
+
+  test('check existence of filler elements', () => {
+    const startFillerElement = target.previousElementSibling;
+    expect(startFillerElement.classList.contains(startFillerClass)).toBe(true);
+    const endFillerElement = target.nextElementSibling;
+    expect(endFillerElement.classList.contains(endFillerClass)).toBe(true);
   });
 
   test('initialize window boundary', () => {

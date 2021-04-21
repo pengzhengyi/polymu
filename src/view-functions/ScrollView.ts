@@ -174,7 +174,7 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement>
   protected _renderingStrategyProperty: Property<RenderingStrategy> = new Property(
     ScrollView._renderingStrategyPropertyName,
     (thisValue, manager) => {
-      const snapshotValue: RenderingStrategy = manager.getPropertyValueSnapshot(thisValue);
+      const snapshotValue = manager.getPropertyValueSnapshot(thisValue) as RenderingStrategy;
       if (snapshotValue === undefined) {
         // lazily initializes `RenderingStrategy` to `NoAction`
         manager.propertyValueSnapshot.set(thisValue, RenderingStrategy.NoAction);
@@ -194,7 +194,7 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement>
   protected _shiftAmount: number;
   protected _shiftAmountProperty: Property<number> = new Property(
     ScrollView._shiftAmountPropertyName,
-    (thisValue, manager) => manager.getPropertyValueSnapshot(thisValue),
+    (thisValue, manager) => manager.getPropertyValueSnapshot(thisValue) as number,
     UpdateBehavior.Lazy,
     (oldValue, newValue, thisValue, manager) => {
       if (newValue) {
@@ -228,7 +228,7 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement>
       // The following dependencies are used in delegating calls to `handleReplaceRenderingStrategy__` and `handleShiftRenderingStrategy__` so they need to be hoisted here
       // Dependency Injection: manager.getPropertyValue('_shiftAmount');
       // Dependency Injection: manager.getPropertyValue('_target');
-      const renderingStrategy: RenderingStrategy = manager.getPropertyValue('_renderingStrategy');
+      const renderingStrategy = manager.getPropertyValue('_renderingStrategy') as RenderingStrategy;
 
       switch (renderingStrategy) {
         case RenderingStrategy.NoAction:
@@ -261,7 +261,8 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement>
   protected _targetProperty: Property<HTMLElement> = new Property(
     ScrollView._targetPropertyName,
     // `_target` is "prerequisite free": it is a leaf node in prerequisite graph as its value is modified through exposed setter
-    (_, manager) => manager.getPropertyValueSnapshotWithName(ScrollView._targetPropertyName),
+    (_, manager) =>
+      manager.getPropertyValueSnapshotWithName(ScrollView._targetPropertyName) as HTMLElement,
     UpdateBehavior.Lazy
   );
 
@@ -280,7 +281,7 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement>
   protected _targetViewElementProperty: Property<ViewElement> = new Property(
     ScrollView._targetViewElementPropertyName,
     (thisValue, manager) => {
-      const target: HTMLElement = manager.getPropertyValue('_target');
+      const target = manager.getPropertyValue('_target') as HTMLElement;
       const targetVersion = manager.getPropertyValueSnapshotVersionWithName(
         ScrollView._targetPropertyName
       );
@@ -316,7 +317,7 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement>
   protected _scrollTargetProperty: Property<HTMLElement> = new Property(
     ScrollView._scrollTargetPropertyName,
     (thisValue, manager) => {
-      const target: HTMLElement = manager.getPropertyValue('_target');
+      const target = manager.getPropertyValue('_target') as HTMLElement;
       const targetVersion = manager.getPropertyValueSnapshotVersionWithName(
         ScrollView._targetPropertyName
       );
@@ -369,7 +370,7 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement>
   protected _scrollAxisProperty: Property<ScreenAxis> = new Property(
     ScrollView._scrollAxisPropertyName,
     (thisValue, manager) => {
-      const scrollTarget: HTMLElement = manager.getPropertyValue('_scrollTarget');
+      const scrollTarget = manager.getPropertyValue('_scrollTarget') as HTMLElement;
       const scrollTargetVersion = manager.getPropertyValueSnapshotVersionWithName(
         ScrollView._scrollTargetPropertyName
       );
@@ -484,7 +485,7 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement>
     } else {
       this._convert = (viewElement) => {
         if (viewElement instanceof ViewElement) {
-          return viewElement.element_;
+          return viewElement.element_ as TDomElement;
         }
         return (viewElement as unknown) as TDomElement;
       };
@@ -509,8 +510,10 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement>
   protected _elementLengthProperty: Property<number> = new Property(
     ScrollView._elementLengthPropertyName,
     (thisValue, manager) => {
-      const renderingView: CircularArray<TDomElement> = manager.getPropertyValue('_renderingView');
-      const scrollAxis: ScreenAxis = manager.getPropertyValue('_scrollAxis');
+      const renderingView = manager.getPropertyValue(
+        '_renderingView'
+      ) as CircularArray<TDomElement>;
+      const scrollAxis = manager.getPropertyValue('_scrollAxis') as ScreenAxis;
       const scrollAxisVersion = manager.getPropertyValueSnapshotVersionWithName(
         ScrollView._scrollAxisPropertyName
       );
@@ -542,7 +545,9 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement>
   protected _shouldPartialRenderProperty: Property<boolean> = new Property(
     ScrollView._shouldPartialRenderPropertyName,
     (thisValue, manager) => {
-      const renderingView: CircularArray<TDomElement> = manager.getPropertyValue('_renderingView');
+      const renderingView = manager.getPropertyValue(
+        '_renderingView'
+      ) as CircularArray<TDomElement>;
       const renderingViewVersion = manager.getPropertyValueSnapshotVersionWithName(
         ScrollView._renderingViewPropertyName
       );
@@ -574,7 +579,7 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement>
   protected _startFillerElementProperty: Property<HTMLElement> = new Property(
     ScrollView._startFillerElementPropertyName,
     (thisValue, manager) => {
-      const target: HTMLElement = manager.getPropertyValue('_target');
+      const target = manager.getPropertyValue('_target') as HTMLElement;
       const targetVersion = manager.getPropertyValueSnapshotVersionWithName(
         ScrollView._targetPropertyName
       );
@@ -582,16 +587,7 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement>
       thisValue.shouldReuseLastValue = (_, manager) =>
         manager.isSnapshotVersionUpToDate(ScrollView._targetPropertyName, targetVersion);
 
-      if (target === undefined) {
-        return undefined;
-      }
-
-      // create new start filler element and insert it before the target. Creation will only happen when target changes.
-      const tagName = this.guessFillerTagName__(target.parentElement.tagName);
-      const startFillerElement = document.createElement(tagName);
-      startFillerElement.classList.add(fillerClass, startFillerClass);
-      target.before(this._startFillerElement);
-      return startFillerElement;
+      return this.createFillerElementIfTargetIsDefined__(target, true);
     },
     UpdateBehavior.Immediate,
     (oldValue, _, thisValue, manager) => {
@@ -619,7 +615,7 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement>
         ScrollView._startFillerElementPropertyName
       );
 
-      const elementLength: number = manager.getPropertyValue('_elementLength');
+      const elementLength = manager.getPropertyValue('_elementLength') as number;
       const elementLengthVersion = manager.getPropertyValueSnapshotVersionWithName(
         ScrollView._elementLengthPropertyName
       );
@@ -659,15 +655,15 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement>
   protected _startFillerOffsetProperty: Property<number> = new Property(
     ScrollView._startFillerOffsetPropertyName,
     (thisValue, manager) => {
-      const scrollAxis: ScreenAxis = manager.getPropertyValue('_scrollAxis');
+      const scrollAxis = manager.getPropertyValue('_scrollAxis') as ScreenAxis;
       const scrollAxisVersion = manager.getPropertyValueSnapshotVersionWithName(
         ScrollView._scrollAxisPropertyName
       );
-      const startFillerElement: HTMLElement = manager.getPropertyValue('_startFillerElement');
+      const startFillerElement = manager.getPropertyValue('_startFillerElement') as HTMLElement;
       const startFillerElementVersion = manager.getPropertyValueSnapshotVersionWithName(
         ScrollView._startFillerElementPropertyName
       );
-      const scrollTarget: HTMLElement = manager.getPropertyValue('_scrollTarget');
+      const scrollTarget = manager.getPropertyValue('_scrollTarget') as HTMLElement;
       const scrollTargetVersion = manager.getPropertyValueSnapshotVersionWithName(
         ScrollView._scrollTargetPropertyName
       );
@@ -719,7 +715,7 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement>
   protected _endFillerElementProperty: Property<HTMLElement> = new Property(
     ScrollView._endFillerElementPropertyName,
     (thisValue, manager) => {
-      const target: HTMLElement = manager.getPropertyValue('_target');
+      const target = manager.getPropertyValue('_target') as HTMLElement;
       const targetVersion = manager.getPropertyValueSnapshotVersionWithName(
         ScrollView._targetPropertyName
       );
@@ -727,15 +723,7 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement>
       thisValue.shouldReuseLastValue = (_, manager) =>
         manager.isSnapshotVersionUpToDate(ScrollView._targetPropertyName, targetVersion);
 
-      if (target === undefined) {
-        return undefined;
-      }
-
-      // create new start filler element and insert it before the target. Creation will only happen when target changes.
-      const tagName = this.guessFillerTagName__(target.parentElement.tagName);
-      const endFillerElement = document.createElement(tagName);
-      endFillerElement.classList.add(fillerClass, endFillerClass);
-      return endFillerElement;
+      return this.createFillerElementIfTargetIsDefined__(target, false);
     },
     UpdateBehavior.Immediate,
     (oldValue, _, thisValue, manager) => {
@@ -762,7 +750,7 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement>
       const endFillerElementVersion = manager.getPropertyValueSnapshotVersionWithName(
         ScrollView._endFillerElementPropertyName
       );
-      const elementLength: number = manager.getPropertyValue('_elementLength');
+      const elementLength = manager.getPropertyValue('_elementLength') as number;
       const elementLengthVersion = manager.getPropertyValueSnapshotVersionWithName(
         ScrollView._elementLengthPropertyName
       );
@@ -921,7 +909,7 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement>
    *
    * @listens ScrollEvent
    */
-  protected initializeScrollEventListener__() {
+  protected initializeScrollEventListener__(): void {
     const observeTarget =
       this._scrollTarget === document.documentElement ? window : this._scrollTarget;
 
@@ -951,7 +939,7 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement>
    * @returns Guessed tag name for filler element.
    * @example If the container of filler element is a ordered list (ol), then filler element will be a list item (li).
    */
-  protected guessFillerTagName__(containerTagName: string) {
+  protected guessFillerTagName__(containerTagName: string): string {
     let tagName = 'div';
     switch (containerTagName) {
       case 'ol':
@@ -981,7 +969,7 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement>
   protected initializeFillerObservers__(
     startFillerOptions?: IntersectionObserverOptions,
     endFillerOptions?: IntersectionObserverOptions
-  ) {
+  ): void {
     this._startFillerObserver = new IntersectionObserver(
       (entries) => this.fillerReachedHandler__(entries),
       startFillerOptions
@@ -1001,7 +989,7 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement>
   protected initializeSentinelObservers__(
     startSentinelOptions?: IntersectionObserverOptions,
     endSentinelOptions?: IntersectionObserverOptions
-  ) {
+  ): void {
     this._startSentinelObserver = new IntersectionObserver(
       (entries) => this.sentinelReachedHandler__(entries),
       startSentinelOptions
@@ -1013,19 +1001,62 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement>
   }
 
   /**
+   * Create a filler element if target is defined.
+   *
+   * @param target - A DOM target used to hold mounted view elements. Filler element will be inserted as its previous/next sibling. When `target` is `undefined`, no filler element will be created.
+   * @param isStartFiller - If true, start filler element will be created which will be inserted before the target. Otherwise, end filler element will be created which will be inserted after the target.
+   * @returns - The created filler element.
+   */
+  protected createFillerElementIfTargetIsDefined__(
+    target: HTMLElement,
+    isStartFiller: boolean
+  ): HTMLElement {
+    if (target === undefined) {
+      return undefined;
+    }
+
+    return this.createFillerElement__(target, isStartFiller);
+  }
+
+  /**
+   * Create a filler element.
+   *
+   * @param target - A DOM target used to hold mounted view elements. Filler element will be inserted as its previous/next sibling.
+   * @param isStartFiller - If true, start filler element will be created which will be inserted before the target. Otherwise, end filler element will be created which will be inserted after the target.
+   * @returns - The created filler element.
+   */
+  protected createFillerElement__(target: HTMLElement, isStartFiller: boolean): HTMLElement {
+    const tagName = this.guessFillerTagName__(target.parentElement.tagName);
+    const fillerElement = document.createElement(tagName);
+
+    const additionalFillerClass = isStartFiller ? startFillerClass : endFillerClass;
+    fillerElement.classList.add(fillerClass, additionalFillerClass);
+
+    // insert filler element as a sibling of target
+    if (isStartFiller) {
+      target.before(fillerElement);
+    } else {
+      target.after(fillerElement);
+    }
+
+    return fillerElement;
+  }
+
+  /**
    * When rendering strategy is `Replace`, new rendering view should be generated from target view without utilizing previous rendering view.
    *
    * `handleReplaceRenderingStrategy__` will be responsible for creating the new rendering view and mount it to the DOM.
    */
-  protected handleReplaceRenderingStrategy__() {
+  protected handleReplaceRenderingStrategy__(): void {
     const targetView: Collection<TViewElement> = this._targetView;
-    const target: HTMLElement = this._propertyManager.getPropertyValue('_target');
+    const target = this._propertyManager.getPropertyValue('_target') as HTMLElement;
     const convert = this._convert;
     const scrollPosition = this._scrollPosition;
 
     if (this.__circularArray === undefined) {
       // a heuristic to set the initial capacity for circular array
-      const capacity = targetView.length || (targetView as any).materializationLength || 1000;
+      const capacity =
+        targetView.length || ((targetView as any).materializationLength as number) || 1000;
       this.__circularArray = new CircularArray(capacity);
     }
 
@@ -1067,10 +1098,10 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement>
    *
    * `handleShiftRenderingStrategy__` will be responsible for creating the new rendering view and mount it to the DOM.
    */
-  protected handleShiftRenderingStrategy__() {
+  protected handleShiftRenderingStrategy__(): void {
     const targetView: Collection<TViewElement> = this._targetView;
-    const shiftAmount: number = this._propertyManager.getPropertyValue('_shiftAmount');
-    const target = this._propertyManager.getPropertyValue('_target');
+    const shiftAmount = this._propertyManager.getPropertyValue('_shiftAmount') as number;
+    const target = this._propertyManager.getPropertyValue('_target') as HTMLElement;
     const convert = this._convert;
 
     console.assert(
