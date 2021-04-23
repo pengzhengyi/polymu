@@ -1354,7 +1354,14 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement>
    */
   protected getElementIndexFromScrollAmount__(scrollAmount: number = this._scrollPosition): number {
     const position = Math.max(scrollAmount - this._startFillerOffset, 0);
-    return bound(Math.floor(position / this._elementLength), 0, this._renderingView.length - 1);
+    const estimatedElementIndex = Math.floor(position / this._elementLength);
+
+    const numViewElement = this.lastSourceView.length;
+    if (numViewElement) {
+      return bound(estimatedElementIndex, 0, numViewElement - 1);
+    } else {
+      return Math.max(estimatedElementIndex, 0);
+    }
   }
 
   /**
