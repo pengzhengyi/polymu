@@ -517,7 +517,7 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement>
         return undefined;
       } else {
         const firstRenderedElement: TDomElement = renderingView.get(0);
-        const propName = scrollAxis === ScreenAxis.Vertical ? 'clientHeight' : 'clientWidth';
+        const propName = scrollAxis === ScreenAxis.Vertical ? 'offsetHeight' : 'offsetWidth';
         const elementLength = firstRenderedElement[propName];
         // reuse same element length unless scroll axis has changed
         thisValue.shouldReuseLastValue = (_, manager) =>
