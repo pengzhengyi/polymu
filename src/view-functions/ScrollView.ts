@@ -1089,57 +1089,81 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement>
    * `handleShiftRenderingStrategy__` will be responsible for creating the new rendering view and mount it to the DOM.
    */
   protected handleShiftRenderingStrategy__(): void {
-    const targetView: Collection<TViewElement> = this._targetView;
-    const shiftAmount: number = this._propertyManager.getPropertyValue('_shiftAmount');
-    const target: HTMLElement = this._propertyManager.getPropertyValue('_target');
-    const convert = this._convert;
-
     console.assert(
       this.__circularArray === undefined || !this.__circularArray.isFull,
       'invalid circular array state when performing shift in target view'
     );
+    const shiftAmount: number = this._propertyManager.getPropertyValue('_shiftAmount');
 
-    const shiftTowardsEnd = shiftAmount > 0;
-    let onEnter: (element: TDomElement, windowIndex: number) => void;
-    if (shiftTowardsEnd) {
-      onEnter = (element) => target.appendChild(element);
-    } else {
-      let lastInsertedElement: TDomElement;
-      onEnter = (element, windowIndex) => {
-        if (windowIndex === 0) {
-          // inserting first element
-          target.prepend(element);
-        } else {
-          // inserting other element
-          lastInsertedElement.after(element);
-        }
-        lastInsertedElement = element;
-      };
+    if (shiftAmount > 0) {
+      this.handleShiftRenderingStrategyWhenShiftTowardsEnd__(shiftAmount);
+    } else if (shiftAmount < 0) {
+      this.handleShiftRenderingStrategyWhenShiftTowardsStart__(shiftAmount);
     }
+  }
+
+  /**
+   * @param shiftAmount - A negative shift amount indicating by how many elements the current view window should shift towards the start. More specifically, it indicates how many elements should be inserted up front and how many elements should be removed from the end.
+   */
+  protected handleShiftRenderingStrategyWhenShiftTowardsStart__(shiftAmount: number): void {
+    const targetView: Collection<TViewElement> = this._targetView;
+    const target: HTMLElement = this._propertyManager.getPropertyValue('_target');
+    const convert = this._convert;
+
+    let lastInsertedElement: TDomElement;
+    const onEnter = (element: TDomElement, windowIndex: number) => {
+      if (windowIndex === 0) {
+        // inserting first element
+        target.prepend(element);
+      } else {
+        // inserting other element
+        lastInsertedElement.after(element);
+      }
+      lastInsertedElement = element;
+    };
+
     // update circular array based on `shiftAmount`
     this.__circularArray.shift(
       shiftAmount,
       (function* () {
-        if (shiftTowardsEnd) {
-          // shift towards end
-          let numViewElement = targetView.length;
-          if (numViewElement === undefined) {
-            const viewElements = Array.from(targetView);
-            numViewElement = viewElements.length;
-            for (let i = numViewElement - shiftAmount; i < numViewElement; i++) {
-              yield convert(viewElements[i]);
-            }
-          } else {
-            for (const viewElement of targetView.slice(
-              numViewElement - shiftAmount,
-              numViewElement
-            )) {
-              yield convert(viewElement);
-            }
+        // shift towards start, first `shiftAmount` elements of `targetView` will be inserted
+        for (const viewElement of targetView.slice(0, -shiftAmount)) {
+          yield convert(viewElement);
+        }
+      })(),
+      (element) => element.remove(),
+      onEnter
+    );
+  }
+
+  /**
+   * @param shiftAmount - A positive shift amount indicating by how many elements the current view window should shift towards the end. More specifically, it indicates how many elements should be inserted at the end and how many elements should be removed from the start.
+   */
+  protected handleShiftRenderingStrategyWhenShiftTowardsEnd__(shiftAmount: number): void {
+    const targetView: Collection<TViewElement> = this._targetView;
+    const target: HTMLElement = this._propertyManager.getPropertyValue('_target');
+    const convert = this._convert;
+
+    const elementsToAppend: Array<TDomElement> = [];
+    const onEnter = (element: TDomElement) => elementsToAppend.push(element);
+
+    // update circular array based on `shiftAmount`
+    this.__circularArray.shift(
+      shiftAmount,
+      (function* () {
+        // shift towards end
+        let numViewElement = targetView.length;
+        if (numViewElement === undefined) {
+          const viewElements = Array.from(targetView);
+          numViewElement = viewElements.length;
+          for (let i = numViewElement - shiftAmount; i < numViewElement; i++) {
+            yield convert(viewElements[i]);
           }
         } else {
-          // shift towards start, first `shiftAmount` elements of `targetView` will be inserted
-          for (const viewElement of targetView.slice(0, -shiftAmount)) {
+          for (const viewElement of targetView.slice(
+            numViewElement - shiftAmount,
+            numViewElement
+          )) {
             yield convert(viewElement);
           }
         }
@@ -1147,6 +1171,13 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement>
       (element) => element.remove(),
       onEnter
     );
+
+    // force update on filler length here so that scroll position is correctly restored
+    this._propertyManager.incrementPropertyValueSnapshotVersion(this._renderingViewProperty);
+    this._startFillerLength;
+    this._endFillerLength;
+
+    elementsToAppend.forEach((element) => target.appendChild(element));
   }
 
   /**
