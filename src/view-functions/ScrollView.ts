@@ -1153,7 +1153,7 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement>
       (function* () {
         // shift towards end
         let numViewElement = targetView.length;
-        if (numViewElement === undefined) {
+        if (numViewElement === undefined || numViewElement === null) {
           const viewElements = Array.from(targetView);
           numViewElement = viewElements.length;
           for (let i = numViewElement - shiftAmount; i < numViewElement; i++) {
