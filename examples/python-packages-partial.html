@@ -1667,7 +1667,21 @@
       <a href="/simple/adafruit-circuitpython-hx8357/">adafruit-circuitpython-hx8357</a>
       <a href="/simple/adafruit-circuitpython-icm20649/">adafruit-circuitpython-icm20649</a>
     </template>
-    <div class="d-flex justify-content-center align-items-center h-100">
+    <div class="d-flex flex-column justify-content-center align-items-center h-100">
+      <div class="input-group w-50 mb-2">
+        <input
+          id="filter-query"
+          type="search"
+          class="form-control"
+          placeholder="Search Python packages"
+          aria-label="python package search input"
+          aria-describedby="filter-packages"
+        />
+        <button class="btn btn-primary text-white" type="button" id="filter-packages">
+          Search
+        </button>
+      </div>
+
       <div class="overflow-auto w-50" style="height: 80vh">
         <ol id="target" class="list-group"></ol>
       </div>
@@ -1708,6 +1722,33 @@
         polymu.BaseView.SCROLL_VIEW_FACTORY
       );
       view.setWindow(0, 100);
+
+      const filterInput = document.getElementById('filter-query');
+
+      function filterPackages(query) {
+        view.addFilterFunction('filter', (element) => element.textContent.includes(query));
+      }
+
+      function getFilterQuery() {
+        return filterInput.value;
+      }
+
+      filterInput.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+          filterPackages(getFilterQuery());
+        }
+      });
+
+      filterInput.addEventListener(
+        'keyup',
+        polymu.debounceWithCooldown((event) => {
+          filterPackages(getFilterQuery());
+        }),
+        100
+      );
+
+      const filterPackagesButton = document.getElementById('filter-packages');
+      filterPackagesButton.addEventListener('click', () => filterPackages(getFilterQuery()));
     </script>
   </body>
 </html>
