@@ -311,4 +311,62 @@ describe('CircularArray test', () => {
     expect(onEnter.mock.calls.map((call) => call[0])).toEqual(iterable);
     expect(new Set(onExit.mock.calls.map((call) => call[0]))).toEqual(new Set(['RANDOM']));
   });
+
+  test('shift towards end with a large capacity', () => {
+    // initialization
+    const circularArray: CircularArray<number> = new CircularArray(1000);
+    circularArray.add(10);
+    circularArray.add(11);
+    circularArray.add(12);
+    circularArray.add(13);
+    expect(circularArray).toHaveLength(4);
+    expect(circularArray.get(0)).toEqual(10);
+    expect(circularArray.get(2)).toEqual(12);
+
+    // shift towards end
+    const onEnter = jest.fn();
+    const onExit = jest.fn();
+    circularArray.shift(2, [21, 22], onExit, onEnter);
+    expect(circularArray).toHaveLength(4);
+    expect(circularArray.get(0)).toEqual(12);
+    expect(circularArray.get(1)).toEqual(13);
+    expect(circularArray.get(2)).toEqual(21);
+    expect(circularArray.get(3)).toEqual(22);
+    expect(onEnter.mock.calls).toHaveLength(2);
+    expect(onExit.mock.calls).toHaveLength(2);
+    expect(onEnter.mock.calls[0]).toEqual([21, 2]);
+    expect(onEnter.mock.calls[1]).toEqual([22, 3]);
+    expect(onExit.mock.calls[0]).toEqual([10, 0]);
+    expect(onExit.mock.calls[1]).toEqual([11, 1]);
+  });
+
+  test('shift past start with a large capacity', () => {
+    // initialization
+    const circularArray: CircularArray<number> = new CircularArray(1000);
+    circularArray.add(10);
+    circularArray.add(11);
+    circularArray.add(12);
+    circularArray.add(13);
+    circularArray.add(14);
+    expect(circularArray).toHaveLength(5);
+    expect(circularArray.get(0)).toEqual(10);
+    expect(circularArray.get(2)).toEqual(12);
+
+    // shift towards start
+    const onEnter = jest.fn();
+    const onExit = jest.fn();
+    circularArray.shift(-2, [0, 1], onExit, onEnter);
+    expect(circularArray).toHaveLength(5);
+    expect(circularArray.get(0)).toEqual(0);
+    expect(circularArray.get(1)).toEqual(1);
+    expect(circularArray.get(2)).toEqual(10);
+    expect(circularArray.get(3)).toEqual(11);
+    expect(circularArray.get(4)).toEqual(12);
+    expect(onEnter.mock.calls).toHaveLength(2);
+    expect(onExit.mock.calls).toHaveLength(2);
+    expect(onEnter.mock.calls[0]).toEqual([0, 0]);
+    expect(onEnter.mock.calls[1]).toEqual([1, 1]);
+    expect(onExit.mock.calls[0]).toEqual([13, 3]);
+    expect(onExit.mock.calls[1]).toEqual([14, 4]);
+  });
 });

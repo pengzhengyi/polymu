@@ -21,28 +21,34 @@
 
 import { Collection } from './Collection';
 
+/**
+ * A `CircularArray` is built upon a underlying "large" array while exposes a view window. Consequently, there are two set of indices:
+ *
+ * + **Array Index**: this index applies to the underlying array.
+ * + **Window Index**: this index applies to the exposed window. For example, window index of 0 means the index of first element in the view window, which have a entirely different array index.
+ */
 export class CircularArray<TElement> implements Collection<TElement> {
   /** The maximum number of elements that could be stored in this circular array */
-  protected _capacity: number;
-  /** Index of first element(if any) */
-  protected _start = 0;
+  protected capacity_: number;
+  /** Array index of first element in the view window */
+  protected start_ = 0;
   /** The number of unoccupied slots */
-  protected _slots: number;
+  protected slots_: number;
   /** The underlying data structure, where elements are actually stored */
-  protected _array: Array<TElement>;
+  protected array_: Array<TElement>;
 
   /**
-   * @returns {number} The number of elements currently stored in the circular array.
+   * @returns {number} The number of elements currently in the view window. This is also the number of non-empty slots in the underlying array.
    */
   get length(): number {
-    return this._capacity - this._slots;
+    return this.capacity_ - this.slots_;
   }
 
   /**
    * @returns {number} The maximum number of elements that could be stored in this circular array.
    */
   get capacity(): number {
-    return this._capacity;
+    return this.capacity_;
   }
 
   /**
@@ -51,31 +57,31 @@ export class CircularArray<TElement> implements Collection<TElement> {
    * @param {number} newCapacity - A new capacity for the circular array. If `newCapacity` is larger than old capacity, the circular array will have more empty slots to contain additional elements. If `newCapacity` is smaller than the existing capacity, circular array will be truncated and the elements "towards the end" that cannot fit will be dropped.
    */
   set capacity(newCapacity: number) {
-    const numSlotChange = newCapacity - this._capacity;
+    const numSlotChange = newCapacity - this.capacity_;
 
     const numElements = this.length;
-    const numWrappedAroundElements = numElements - this._capacity + this._start;
-    if (newCapacity < this._capacity) {
+    const numWrappedAroundElements = numElements - this.capacity_ + this.start_;
+    if (newCapacity < this.capacity_) {
       // shrinking
       if (numWrappedAroundElements > 0) {
         // extend the array to fit wrapped around elements
         for (let i = 0; i < numWrappedAroundElements; i++) {
-          this._array[this._capacity + i] = this._array[i];
+          this.array_[this.capacity_ + i] = this.array_[i];
         }
 
         // move elements up to align with array start
-        this._array.copyWithin(0, this._start, this._start + numElements);
+        this.array_.copyWithin(0, this.start_, this.start_ + numElements);
       } else {
         // no wrapped around elements
-        if (this._start !== 0) {
+        if (this.start_ !== 0) {
           // move elements up to align with array start
-          this._array.copyWithin(0, this._start, this._start + numElements);
+          this.array_.copyWithin(0, this.start_, this.start_ + numElements);
         }
       }
-      this._start = 0;
-      this._slots = Math.max(0, this._slots + numSlotChange);
-      this._array.length = newCapacity;
-    } else if (newCapacity > this._capacity) {
+      this.start_ = 0;
+      this.slots_ = Math.max(0, this.slots_ + numSlotChange);
+      this.array_.length = newCapacity;
+    } else if (newCapacity > this.capacity_) {
       // extending
       if (numWrappedAroundElements > 0) {
         // has wrapped around elements
@@ -83,33 +89,33 @@ export class CircularArray<TElement> implements Collection<TElement> {
         // copy the first section of wrapped around elements to new slots
         let i = 0;
         for (; i < numSlotChange; i++) {
-          this._array[this._capacity + i] = this._array[i];
+          this.array_[this.capacity_ + i] = this.array_[i];
         }
 
         if (numWrappedAroundElements > numSlotChange) {
           // new slots cannot fully contain all wrapped around elements, move remaining wrapped around elements up
-          this._array.copyWithin(0, i, this._start);
+          this.array_.copyWithin(0, i, this.start_);
         }
       }
 
-      this._slots += numSlotChange;
+      this.slots_ += numSlotChange;
     }
 
-    this._capacity = newCapacity;
+    this.capacity_ = newCapacity;
   }
 
   /**
    * @returns Whether the circular array is empty.
    */
   get isEmpty(): boolean {
-    return this._slots === this._capacity;
+    return this.slots_ === this.capacity_;
   }
 
   /**
    * @returns Whether the circular array is full -- no available slots.
    */
   get isFull(): boolean {
-    return this._slots === 0;
+    return this.slots_ === 0;
   }
 
   /**
@@ -118,29 +124,54 @@ export class CircularArray<TElement> implements Collection<TElement> {
    * @param capacity - The number of elements that can maximally be put in the circular array.
    */
   constructor(capacity: number) {
-    this._capacity = capacity;
-    this._array = new Array(capacity) as Array<TElement>;
-    this._slots = capacity;
+    this.capacity_ = capacity;
+    this.array_ = new Array(capacity) as Array<TElement>;
+    this.slots_ = capacity;
   }
 
   /**
-   * Translate an array index to its window index as these two indices not always equal.
+   * Translate an array index to its corresponding window index.
    *
-   * @param index - An array index to be translated.
+   * @param arrayIndex - An array index to be translated.
    * @returns The corresponding window index.
    */
-  protected _translateIndex(index: number): number {
-    return index < this._start ? this._capacity - this._start + index : index - this._start;
+  protected translateArrayIndexIntoWindowIndex__(arrayIndex: number): number {
+    return arrayIndex < this.start_
+      ? this.capacity_ - this.start_ + arrayIndex
+      : arrayIndex - this.start_;
   }
 
   /**
-   * Retrieve an element at specified index.
+   * Translate a window index to its corresponding array index.
    *
-   * @param {number} index - The index of element to be retrieved. A meaningful index should be between zero and element count (0 <= index < length).
+   * ! Window index should be greater than the negative value of capacity.
+   *
+   * @param windowIndex - A window index to be translated.
+   * @returns The corresponding array index.
+   */
+  protected translateWindowIndexIntoArrayIndex__(windowIndex: number): number {
+    // `this.capacity_` is added to handle negative
+    return (this.start_ + windowIndex + this.capacity_) % this.capacity_;
+  }
+
+  /**
+   * Retrieve an element at specified window index.
+   *
+   * @param {number} windowIndex - The window index of element to be retrieved. A meaningful index should be between zero and element count (`0 <= index < this.length`).
    * @returns {TElement} The element at specified index.
    */
-  get(index: number): TElement {
-    return this._array[(this._start + index) % this._capacity];
+  get(windowIndex: number): TElement {
+    return this.array_[this.translateWindowIndexIntoArrayIndex__(windowIndex)];
+  }
+
+  /**
+   * Replace an element at specified window index. This method will not modify number of available slots.
+   *
+   * @param {number} windowIndex - The index of element to be replaced.
+   * @param {TElement} element - The element to replace at specified index.
+   */
+  protected replaceElementWith__(windowIndex: number, element: TElement): void {
+    this.array_[this.translateWindowIndexIntoArrayIndex__(windowIndex)] = element;
   }
 
   /**
@@ -160,11 +191,11 @@ export class CircularArray<TElement> implements Collection<TElement> {
    */
   add(element: TElement): void {
     if (this.isFull) {
-      this._array[this._start++] = element;
-      this._start %= this.length;
+      this.array_[this.start_++] = element;
+      this.start_ %= this.length;
     } else {
-      this._array[(this._start + this.length) % this._capacity] = element;
-      this._slots--;
+      this.replaceElementWith__(this.length, element);
+      this.slots_--;
     }
   }
 
@@ -208,7 +239,7 @@ export class CircularArray<TElement> implements Collection<TElement> {
     onExit: (element: TElement, windowIndex: number) => void = undefined,
     onEnter: (element: TElement, windowIndex: number) => void = undefined
   ): void {
-    const capacity = this._capacity;
+    const capacity = this.capacity_;
     const numExistingElements = this.length;
 
     let i = 0;
@@ -216,14 +247,14 @@ export class CircularArray<TElement> implements Collection<TElement> {
     for (const element of iterable) {
       if (i < capacity) {
         if (onExit) {
-          const deletedElementWindowIndex = this._translateIndex(i);
+          const deletedElementWindowIndex = this.translateArrayIndexIntoWindowIndex__(i);
           if (deletedElementWindowIndex < numExistingElements) {
             // an element actually will be replaced
-            onExit(this._array[i], deletedElementWindowIndex);
+            onExit(this.array_[i], deletedElementWindowIndex);
           }
         }
 
-        this._array[i] = element;
+        this.array_[i] = element;
         onEnter && onEnter(element, i);
       } else {
         toInsert.push(element);
@@ -232,28 +263,28 @@ export class CircularArray<TElement> implements Collection<TElement> {
     }
 
     if (i < capacity) {
-      this._slots = capacity - i;
+      this.slots_ = capacity - i;
 
       if (onExit) {
         // if `onExit` is defined, also call onExit on elements that are effectively deleted
         for (; i < numExistingElements; i++) {
-          onExit(this._array[i], this._translateIndex(i));
+          onExit(this.array_[i], this.translateArrayIndexIntoWindowIndex__(i));
         }
       }
     } else if (i > capacity) {
       let windowIndex = capacity;
       for (const element of toInsert) {
-        this._array.push(element);
+        this.array_.push(element);
         onEnter && onEnter(element, windowIndex++);
       }
 
-      this._capacity += toInsert.length;
-      this._slots = 0;
+      this.capacity_ += toInsert.length;
+      this.slots_ = 0;
     } else {
-      this._slots = 0;
+      this.slots_ = 0;
     }
 
-    this._start = 0;
+    this.start_ = 0;
   }
 
   /**
@@ -263,28 +294,6 @@ export class CircularArray<TElement> implements Collection<TElement> {
    * + `shiftAmount < 0`: delete some amount (absolute value of `shiftAmount`) of elements from the end of the circular array and prepend some amount of elements to the start of the circular array. Imagine circular array is a segment of a straight line, this workflow pushes the circular array towards the start direction.
    *
    * ! The circular array must be full to apply shift operation
-   *
-   * Example: shiftAmount = 4, **x** represent a deleted element and **+** represent an inserted element, **↑** represent circular array start position
-   *
-   * ```
-   * Before Shift
-   * [ * * x x x x * * * *]
-   *       ↑
-   * After Shift
-   * [ * * + + + + * * * *]
-   *               ↑
-   * ```
-   *
-   * Example: shiftAmount = -4, **x** represent a deleted element and **+** represent an inserted element, **↑** represent circular array start position
-   *
-   * ```
-   * Before Shift
-   * [ - - * * * * * * - -]
-   *       ↑
-   * After Shift
-   * [ + + * * * * * * + +]
-   *                 ↑
-   * ```
    *
    * @param shiftAmount - A nonzero shift amount, see above description. In short, negative shift amount will insert elements at the start while remove elements from the end while the positive shift does the reverse.
    * @param replacement - The elements to be inserted in order. Its length should equal to the absolute value of `shiftAmount`. In order means that the first element of `replacement` will be at the smallest window index.
@@ -297,72 +306,82 @@ export class CircularArray<TElement> implements Collection<TElement> {
     onExit: (element: TElement, windowIndex: number) => void = () => undefined,
     onEnter: (element: TElement, windowIndex: number) => void = () => undefined
   ): void {
-    let newStart = this._start + shiftAmount;
     if (shiftAmount > 0) {
-      // shift towards end
-      let enterWindowIndex = this._capacity - shiftAmount;
-      let exitWindowIndex = 0;
-
-      if (newStart < this._capacity) {
-        for (const replaceElement of replacement) {
-          onExit(this._array[this._start], exitWindowIndex++);
-          this._array[this._start++] = replaceElement;
-          onEnter(replaceElement, enterWindowIndex++);
-        }
-        return;
-      } else {
-        // wrap around
-        newStart -= this._capacity;
-
-        const iterator = replacement[Symbol.iterator]();
-        for (let i = this._start; i < this._capacity; i++) {
-          const { value: replaceElement } = iterator.next() as { value: TElement };
-          onExit(this._array[i], exitWindowIndex++);
-          this._array[i] = replaceElement;
-          onEnter(replaceElement, enterWindowIndex++);
-        }
-
-        for (let i = 0; i < newStart; i++) {
-          const { value: replaceElement } = iterator.next() as { value: TElement };
-          onExit(this._array[i], exitWindowIndex++);
-          this._array[i] = replaceElement;
-          onEnter(replaceElement, enterWindowIndex++);
-        }
-      }
+      this.shiftTowardsEnd__(shiftAmount, replacement, onExit, onEnter);
     } else if (shiftAmount === 0) {
       return;
     } else {
-      // shift window towards start
-      let enterWindowIndex = 0;
-      let exitWindowIndex = this._capacity + shiftAmount;
-
-      if (newStart >= 0) {
-        let i = newStart;
-        for (const replaceElement of replacement) {
-          onExit(this._array[i], exitWindowIndex++);
-          this._array[i++] = replaceElement;
-          onEnter(replaceElement, enterWindowIndex++);
-        }
-      } else {
-        newStart += this._capacity;
-
-        const iterator = replacement[Symbol.iterator]();
-        for (let i = newStart; i < this._capacity; i++) {
-          const { value: replaceElement } = iterator.next() as { value: TElement };
-          onExit(this._array[i], exitWindowIndex++);
-          this._array[i] = replaceElement;
-          onEnter(replaceElement, enterWindowIndex++);
-        }
-
-        for (let i = 0; i < this._start; i++) {
-          const { value: replaceElement } = iterator.next() as { value: TElement };
-          onExit(this._array[i], exitWindowIndex++);
-          this._array[i] = replaceElement;
-          onEnter(replaceElement, enterWindowIndex++);
-        }
-      }
+      this.shiftTowardsStart__(shiftAmount, replacement, onExit, onEnter);
     }
+  }
 
-    this._start = newStart;
+  /**
+   *
+   * Example: shiftAmount = -4 and length = 5, __*__ represents an empty slot, **x** represents an element exists before shifting, **+** represents an inserted new element, **-** represents an deleted existing element, **↑** represent circular array start position
+   *
+   * ```
+   * Before Shift
+   * [ * * x x x x x * * *]
+   *       ↑
+   * After Shift
+   * [ + + x - - - - * + +]
+   *                 ↑
+   * ```
+   *
+   * @param shiftAmount - See `shiftAmount` in `shift` method. **A negative value**.
+   * @param replacement - See `replacement` in `shift` method.
+   * @param onExit - See `onExit` in `shift` method.
+   * @param onEnter - See `onEnter` in `shift` method.
+   */
+  protected shiftTowardsStart__(
+    shiftAmount: number,
+    replacement: Iterable<TElement>,
+    onExit: (element: TElement, windowIndex: number) => void = () => undefined,
+    onEnter: (element: TElement, windowIndex: number) => void = () => undefined
+  ): void {
+    // shift window towards start
+    let enterWindowIndex = 0;
+    let exitWindowIndex = this.length + shiftAmount;
+    for (const replaceElement of replacement) {
+      onExit(this.get(exitWindowIndex), exitWindowIndex++);
+      this.replaceElementWith__(shiftAmount + enterWindowIndex, replaceElement);
+      onEnter(replaceElement, enterWindowIndex++);
+    }
+    this.start_ = this.translateWindowIndexIntoArrayIndex__(shiftAmount);
+  }
+
+  /**
+   * Example: shiftAmount = 4 and length = 5, __*__ represents an empty slot, **x** represents an element exists before shifting, **+** represents an inserted new element, **-** represents an deleted existing element, **↑** represent circular array start position
+   *
+   * ```
+   * Before Shift
+   * [ * * x x x x x * * *]
+   *       ↑
+   * After Shift
+   * [ + * - - - - x + + +]
+   *               ↑
+   * ```
+   *
+   * @param shiftAmount - See `shiftAmount` in `shift` method.
+   * @param replacement - See `replacement` in `shift` method.
+   * @param onExit - See `onExit` in `shift` method.
+   * @param onEnter - See `onEnter` in `shift` method.
+   */
+  protected shiftTowardsEnd__(
+    shiftAmount: number,
+    replacement: Iterable<TElement>,
+    onExit: (element: TElement, windowIndex: number) => void = () => undefined,
+    onEnter: (element: TElement, windowIndex: number) => void = () => undefined
+  ): void {
+    // shift window towards end
+    let enterWindowIndex = this.length - shiftAmount;
+    let exitWindowIndex = 0;
+    for (const replaceElement of replacement) {
+      onExit(this.array_[this.start_], exitWindowIndex++);
+      // put `replaceElement` at next index past end element
+      this.replaceElementWith__(this.length, replaceElement);
+      onEnter(replaceElement, enterWindowIndex++);
+      this.start_ = this.translateWindowIndexIntoArrayIndex__(1);
+    }
   }
 }
