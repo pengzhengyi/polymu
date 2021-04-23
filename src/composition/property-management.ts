@@ -256,7 +256,7 @@ export class Property<TPropertyValue> {
    * @param {PropertyManager} manager - A reference to the property manager.
    * @see {@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/defineProperty Object.defineProperty()}
    */
-  bind(target: any, manager: PropertyManager) {
+  bind(target: any, manager: PropertyManager): void {
     const that = this;
     Object.defineProperty(target, this.name, {
       configurable: true,
@@ -295,21 +295,21 @@ export class PropertyManager {
   /**
    * A map contains mapping from property name to properties. Can be used internally to find property use its string name.
    */
-  readonly nameToProperty: Map<TPropertyName, Property<any>> = new Map();
+  readonly nameToProperty = new Map<TPropertyName, Property<any>>();
 
   /**
    * A map contains mapping from property to last computed property value (if any).
    *
    * * The stored value is always up-to-date unless the value of a property that is ancestor of a passive property, a property whose update behavior is `Lazy`, in the dependency graph has its value updated.
    */
-  readonly propertyValueSnapshot: Map<Property<any>, any> = new Map();
+  readonly propertyValueSnapshot = new Map<Property<any>, any>();
 
   /**
    * A map contains mapping from property to its snapshot version.
    *
    * Snapshot version is stored as an integer, it can be used to tell whether a property's snapshot value changed or not since every snapshot update will increment the recorded version.
    */
-  readonly propertyValueSnapshotVersion: Map<Property<any>, number> = new Map();
+  readonly propertyValueSnapshotVersion = new Map<Property<any>, number>();
 
   /**
    * This set contains properties for which this property's value change will be a direct cause of value update in those properties. In other words, this set contains those "active" (`updateBehavior.Immediate`) properties that are direct children of this property in dependency graph.
@@ -364,22 +364,24 @@ export class PropertyManager {
   /**
    * Return previous computed property value.
    *
-   * @param {Property<any>} property - The property to get last computed value of.
+   * @typedef TPropertyValue - The type for property value.
+   * @param {Property<TPropertyValue>} property - The property to get last computed value of.
    * @returns Last computed value for specified property. `undefined` if there has not been any stored computed value for specified property. The stored value is always up-to-date unless the value belongs to an property which has an ancestor in the dependency graph that is a passive property -- a property whose update behavior is `Lazy and had its value updated.
    */
-  getPropertyValueSnapshot(property: Property<any>): any {
-    return this.propertyValueSnapshot.get(property);
+  getPropertyValueSnapshot<TPropertyValue>(property: Property<TPropertyValue>): TPropertyValue {
+    return this.propertyValueSnapshot.get(property) as TPropertyValue;
   }
 
   /**
    *  Return previous computed property value.
    *
+   * @typedef TPropertyValue - The type for property value.
    * @param propertyName - The name of a property to get last computed value of.
    * @returns Last computed value for specified property. `undefined` if there has not been any stored computed value for specified property.
    */
-  getPropertyValueSnapshotWithName(propertyName: TPropertyName): any {
+  getPropertyValueSnapshotWithName<TPropertyValue>(propertyName: TPropertyName): TPropertyValue {
     const property = this.nameToProperty.get(propertyName);
-    return property && this.propertyValueSnapshot.get(property);
+    return property && (this.propertyValueSnapshot.get(property) as TPropertyValue);
   }
 
   /**
@@ -387,10 +389,11 @@ export class PropertyManager {
    *
    * ! Note: Since a property might have `Lazy` update behavior, version number is only up to date after `getPropertyValue` has been called. Additionally, one cannot assume version has only incremented once for a property if they have only changed its value once -- it might be affected by other properties.
    *
+   * @typedef TPropertyValue - The type for property value.
    * @param property - A property to get snapshot version number of.
    * @returns Version number for stored snapshot of that property. Can be used to test whether a property has value updated.
    */
-  getPropertyValueSnapshotVersion(property: Property<any>): number {
+  getPropertyValueSnapshotVersion<TPropertyValue>(property: Property<TPropertyValue>): number {
     return getOrInsertDefault(this.propertyValueSnapshotVersion, property, 0);
   }
 
@@ -412,10 +415,13 @@ export class PropertyManager {
    *
    * This will implicitly be called by `setPropertyValueSnapshot` when property value does not equal to its snapshot version. However, it can be useful to explicitly calling this method externally when a property's value is not changed through reassigning but through internal modification. For example, if an element was inserted into an array, the array's reference would not have changed but its snapshot version should be updated to reflect it no longer holds the same piece of data.
    *
+   * @typedef TPropertyValue - The type for property value.
    * @param property - The property whose version number should be incremented.
    * @returns The previous version number of specified property.
    */
-  incrementPropertyValueSnapshotVersion(property: Property<any>): number {
+  incrementPropertyValueSnapshotVersion<TPropertyValue>(
+    property: Property<TPropertyValue>
+  ): number {
     const existingVersion = this.getPropertyValueSnapshotVersion(property);
     this.propertyValueSnapshotVersion.set(property, existingVersion + 1);
     return existingVersion;
@@ -453,22 +459,27 @@ export class PropertyManager {
   /**
    * Get the up-to-date value of specified property.
    *
+   * @typedef TPropertyValue - The type for property value.
    * @param propertyName - The name of a property managed by this property manager. The name of a property whose value is fetched.
    * @returns The value for specified property. If last computed value stored in snapshot can be reused, then it will use last computed value. Otherwise, a new computation and a value change event, for its subtree in dependency graph, will happen.
    */
-  getPropertyValue(propertyName: TPropertyName) {
+  getPropertyValue<TPropertyValue>(propertyName: TPropertyName): TPropertyValue {
     const property = this.nameToProperty.get(propertyName);
-    return property.getValue(property, this);
+    return property.getValue(property, this) as TPropertyValue;
   }
 
   /**
    * Update the property value stored in this property manager.
    *
-   * @param {Property<any>} property - The name of the property whose value will be changed.
+   * @typedef TPropertyValue - The type for property value.
+   * @param {Property<TPropertyValue>} property - The name of the property whose value will be changed.
    * @param value - A new value for this property. If different from currently stored value in snapshot, snapshot will be updated and this property's `onValueUpdate` function will be called to execute any side effect of value update.
    * @returns Old value for the property in the snapshot.
    */
-  setPropertyValueSnapshot(property: Property<any>, value: any): any {
+  setPropertyValueSnapshot<TPropertyValue>(
+    property: Property<TPropertyValue>,
+    value: TPropertyValue
+  ): TPropertyValue {
     const oldValue = this.getPropertyValueSnapshot(property);
     if (oldValue !== value) {
       this.setPropertyValueSnapshotSilently(property, value);
@@ -480,10 +491,14 @@ export class PropertyManager {
   /**
    * Update the property value stored in this property manager without causing chained update.
    *
+   * @typedef TPropertyValue - The type for property value.
    * @param {Property<any>} property - The name of the property whose value will be changed.
    * @param value - A new value for this property.
    */
-  setPropertyValueSnapshotSilently(property: Property<any>, value: any) {
+  setPropertyValueSnapshotSilently<TPropertyValue>(
+    property: Property<TPropertyValue>,
+    value: TPropertyValue
+  ): void {
     this.propertyValueSnapshot.set(property, value);
     this.incrementPropertyValueSnapshotVersion(property);
   }
