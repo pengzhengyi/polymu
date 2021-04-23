@@ -45,7 +45,7 @@ describe('Property Management Basic Scenario', () => {
     propertyB = new Property(
       'B',
       (thisValue, manager) => {
-        const propertyAValue = manager.getPropertyValue('A');
+        const propertyAValue: number = manager.getPropertyValue('A');
         const result = propertyAValue + 1;
         thisValue.shouldReuseLastValue = (thisValue, manager) =>
           manager.getPropertyValue('A') === propertyAValue;
@@ -57,7 +57,7 @@ describe('Property Management Basic Scenario', () => {
     propertyD = new Property(
       'D',
       (thisValue, manager) => {
-        const propertyAValue = manager.getPropertyValue('A');
+        const propertyAValue: number = manager.getPropertyValue('A');
         const result = propertyAValue + 1;
         thisValue.shouldReuseLastValue = (thisValue, manager) =>
           manager.getPropertyValue('A') === propertyAValue;
@@ -69,8 +69,8 @@ describe('Property Management Basic Scenario', () => {
     propertyC = new Property(
       'C',
       (thisValue, manager) => {
-        const propertyBValue = manager.getPropertyValue('B');
-        const propertyDValue = manager.getPropertyValue('D');
+        const propertyBValue: number = manager.getPropertyValue('B');
+        const propertyDValue: number = manager.getPropertyValue('D');
         const result = propertyBValue + propertyDValue + 1;
         thisValue.shouldReuseLastValue = (thisValue, manager) =>
           manager.getPropertyValue('B') === propertyBValue &&
@@ -83,7 +83,7 @@ describe('Property Management Basic Scenario', () => {
     propertyE = new Property(
       'E',
       (thisValue, manager) => {
-        const propertyBValue = manager.getPropertyValue('B');
+        const propertyBValue: number = manager.getPropertyValue('B');
         const result = propertyBValue + 1;
         thisValue.shouldReuseLastValue = (thisValue, manager) =>
           manager.getPropertyValue('B') === propertyBValue;
@@ -159,7 +159,7 @@ describe('Property Management Basic Scenario', () => {
     propertyB = new Property(
       'B',
       (thisValue, manager) => {
-        const propertyAValue = manager.getPropertyValue('A');
+        const propertyAValue: number = manager.getPropertyValue('A');
         const result = propertyAValue + 1;
         thisValue.shouldReuseLastValue = (thisValue, manager) =>
           manager.getPropertyValue('A') === propertyAValue;
@@ -171,7 +171,7 @@ describe('Property Management Basic Scenario', () => {
     propertyD = new Property(
       'D',
       (thisValue, manager) => {
-        const propertyAValue = manager.getPropertyValue('A');
+        const propertyAValue: number = manager.getPropertyValue('A');
         const result = propertyAValue + 1;
         thisValue.shouldReuseLastValue = (thisValue, manager) =>
           manager.getPropertyValue('A') === propertyAValue;
@@ -183,8 +183,8 @@ describe('Property Management Basic Scenario', () => {
     propertyC = new Property(
       'C',
       (thisValue, manager) => {
-        const propertyBValue = manager.getPropertyValue('B');
-        const propertyDValue = manager.getPropertyValue('D');
+        const propertyBValue: number = manager.getPropertyValue('B');
+        const propertyDValue: number = manager.getPropertyValue('D');
         const result = propertyBValue + propertyDValue + 1;
         thisValue.shouldReuseLastValue = (thisValue, manager) =>
           manager.getPropertyValue('B') === propertyBValue &&
