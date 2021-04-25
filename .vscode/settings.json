@@ -25,7 +25,9 @@
     "cSpell.ignoreWords": [
         "descriptor's",
         "kfoury",
+        "lowerbound",
         "proxying",
-        "unrooted"
+        "unrooted",
+        "upperbound"
     ]
 }
