@@ -48,7 +48,10 @@ export function patch<T1, T2>(
       // iterable1 surplus
       iterable1SurplusHandler && iterable1SurplusHandler(elementFromIterable1, childIndex);
     } else {
-      ({ value: elementFromIterable2, done: iterable2Done } = iterator2.next());
+      ({ value: elementFromIterable2, done: iterable2Done } = iterator2.next() as {
+        value: T2;
+        done: boolean;
+      });
       if (iterable2Done) {
         // iterable1 has element not matched by iterable2
         iterable1SurplusHandler && iterable1SurplusHandler(elementFromIterable1, childIndex);
@@ -62,11 +65,30 @@ export function patch<T1, T2>(
   }
 
   // all elements in iterable1 has been iterated over, handle remaining unmatched elements in iterable2 if exists
-  while (!iterable2Done) {
-    ({ value: elementFromIterable2, done: iterable2Done } = iterator2.next());
-    if (!iterable2Done) {
-      iterable2SurplusHandler && iterable2SurplusHandler(elementFromIterable2, childIndex);
-      childIndex++;
+  if (!iterable2Done && iterable1SurplusHandler) {
+    iteratorForEach(iterator2, (element, index) =>
+      iterable2SurplusHandler(element, childIndex + index)
+    );
+  }
+}
+
+/**
+ * Similar to `forEach` function but applies to iterator.
+ *
+ * @param iterator - A iterator.
+ * @param callback - A callback function to be executed on every element and its index in the iterator.
+ */
+export function iteratorForEach<T>(
+  iterator: Iterator<T>,
+  callback: (element: T, index: number) => void
+): void {
+  let index = 0;
+  while (true) {
+    const { value, done } = iterator.next() as { value: T; done: boolean };
+    if (done) {
+      break;
+    } else {
+      callback(value, index++);
     }
   }
 }

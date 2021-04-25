@@ -1,4 +1,4 @@
-import { isIterable, patch, peek } from './IterableHelper';
+import { isIterable, iteratorForEach, patch, peek } from './IterableHelper';
 
 describe('patch test', () => {
   test('iterable1 and iterable2 has same length', () => {
@@ -62,6 +62,26 @@ describe('isIterable test', () => {
     expect(isIterable('abc')).toEqual(true);
     expect(isIterable(new Set())).toEqual(true);
     expect(isIterable(new Map())).toEqual(true);
+  });
+});
+
+describe('iteratorForEach', () => {
+  test('nonempty iterator', () => {
+    const array = ['a', 'b'];
+    const iterator = array[Symbol.iterator]();
+    const callback = jest.fn();
+    iteratorForEach(iterator, callback);
+    expect(callback).toHaveBeenCalledTimes(2);
+    expect(callback).toHaveBeenNthCalledWith(1, 'a', 0);
+    expect(callback).toHaveBeenNthCalledWith(2, 'b', 1);
+  });
+
+  test('empty iterator', () => {
+    const array: Array<string> = [];
+    const iterator = array[Symbol.iterator]();
+    const callback = jest.fn();
+    iteratorForEach(iterator, callback);
+    expect(callback).toHaveBeenCalledTimes(0);
   });
 });
 
