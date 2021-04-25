@@ -19,6 +19,7 @@
  * [ 7 5 6 ]  -- after 6st insertion
  */
 
+import { mod } from '../utils/math';
 import { Collection } from './Collection';
 
 /**
@@ -151,7 +152,7 @@ export class CircularArray<TElement> implements Collection<TElement> {
    */
   protected translateWindowIndexIntoArrayIndex__(windowIndex: number): number {
     // `this.capacity_` is added to handle negative
-    return (this.start_ + windowIndex + this.capacity_) % this.capacity_;
+    return mod(this.start_ + windowIndex, this.capacity_);
   }
 
   /**

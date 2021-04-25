@@ -1,7 +1,7 @@
 /**
- * Lowerbound and upperbound a number.
+ * Lower-bound and upper-bound a number.
  *
- * Equivalent to `min(UPPERBOUND, max(LOWERBOUND, 0))`.
+ * Equivalent to `min(upperbound, max(lowerbound, 0))`.
  *
  * If `upperBound` is lower than the `lowerBound`, this function will degrade to return `upperBound`.
  *
