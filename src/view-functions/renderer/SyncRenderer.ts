@@ -4,14 +4,14 @@
  * This module provides an `SyncView` which represents a view transformation that renders view elements to the DOM and watch for the corresponding DOM region for unmanaged mutations (mutations not initiated from `SyncView`) to update view elements.
  */
 
-import { Collection } from '../collections/Collection';
-import { IFeatureProvider } from '../composition/composition';
-import { ChildListChangeEvent } from '../dom/CustomEvents';
-import { TaskQueue } from '../collections/TaskQueue';
-import { isIterable, peek } from '../utils/IterableHelper';
-import { PatchModeForMatch, ViewElement } from '../view-element/ViewElement';
-import { ViewElementChildListMutationReporter } from '../views/ViewElementChildListMutationReporter';
-import { AbstractViewFunction } from './AbstractViewFunction';
+import { Collection } from '../../collections/Collection';
+import { IFeatureProvider } from '../../composition/composition';
+import { ChildListChangeEvent } from '../../dom/CustomEvents';
+import { TaskQueue } from '../../collections/TaskQueue';
+import { isIterable, peek } from '../../utils/IterableHelper';
+import { PatchModeForMatch, ViewElement } from '../../view-element/ViewElement';
+import { ViewElementChildListMutationReporter } from '../../views/ViewElementChildListMutationReporter';
+import { AbstractViewFunction } from '../AbstractViewFunction';
 
 /**
  * A union type represents the types that can be treated as a `ViewElement`, which are the types that can be used to initialize the child of `ViewElement`.
@@ -31,7 +31,9 @@ export type TViewElementLike = ViewElement<HTMLElement> | HTMLElement;
  *
  *    @example A list view of employee record is currently sorted by their salary. A HR inserts a new employee and this employee is immediately placed into its correct place.
  */
-export class SyncView extends AbstractViewFunction<TViewElementLike> implements IFeatureProvider {
+export class SyncRenderer
+  extends AbstractViewFunction<TViewElementLike>
+  implements IFeatureProvider {
   /**
    * @implements {IFeatureProvider} Methods that should be exposed since they define the API for `SyncView`
    */

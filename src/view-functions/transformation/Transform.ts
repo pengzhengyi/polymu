@@ -4,8 +4,8 @@
  * This module provides a `ViewTransformation` which is able to intake an arbitrary unary function to "transform" view elements.
  */
 
-import { Collection, LazyCollectionProvider } from '../collections/Collection';
-import { AbstractViewFunction } from './AbstractViewFunction';
+import { Collection, LazyCollectionProvider } from '../../collections/Collection';
+import { AbstractViewFunction } from '../AbstractViewFunction';
 
 /**
  * Denote the type of a view transformation function that processes a single view element.
@@ -15,7 +15,7 @@ type Transformation<TViewElement> = (element: TViewElement) => TViewElement;
 /**
  * `ViewTransformation` transforms the provided view elements by some arbitrary function. This class is designed to be versatile -- you can register any unary function that process `ViewElement` in some way.
  */
-export class ViewTransformation<TViewElement> extends AbstractViewFunction<TViewElement> {
+export class Transform<TViewElement> extends AbstractViewFunction<TViewElement> {
   /**
    * @returns The transformation function of this `ViewTransformation` instance.
    */

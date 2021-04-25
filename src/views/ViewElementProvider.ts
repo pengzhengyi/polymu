@@ -6,7 +6,7 @@
 
 import { Collection, LazyCollectionProvider } from '../collections/Collection';
 import { peek } from '../utils/IterableHelper';
-import { TViewElementLike } from '../view-functions/SyncView';
+import { TViewElementLike } from '../view-functions/renderer/SyncRenderer';
 import { ViewElement } from '../view-element/ViewElement';
 
 /**

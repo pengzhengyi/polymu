@@ -4,11 +4,11 @@
  * This module provide a `SortedView` which represents a view transformation that reorders elements in source view according to its existing sorting functions.
  */
 
-import { Collection, LazyCollectionProvider } from '../collections/Collection';
-import Heap from '../collections/Heap';
-import { IFeatureProvider } from '../composition/composition';
-import { quickSort } from '../utils/ArrayHelper';
-import { AbstractViewFunction } from './AbstractViewFunction';
+import { Collection, LazyCollectionProvider } from '../../collections/Collection';
+import Heap from '../../collections/Heap';
+import { IFeatureProvider } from '../../composition/composition';
+import { quickSort } from '../../utils/ArrayHelper';
+import { AbstractViewFunction } from '../AbstractViewFunction';
 
 /**
  * A function type that orders two elements from source view.
@@ -17,7 +17,7 @@ import { AbstractViewFunction } from './AbstractViewFunction';
  * @param {TViewElement} e2 - The second element.
  * @returns {number} A number indicating the comparison result. {@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/sort}
  */
-export type SortingFunction<TViewElement> = (e1: TViewElement, e2: TViewElement) => number;
+export type SortFunction<TViewElement> = (e1: TViewElement, e2: TViewElement) => number;
 
 /**
  * This interface groups a sorting function with its priority.
@@ -26,8 +26,8 @@ export type SortingFunction<TViewElement> = (e1: TViewElement, e2: TViewElement)
  *
  * @example Suppose in terms of priority, S1 > S2 > S3. Then S1 will be first used to order elements. If there is a tie (two elements are equivalent according to S1), their order will then be determined by S2, and possibly by S3 if the comparison result is still a tie.
  */
-export interface SortingFunctionWithPriority<TViewElement> {
-  sortingFunction: SortingFunction<TViewElement>;
+export interface SortFunctionWithPriority<TViewElement> {
+  sortingFunction: SortFunction<TViewElement>;
   priority: number;
 }
 
@@ -35,7 +35,7 @@ export interface SortingFunctionWithPriority<TViewElement> {
  * A customized Heap that exposes the underlying array and supports changing the comparator.
  */
 
-class SortedViewHeap<TViewElement> extends Heap<TViewElement> {
+class SortedHeap<TViewElement> extends Heap<TViewElement> {
   /**
    * Whether the heap is fully sorted.
    *
@@ -64,7 +64,7 @@ class SortedViewHeap<TViewElement> extends Heap<TViewElement> {
    * Changing the comparator of the heap.
    */
 
-  set comparator(newValue: SortingFunction<TViewElement>) {
+  set comparator(newValue: SortFunction<TViewElement>) {
     if (this._comparator !== newValue) {
       this._comparator = newValue;
       quickSort(this._array, newValue, 0, this._count);
@@ -92,7 +92,7 @@ class SortedViewHeap<TViewElement> extends Heap<TViewElement> {
 /**
  * Reorders elements according to certain comparison method(s).
  */
-export class SortedView<TViewElement>
+export class Sort<TViewElement>
   extends AbstractViewFunction<TViewElement>
   implements IFeatureProvider {
   /** methods that should be exposed since they define the API for `SortedView` */
@@ -104,18 +104,18 @@ export class SortedView<TViewElement>
   ];
 
   /** a mapping from identifier to a sorting function and its priority */
-  sortingFunctions = new Map<unknown, SortingFunctionWithPriority<TViewElement>>();
+  sortingFunctions = new Map<unknown, SortFunctionWithPriority<TViewElement>>();
 
   /** denotes the current smallest priority associated with sorting function */
   private smallestPriority = 0;
 
-  private heap: SortedViewHeap<TViewElement>;
+  private heap: SortedHeap<TViewElement>;
 
   /**
    * Existing sorting functions will be applied in order of priority -- higher priority sorting function will be used first, lower priority sorting function will be used when the higher priority ones result in tie.
    * @returns The aggregate sorting function.
    */
-  get sorter(): SortingFunction<TViewElement> {
+  get sorter(): SortFunction<TViewElement> {
     const numSortingFunction: number = this.sortingFunctions.size;
     if (numSortingFunction === 0) {
       return null;
@@ -170,7 +170,7 @@ export class SortedView<TViewElement>
         sourceView !== this.lastSourceView || // source view changed
         !useCache /* source view is not reuseable */
       ) {
-        this.heap = new SortedViewHeap<TViewElement>(sorter);
+        this.heap = new SortedHeap<TViewElement>(sorter);
         this.heap.extend(sourceView);
       }
 
@@ -194,13 +194,13 @@ export class SortedView<TViewElement>
    *
    * @public
    * @param key - An identifier.
-   * @param {SortingFunction<TViewElement>} sortingFunction - A function to determine how elements from source view should be ordered in the target view.
+   * @param {SortFunction<TViewElement>} sortingFunction - A function to determine how elements from source view should be ordered in the target view.
    * @param {number} [priority = this.smallestPriority - 1] - The priority of newly-bound sorting function. The higher the priority, the more important the sorting function. Default to add a least important sorting function.
    * @returns Whether this operation will cause a regeneration of view. Even this operation does not cause view regeneration, a view regeneration might still happen because of other operations.
    */
   addSortingFunction(
     key: unknown,
-    sortingFunction: SortingFunction<TViewElement>,
+    sortingFunction: SortFunction<TViewElement>,
     priority: number = this.smallestPriority - 1
   ): boolean {
     const existingSortingFunction = this.sortingFunctions.get(key);

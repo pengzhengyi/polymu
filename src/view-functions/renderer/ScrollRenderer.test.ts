@@ -1,7 +1,7 @@
-import { Collection } from '../collections/Collection';
-import { endFillerClass, startFillerClass } from '../constants/css-classes';
-import { ChildListChangeEvent } from '../dom/CustomEvents';
-import { ScrollView } from './ScrollView';
+import { Collection } from '../../collections/Collection';
+import { endFillerClass, startFillerClass } from '../../constants/css-classes';
+import { ChildListChangeEvent } from '../../dom/CustomEvents';
+import { ScrollRenderer } from './ScrollRenderer';
 
 export function setupIntersectionObserverMock({
   observe = () => null,
@@ -32,9 +32,9 @@ beforeAll(() => {
   document.body.appendChild(scrollTarget);
 });
 
-describe('ScrollView initialization', () => {
+describe('ScrollRenderer initialization', () => {
   let target: HTMLElement;
-  let scrollView: ScrollView<HTMLParagraphElement, HTMLParagraphElement>;
+  let scrollView: ScrollRenderer<HTMLParagraphElement, HTMLParagraphElement>;
   const paragraphs: Array<HTMLParagraphElement> = Array.from(
     (function* () {
       for (let i = 0; i < 200; i++) {
@@ -56,7 +56,7 @@ describe('ScrollView initialization', () => {
 
     target = document.createElement('div');
     scrollTarget.appendChild(target);
-    scrollView = new ScrollView({ target });
+    scrollView = new ScrollRenderer({ target });
   });
 
   test('initial state', () => {
@@ -157,7 +157,7 @@ describe('use convert in ScrollView', () => {
     element.id = `li-number-${number}`;
     return element;
   }
-  let scrollView: ScrollView<number, HTMLLIElement>;
+  let scrollView: ScrollRenderer<number, HTMLLIElement>;
 
   beforeAll(() => {
     setupIntersectionObserverMock();
@@ -170,7 +170,7 @@ describe('use convert in ScrollView', () => {
 
     target = document.createElement('ul');
     scrollTarget.appendChild(target);
-    scrollView = new ScrollView({ target, convert });
+    scrollView = new ScrollRenderer({ target, convert });
   });
 
   test('rendering partial view correctly', () => {

@@ -1,9 +1,9 @@
-import { FilteredView } from './FilteredView';
+import { Filter } from './Filter';
 
-describe('FilteredView', () => {
+describe('Filter', () => {
   test('basic filtering', () => {
     const array = [1, 2, 3, 4, 5];
-    const fv = new FilteredView<number>();
+    const fv = new Filter<number>();
     expect([...fv.view(array)]).toEqual([1, 2, 3, 4, 5]);
     expect(fv.addFilterFunction('no 1', (n) => n != 1)).toBe(true);
     expect([...fv.view(array)]).toEqual([2, 3, 4, 5]);

@@ -1,9 +1,9 @@
-import { PartialView } from './PartialView';
+import { Partial } from './Partial';
 
-describe('PartialView', () => {
+describe('Partial', () => {
   test('basic partial rendering', () => {
     const array = Array.from(Array(100).keys());
-    const pv = new PartialView<number>(0, 4);
+    const pv = new Partial<number>(0, 4);
     // default view
     expect([...pv.view(array)]).toEqual([0, 1, 2, 3, 4]);
     expect(pv).toHaveLength(5);

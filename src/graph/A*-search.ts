@@ -7,7 +7,7 @@
  */
 
 import Heap from '../collections/Heap';
-import { SortingFunction } from '../view-functions/SortedView';
+import { SortFunction } from '../view-functions/transformation/Sort';
 import { TGetChildren } from './types';
 
 /**
@@ -18,7 +18,7 @@ import { TGetChildren } from './types';
  * @typedef TNode - A type for all the nodes.
  * @param {TNode} startNode - A node to start search from: will be the first node to be explored.
  * @param {TGetChildren<TNode>} getChildren - A callback function used to get child nodes from a node.
- * @param {SortingFunction<TNode>} comparator - Take two nodes and determine which node should be explored first.
+ * @param {SortFunction<TNode>} comparator - Take two nodes and determine which node should be explored first.
  * @param {(TNode) => void} [action] - A callback function to execute before each node is about to be explored (before `terminateWhen` is called on this node). The default is to execute no action.
  * @param {(TNode) => boolean} [terminateWhen] - A callback function to execute on each explored node. If true, then search will terminate and this node will be returned. By default, search will proceed until no more nodes can be explored.
  * @returns {TNode} If a explored node satisfies `terminateWhen`, then that node is returned. Otherwise, `undefined` is returned.
@@ -26,7 +26,7 @@ import { TGetChildren } from './types';
 export function AStarSearch<TNode>(
   startNode: TNode,
   getChildren: TGetChildren<TNode>,
-  comparator: SortingFunction<TNode>,
+  comparator: SortFunction<TNode>,
   action: (node: TNode) => void = undefined,
   terminateWhen: (node: TNode) => boolean = undefined
 ): TNode {

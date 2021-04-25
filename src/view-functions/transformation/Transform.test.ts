@@ -1,22 +1,22 @@
-import { LazyCollectionProvider } from '../collections/Collection';
-import { ViewTransformation } from './ViewTransformation';
+import { LazyCollectionProvider } from '../../collections/Collection';
+import { Transform } from './Transform';
 
-describe('ViewTransformation', () => {
+describe('Transform', () => {
   test('no exposed features', () => {
-    const vt = new ViewTransformation();
+    const vt = new Transform();
     expect(vt.getFeatures()).toHaveLength(0);
   });
 
   test('simple transformation', () => {
     const array = [1, 2, 3];
-    const vt = new ViewTransformation<number>((n) => n + 1);
+    const vt = new Transform<number>((n) => n + 1);
     const output = [...vt.view(array)];
     expect(output).toEqual([2, 3, 4]);
   });
 
   test('change transformation', () => {
     const array = new LazyCollectionProvider([1, 2, 3]);
-    const vt = new ViewTransformation<number>((n) => n + 1);
+    const vt = new Transform<number>((n) => n + 1);
     const output = [...vt.view(array)];
     expect(output).toEqual([2, 3, 4]);
 
@@ -26,7 +26,7 @@ describe('ViewTransformation', () => {
   });
 
   test('retrieve transformation', () => {
-    const vt = new ViewTransformation<number>((n) => n + 1);
+    const vt = new Transform<number>((n) => n + 1);
     expect(vt.transformation(1)).toEqual(2);
   });
 });

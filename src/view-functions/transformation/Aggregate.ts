@@ -4,18 +4,18 @@
  * This module provides an `AggregateView` which represents a view transformation that combines other view functions together. In other words, `AggregateView` can be seen as a grouping or boxing of view functions.
  */
 
-import { Prop } from '../view-element/Abstraction';
-import { Collection } from '../collections/Collection';
-import { IFeatureProvider, composeFeatures } from '../composition/composition';
-import { NotSupported } from '../utils/errors';
-import { AbstractViewFunction } from './AbstractViewFunction';
+import { Prop } from '../../view-element/Abstraction';
+import { Collection } from '../../collections/Collection';
+import { IFeatureProvider, composeFeatures } from '../../composition/composition';
+import { NotSupported } from '../../utils/errors';
+import { AbstractViewFunction } from '../AbstractViewFunction';
 
 /**
  * Combines several view functions into an aggregate view function.
  *
  * When target view needs to be generated from a source view, the source view will be provided to first view function, whose target view will be provided as source view to the second view function, and so on, where the last view function's target view be returned as the final target view.
  */
-export class AggregateView<TViewElement>
+export class Aggregate<TViewElement>
   extends AbstractViewFunction<TViewElement>
   implements IFeatureProvider {
   /** an array of view functions that consist the chain */

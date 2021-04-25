@@ -1,9 +1,9 @@
-import { SortedView } from './SortedView';
+import { Sort } from './Sort';
 
-describe('SortedView', () => {
+describe('Sorted', () => {
   test('basic sorting', () => {
     const array = [1, 2, 3, 4, 5];
-    const sv = new SortedView<number>();
+    const sv = new Sort<number>();
     expect([...sv.view(array)]).toEqual([1, 2, 3, 4, 5]);
     expect(sv.addSortingFunction('desc', (n1, n2) => n2 - n1, 1)).toBe(true);
     expect([...sv.view(array)]).toEqual([5, 4, 3, 2, 1]);
@@ -53,7 +53,7 @@ describe('SortedView', () => {
         cellIndex: 1,
       },
     ];
-    const sv = new SortedView<Cell>();
+    const sv = new Sort<Cell>();
     expect(sv.addSortingFunction('row sort asc', (c1, c2) => c1.row - c2.row, 10)).toBe(true);
     expect(
       sv.addSortingFunction('cellIndex sort asc', (c1, c2) => c1.cellIndex - c2.cellIndex, 1)

@@ -1,11 +1,11 @@
-import { Collection } from '../collections/Collection';
-import { ChildListChangeEvent } from '../dom/CustomEvents';
-import { ViewElement } from '../view-element/ViewElement';
-import { SyncView } from './SyncView';
+import { Collection } from '../../collections/Collection';
+import { ChildListChangeEvent } from '../../dom/CustomEvents';
+import { ViewElement } from '../../view-element/ViewElement';
+import { SyncRenderer } from './SyncRenderer';
 
-describe('SyncView', () => {
+describe('SyncRenderer', () => {
   let rootDomElement: HTMLElement;
-  let syncView: SyncView;
+  let syncView: SyncRenderer;
 
   beforeEach(() => {
     if (rootDomElement) {
@@ -15,7 +15,7 @@ describe('SyncView', () => {
     rootDomElement = document.createElement('div');
     rootDomElement.id = '123';
     document.body.appendChild(rootDomElement);
-    syncView = new SyncView(rootDomElement);
+    syncView = new SyncRenderer(rootDomElement);
   });
 
   test('rootViewElement', () => {

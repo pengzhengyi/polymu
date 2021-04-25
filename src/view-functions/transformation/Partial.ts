@@ -4,10 +4,10 @@
  * This module provides a `PartialView` which represents a view transformation which selects a "window" of the source view.
  */
 
-import { Collection } from '../collections/Collection';
-import { ResizeStrategy, SlidingWindow } from '../collections/SlidingWindow';
-import { IFeatureProvider } from '../composition/composition';
-import { AbstractViewFunction } from './AbstractViewFunction';
+import { Collection } from '../../collections/Collection';
+import { ResizeStrategy, SlidingWindow } from '../../collections/SlidingWindow';
+import { IFeatureProvider } from '../../composition/composition';
+import { AbstractViewFunction } from '../AbstractViewFunction';
 
 /**
  * Selects a window from the source view. More specifically, it returns a slice, defined by start index and end index, of source view.
@@ -16,7 +16,7 @@ import { AbstractViewFunction } from './AbstractViewFunction';
  *
  * Besides transforming source view to target view, PartialView also supports indexing the source view using a window index relative to the window start index (`get`), after the source view is defined.
  */
-export class PartialView<TViewElement>
+export class Partial<TViewElement>
   extends AbstractViewFunction<TViewElement>
   implements IFeatureProvider {
   /** methods that should be exposed since they define the API for `PartialView` */

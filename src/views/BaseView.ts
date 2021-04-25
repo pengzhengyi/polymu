@@ -8,16 +8,16 @@ import { Collection } from '../collections/Collection';
 import { composeFeatures } from '../composition/composition';
 import { ChildListChangeEvent } from '../dom/CustomEvents';
 import { AbstractViewFunction } from '../view-functions/AbstractViewFunction';
-import { AggregateView } from '../view-functions/AggregateView';
-import { ScrollView as _ScrollView } from '../view-functions/ScrollView';
-import { SyncView, TViewElementLike } from '../view-functions/SyncView';
+import { Aggregate } from '../view-functions/transformation/Aggregate';
+import { ScrollRenderer as _ScrollRenderer } from '../view-functions/renderer/ScrollRenderer';
+import { SyncRenderer, TViewElementLike } from '../view-functions/renderer/SyncRenderer';
 import { ViewElement } from '../view-element/ViewElement';
 import { TSourceType, ViewElementProvider } from './ViewElementProvider';
 
 /**
  * A customized ScrollView which provides `rootDomElement` and type arguments.
  */
-class ScrollView extends _ScrollView<TViewElementLike, HTMLElement> {
+class ScrollRenderer extends _ScrollRenderer<TViewElementLike, HTMLElement> {
   /**
    * Exposes `this._target`.
    * @returns The target DOM element where rendering view will be mounted.
@@ -49,15 +49,15 @@ class ScrollView extends _ScrollView<TViewElementLike, HTMLElement> {
 /**
  * A union type including all view functions that can be classified as rendering a View. More specifically, these view functions will have direct influence on DOM.
  */
-type RenderingViewFunction = ScrollView | SyncView;
+type Renderer = ScrollRenderer | SyncRenderer;
 /**
  * Denotes the type of a callback that constructs a `RenderingViewFunction` from an `HTMLElement`.
  */
-type RenderingViewFunctionProvider = (element: HTMLElement) => RenderingViewFunction;
+type RenderingViewFunctionProvider = (element: HTMLElement) => Renderer;
 /**
  * A union type including all view functions that only transform a `View`. These view functions will have no impact on DOM.
  */
-export type ViewTransformation = Exclude<AbstractViewFunction<ViewElement>, RenderingViewFunction>;
+export type ViewTransformation = Exclude<AbstractViewFunction<ViewElement>, Renderer>;
 
 /**
  * `BaseView` consists of three parts:
@@ -72,7 +72,7 @@ export type ViewTransformation = Exclude<AbstractViewFunction<ViewElement>, Rend
  *
  * Since backward propagation is not always desired, it can be enabled and disabled by `enableBackPropagation` and `disableBackPropagation`.
  */
-export class BaseView extends AggregateView<TViewElementLike> {
+export class BaseView extends Aggregate<TViewElementLike> {
   /**
    * Provide a `RenderingViewFunction` by creating a `SyncView` instance.
    *
@@ -80,7 +80,7 @@ export class BaseView extends AggregateView<TViewElementLike> {
    * @returns A rendering view implementation which is responsible for syncing rendering view elements to the DOM.
    */
   static readonly SYNC_VIEW_FACTORY: RenderingViewFunctionProvider = (element: HTMLElement) =>
-    new SyncView(element, false);
+    new SyncRenderer(element, false);
   /**
    * Provide a `RenderingViewFunction` by creating a `ScrollView` instance.
    *
@@ -88,7 +88,7 @@ export class BaseView extends AggregateView<TViewElementLike> {
    * @returns A rendering view implementation which is responsible for syncing rendering view elements to the DOM.
    */
   static readonly SCROLL_VIEW_FACTORY: RenderingViewFunctionProvider = (element: HTMLElement) =>
-    new ScrollView(element);
+    new ScrollRenderer(element);
 
   /**
    * `viewElementProvider` is responsible for providing the source view elements that will undergo view transformation.
@@ -98,7 +98,7 @@ export class BaseView extends AggregateView<TViewElementLike> {
   /**
    * A `ViewFunction` that will use selected view elements to update the corresponding DOM target.
    */
-  renderingView: RenderingViewFunction;
+  renderingView: Renderer;
 
   /**
    * A callback function, if defined, can be used to disable the enabled backward propagation. In other words, if `disableBackPropagation === undefined`, then back propagation is not currently enabled.

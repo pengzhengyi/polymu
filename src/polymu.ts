@@ -1,10 +1,10 @@
 import { ViewElement } from './view-element/ViewElement';
-import { AggregateView } from './view-functions/AggregateView';
-import { FilteredView } from './view-functions/FilteredView';
-import { PartialView } from './view-functions/PartialView';
-import { ScrollView } from './view-functions/ScrollView';
-import { SortedView } from './view-functions/SortedView';
-import { SyncView } from './view-functions/SyncView';
+import { Aggregate } from './view-functions/transformation/Aggregate';
+import { Filter } from './view-functions/transformation/Filter';
+import { Partial } from './view-functions/transformation/Partial';
+import { SyncRenderer } from './view-functions/renderer/SyncRenderer';
+import { Sort } from './view-functions/transformation/Sort';
+import { ScrollRenderer } from './view-functions/renderer/ScrollRenderer';
 import { BaseView } from './views/BaseView';
 import * as CSS_CLASSNAMES from './constants/css-classes';
 import {
@@ -12,19 +12,19 @@ import {
   LazyCollectionProvider,
   UnmaterializableCollectionProvider,
 } from './collections/Collection';
-import { ViewTransformation } from './view-functions/ViewTransformation';
+import { Transform } from './view-functions/transformation/Transform';
 import { debounceWithCooldown } from './utils/debounce';
 
 export {
   ViewElement,
-  AggregateView,
-  FilteredView,
-  PartialView,
-  ScrollView,
-  SortedView,
-  SyncView,
+  Aggregate,
+  Filter,
+  Partial,
+  Sort,
+  Transform,
   BaseView,
-  ViewTransformation,
+  ScrollRenderer,
+  SyncRenderer,
   CSS_CLASSNAMES,
   Collection,
   LazyCollectionProvider,

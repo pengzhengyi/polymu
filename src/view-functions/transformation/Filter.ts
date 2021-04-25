@@ -4,9 +4,9 @@
  * This module provides a `FilteredView` which represents a view transformation that conditionally select certain elements of the source view.
  */
 
-import { Collection, LazyCollectionProvider } from '../collections/Collection';
-import { IFeatureProvider } from '../composition/composition';
-import { AbstractViewFunction } from './AbstractViewFunction';
+import { Collection, LazyCollectionProvider } from '../../collections/Collection';
+import { IFeatureProvider } from '../../composition/composition';
+import { AbstractViewFunction } from '../AbstractViewFunction';
 
 /**
  * A function type that determines whether an element from the source view should retain in the target view.
@@ -19,7 +19,7 @@ export type FilterFunction<TViewElement> = (element: TViewElement) => boolean;
 /**
  * Selects elements meeting certain condition(s).
  */
-export class FilteredView<TViewElement>
+export class Filter<TViewElement>
   extends AbstractViewFunction<TViewElement>
   implements IFeatureProvider {
   /** methods that should be exposed since they define the API for `FilteredView` */

@@ -4,7 +4,7 @@
  * This module implements a binary heap.
  */
 
-import { SortingFunction } from '../view-functions/SortedView';
+import { SortFunction } from '../view-functions/transformation/Sort';
 
 /**
  * Represents a binary heap and implements the iterable interface.
@@ -44,12 +44,12 @@ export default class Heap<TElement> implements Iterable<TElement> {
    * Creates a Heap.
    *
    * @public
-   * @param {SortingFunction<TElement>} A comparator that decides the ordering of elements. The "smallest" element will be the root of the heap -- first element to be popped.
+   * @param {SortFunction<TElement>} A comparator that decides the ordering of elements. The "smallest" element will be the root of the heap -- first element to be popped.
    * @param {number} [capacity = 0] Initial capacity of the heap.
    * @constructs Heap
    */
 
-  constructor(protected _comparator: SortingFunction<TElement>, capacity = 0) {
+  constructor(protected _comparator: SortFunction<TElement>, capacity = 0) {
     this._array = new Array<TElement>(capacity);
   }
 

@@ -1,8 +1,8 @@
 import { ChildListChangeEvent } from '../dom/CustomEvents';
-import { FilteredView } from '../view-functions/FilteredView';
+import { Filter } from '../view-functions/transformation/Filter';
 import { BaseView, ViewTransformation } from './BaseView';
 import { ViewElement } from '../view-element/ViewElement';
-import { setupIntersectionObserverMock } from '../view-functions/ScrollView.test';
+import { setupIntersectionObserverMock } from '../view-functions/renderer/ScrollRenderer.test';
 
 function* createParagraphElement(count: number): IterableIterator<HTMLParagraphElement> {
   for (let i = 0; i < count; i++) {
@@ -26,7 +26,7 @@ describe('BaseView', () => {
     const target = document.createElement('div');
     document.body.appendChild(target);
 
-    const viewTransformations = [new FilteredView<ViewElement>()];
+    const viewTransformations = [new Filter<ViewElement>()];
 
     const baseView = new BaseView(source, target, viewTransformations);
 
@@ -58,7 +58,7 @@ describe('BaseView', () => {
     const target = document.createElement('div');
     document.body.appendChild(target);
 
-    const viewTransformations: Array<ViewTransformation> = [new FilteredView<ViewElement>()];
+    const viewTransformations: Array<ViewTransformation> = [new Filter<ViewElement>()];
 
     const baseView = new BaseView(source, target, viewTransformations);
 
@@ -102,7 +102,7 @@ describe('BaseView', () => {
     const target = document.createElement('div');
     document.body.appendChild(target);
 
-    const viewTransformations: Array<ViewTransformation> = [new FilteredView<ViewElement>()];
+    const viewTransformations: Array<ViewTransformation> = [new Filter<ViewElement>()];
 
     const baseView = new BaseView(source, target, viewTransformations);
     (baseView as any).setWindow(0, 100);

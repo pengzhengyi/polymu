@@ -14,23 +14,23 @@
  *    + The latter responds to Scroll Event so that whenever page is scrolled and different content should be displayed, it appropriately updates the target view for `SyncView` which will then refresh the rendering view.
  */
 
-import { CircularArray } from '../collections/CircularArray';
-import { Collection } from '../collections/Collection';
-import { IFeatureProvider } from '../composition/composition';
-import { Property, PropertyManager, UpdateBehavior } from '../composition/property-management';
-import { fillerClass, startFillerClass, endFillerClass } from '../constants/css-classes';
-import { IntersectionObserverOptions } from '../dom/IntersectionObserver';
+import { CircularArray } from '../../collections/CircularArray';
+import { Collection } from '../../collections/Collection';
+import { IFeatureProvider } from '../../composition/composition';
+import { Property, PropertyManager, UpdateBehavior } from '../../composition/property-management';
+import { fillerClass, startFillerClass, endFillerClass } from '../../constants/css-classes';
+import { IntersectionObserverOptions } from '../../dom/IntersectionObserver';
 import {
   getScrollParent,
   isScrollDirectionTowardsStart,
   isScrollDirectionTowardsEnd,
   ScrollDirection,
-} from '../dom/scroll';
-import { debounceWithCooldown } from '../utils/debounce';
-import { bound } from '../utils/math';
-import { ViewElement } from '../view-element/ViewElement';
-import { ViewElementChildListMutationReporter } from '../views/ViewElementChildListMutationReporter';
-import { PartialView } from './PartialView';
+} from '../../dom/scroll';
+import { debounceWithCooldown } from '../../utils/debounce';
+import { bound } from '../../utils/math';
+import { ViewElement } from '../../view-element/ViewElement';
+import { ViewElementChildListMutationReporter } from '../../views/ViewElementChildListMutationReporter';
+import { Partial } from '../transformation/Partial';
 
 /**
  * An enumeration of possible screen axis.
@@ -113,8 +113,8 @@ enum RenderingStrategy {
  *
  * @typedef TDomElement - A element type that should subclass {@link https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement HTMLElement}.
  */
-export class ScrollView<TViewElement, TDomElement extends HTMLElement>
-  extends PartialView<TViewElement>
+export class ScrollRenderer<TViewElement, TDomElement extends HTMLElement>
+  extends Partial<TViewElement>
   implements IFeatureProvider {
   /** denotes the event that will be emitted before rendering view update, it will supply the current `ScrollView` */
   static readonly beforeRenderingViewUpdateEventName = 'beforeRenderingViewUpdate';
@@ -170,7 +170,7 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement>
    * A property that describes `_renderingStrategy`.
    */
   protected _renderingStrategyProperty: Property<RenderingStrategy> = new Property(
-    ScrollView._renderingStrategyPropertyName,
+    ScrollRenderer._renderingStrategyPropertyName,
     (thisValue, manager) => {
       const snapshotValue: RenderingStrategy = manager.getPropertyValueSnapshot(thisValue);
       if (snapshotValue === undefined) {
@@ -191,7 +191,7 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement>
    */
   protected _shiftAmount: number;
   protected _shiftAmountProperty: Property<number> = new Property(
-    ScrollView._shiftAmountPropertyName,
+    ScrollRenderer._shiftAmountPropertyName,
     (thisValue, manager) => manager.getPropertyValueSnapshot(thisValue),
     UpdateBehavior.Lazy,
     (oldValue, newValue, thisValue, manager) => {
@@ -221,7 +221,7 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement>
    * A property that describes `_renderingView`. It decides how new rendering view will be generated and how the DOM tree is updated consequently.
    */
   protected _renderingViewProperty: Property<Collection<TDomElement>> = new Property(
-    ScrollView._renderingViewPropertyName,
+    ScrollRenderer._renderingViewPropertyName,
     (thisValue, manager) => {
       // The following dependencies are used in delegating calls to `handleReplaceRenderingStrategy__` and `handleShiftRenderingStrategy__` so they need to be hoisted here
       const shiftAmount: number = manager.getPropertyValue('_shiftAmount');
@@ -261,9 +261,9 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement>
    * A property that describes `_target`.
    */
   protected _targetProperty: Property<HTMLElement> = new Property(
-    ScrollView._targetPropertyName,
+    ScrollRenderer._targetPropertyName,
     // `_target` is "prerequisite free": it is a leaf node in prerequisite graph as its value is modified through exposed setter
-    (_, manager) => manager.getPropertyValueSnapshotWithName(ScrollView._targetPropertyName),
+    (_, manager) => manager.getPropertyValueSnapshotWithName(ScrollRenderer._targetPropertyName),
     UpdateBehavior.Lazy
   );
 
@@ -280,14 +280,14 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement>
    * A property that describes `_targetViewElement`. Its value is dependent on `_target`.
    */
   protected _targetViewElementProperty: Property<ViewElement> = new Property(
-    ScrollView._targetViewElementPropertyName,
+    ScrollRenderer._targetViewElementPropertyName,
     (thisValue, manager) => {
       const target: HTMLElement = manager.getPropertyValue('_target');
       const targetVersion = manager.getPropertyValueSnapshotVersionWithName(
-        ScrollView._targetPropertyName
+        ScrollRenderer._targetPropertyName
       );
       thisValue.shouldReuseLastValue = (_, manager) =>
-        manager.isSnapshotVersionUpToDate(ScrollView._targetPropertyName, targetVersion);
+        manager.isSnapshotVersionUpToDate(ScrollRenderer._targetPropertyName, targetVersion);
 
       if (target === undefined) {
         return undefined;
@@ -316,14 +316,14 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement>
    * A property that describes `_scrollTarget`. Its value is dependent on `_target`.
    */
   protected _scrollTargetProperty: Property<HTMLElement> = new Property(
-    ScrollView._scrollTargetPropertyName,
+    ScrollRenderer._scrollTargetPropertyName,
     (thisValue, manager) => {
       const target: HTMLElement = manager.getPropertyValue('_target');
       const targetVersion = manager.getPropertyValueSnapshotVersionWithName(
-        ScrollView._targetPropertyName
+        ScrollRenderer._targetPropertyName
       );
       thisValue.shouldReuseLastValue = (_, manager) =>
-        manager.isSnapshotVersionUpToDate(ScrollView._targetPropertyName, targetVersion);
+        manager.isSnapshotVersionUpToDate(ScrollRenderer._targetPropertyName, targetVersion);
 
       if (target === undefined) {
         return undefined;
@@ -369,11 +369,11 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement>
    * A property that describes `_scrollAxis` -- The monitoring axis of current scroll handler. When scroll target changes, it will be decided by detecting the presence of scrollbar.
    */
   protected _scrollAxisProperty: Property<ScreenAxis> = new Property(
-    ScrollView._scrollAxisPropertyName,
+    ScrollRenderer._scrollAxisPropertyName,
     (thisValue, manager) => {
       const scrollTarget: HTMLElement = manager.getPropertyValue('_scrollTarget');
       const scrollTargetVersion = manager.getPropertyValueSnapshotVersionWithName(
-        ScrollView._scrollTargetPropertyName
+        ScrollRenderer._scrollTargetPropertyName
       );
 
       let screenAxis: ScreenAxis;
@@ -389,7 +389,7 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement>
       }
       thisValue.shouldReuseLastValue = (_, manager) =>
         manager.isSnapshotVersionUpToDate(
-          ScrollView._scrollTargetPropertyName,
+          ScrollRenderer._scrollTargetPropertyName,
           scrollTargetVersion
         );
       return screenAxis;
@@ -403,15 +403,18 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement>
    * A property describes `_lastScrollPosition`. For first-time retrieval and every time scroll axis has changed, 0 will be returned. In other cases, `shouldReuseLastValue` will evaluate to true and the value set in `_scrollDirection` will be used.
    */
   protected _lastScrollPositionProperty: Property<number> = new Property(
-    ScrollView._lastScrollPositionPropertyName,
+    ScrollRenderer._lastScrollPositionPropertyName,
     (thisValue, manager) => {
       // Dependency Injection: manager.getPropertyValue('_scrollAxis');
       const scrollAxisVersion = manager.getPropertyValueSnapshotVersionWithName(
-        ScrollView._scrollAxisPropertyName
+        ScrollRenderer._scrollAxisPropertyName
       );
 
       thisValue.shouldReuseLastValue = (_, manager) =>
-        manager.isSnapshotVersionUpToDate(ScrollView._scrollAxisPropertyName, scrollAxisVersion);
+        manager.isSnapshotVersionUpToDate(
+          ScrollRenderer._scrollAxisPropertyName,
+          scrollAxisVersion
+        );
       return 0;
     },
     UpdateBehavior.Immediate
@@ -509,12 +512,12 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement>
    * A property that describes the behavior of `_elementLength`. It describes how `_elementLength` will be computed from rendered view and scroll axis.
    */
   protected _elementLengthProperty: Property<number> = new Property(
-    ScrollView._elementLengthPropertyName,
+    ScrollRenderer._elementLengthPropertyName,
     (thisValue, manager) => {
       const renderingView: CircularArray<TDomElement> = manager.getPropertyValue('_renderingView');
       const scrollAxis: ScreenAxis = manager.getPropertyValue('_scrollAxis');
       const scrollAxisVersion = manager.getPropertyValueSnapshotVersionWithName(
-        ScrollView._scrollAxisPropertyName
+        ScrollRenderer._scrollAxisPropertyName
       );
 
       if (scrollAxis === undefined || renderingView === undefined || renderingView.isEmpty) {
@@ -525,7 +528,10 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement>
         const elementLength = firstRenderedElement[propName];
         // reuse same element length unless scroll axis has changed
         thisValue.shouldReuseLastValue = (_, manager) =>
-          manager.isSnapshotVersionUpToDate(ScrollView._scrollAxisPropertyName, scrollAxisVersion);
+          manager.isSnapshotVersionUpToDate(
+            ScrollRenderer._scrollAxisPropertyName,
+            scrollAxisVersion
+          );
         return elementLength;
       }
     },
@@ -547,15 +553,15 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement>
    * A property that describes the behavior of `_startFillerElement`.
    */
   protected _startFillerElementProperty: Property<HTMLElement> = new Property(
-    ScrollView._startFillerElementPropertyName,
+    ScrollRenderer._startFillerElementPropertyName,
     (thisValue, manager) => {
       const target: HTMLElement = manager.getPropertyValue('_target');
       const targetVersion = manager.getPropertyValueSnapshotVersionWithName(
-        ScrollView._targetPropertyName
+        ScrollRenderer._targetPropertyName
       );
 
       thisValue.shouldReuseLastValue = (_, manager) =>
-        manager.isSnapshotVersionUpToDate(ScrollView._targetPropertyName, targetVersion);
+        manager.isSnapshotVersionUpToDate(ScrollRenderer._targetPropertyName, targetVersion);
 
       return this.createFillerElementIfTargetIsDefined__(target, true);
     },
@@ -578,33 +584,33 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement>
    * A property that describes the behavior of `_startFillerLength`.
    */
   protected _startFillerLengthProperty: Property<number> = new Property(
-    ScrollView._startFillerLengthPropertyName,
+    ScrollRenderer._startFillerLengthPropertyName,
     (thisValue, manager) => {
       // Dependency Injection: manager.getPropertyValue('_renderingView');
       const renderingViewVersion = manager.getPropertyValueSnapshotVersionWithName(
-        ScrollView._renderingViewPropertyName
+        ScrollRenderer._renderingViewPropertyName
       );
       // Dependency Injection: manager.getPropertyValue('_startFillerElement');
       const startFillerElementVersion = manager.getPropertyValueSnapshotVersionWithName(
-        ScrollView._startFillerElementPropertyName
+        ScrollRenderer._startFillerElementPropertyName
       );
 
       const elementLength: number = manager.getPropertyValue('_elementLength');
       const elementLengthVersion = manager.getPropertyValueSnapshotVersionWithName(
-        ScrollView._elementLengthPropertyName
+        ScrollRenderer._elementLengthPropertyName
       );
 
       thisValue.shouldReuseLastValue = (_, manager) =>
         manager.isSnapshotVersionUpToDate(
-          ScrollView._renderingViewPropertyName,
+          ScrollRenderer._renderingViewPropertyName,
           renderingViewVersion
         ) &&
         manager.isSnapshotVersionUpToDate(
-          ScrollView._startFillerElementPropertyName,
+          ScrollRenderer._startFillerElementPropertyName,
           startFillerElementVersion
         ) &&
         manager.isSnapshotVersionUpToDate(
-          ScrollView._elementLengthPropertyName,
+          ScrollRenderer._elementLengthPropertyName,
           elementLengthVersion
         );
 
@@ -631,29 +637,32 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement>
    * A property that describes the behavior of `_startFillerOffset`.
    */
   protected _startFillerOffsetProperty: Property<number> = new Property(
-    ScrollView._startFillerOffsetPropertyName,
+    ScrollRenderer._startFillerOffsetPropertyName,
     (thisValue, manager) => {
       const scrollAxis: ScreenAxis = manager.getPropertyValue('_scrollAxis');
       const scrollAxisVersion = manager.getPropertyValueSnapshotVersionWithName(
-        ScrollView._scrollAxisPropertyName
+        ScrollRenderer._scrollAxisPropertyName
       );
       const startFillerElement: HTMLElement = manager.getPropertyValue('_startFillerElement');
       const startFillerElementVersion = manager.getPropertyValueSnapshotVersionWithName(
-        ScrollView._startFillerElementPropertyName
+        ScrollRenderer._startFillerElementPropertyName
       );
       const scrollTarget: HTMLElement = manager.getPropertyValue('_scrollTarget');
       const scrollTargetVersion = manager.getPropertyValueSnapshotVersionWithName(
-        ScrollView._scrollTargetPropertyName
+        ScrollRenderer._scrollTargetPropertyName
       );
 
       thisValue.shouldReuseLastValue = (_, manager) =>
-        manager.isSnapshotVersionUpToDate(ScrollView._scrollAxisPropertyName, scrollAxisVersion) &&
         manager.isSnapshotVersionUpToDate(
-          ScrollView._startFillerElementPropertyName,
+          ScrollRenderer._scrollAxisPropertyName,
+          scrollAxisVersion
+        ) &&
+        manager.isSnapshotVersionUpToDate(
+          ScrollRenderer._startFillerElementPropertyName,
           startFillerElementVersion
         ) &&
         manager.isSnapshotVersionUpToDate(
-          ScrollView._scrollTargetPropertyName,
+          ScrollRenderer._scrollTargetPropertyName,
           scrollTargetVersion
         );
 
@@ -691,15 +700,15 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement>
    * A property that describes the behavior of `_endFillerElement`.
    */
   protected _endFillerElementProperty: Property<HTMLElement> = new Property(
-    ScrollView._endFillerElementPropertyName,
+    ScrollRenderer._endFillerElementPropertyName,
     (thisValue, manager) => {
       const target: HTMLElement = manager.getPropertyValue('_target');
       const targetVersion = manager.getPropertyValueSnapshotVersionWithName(
-        ScrollView._targetPropertyName
+        ScrollRenderer._targetPropertyName
       );
 
       thisValue.shouldReuseLastValue = (_, manager) =>
-        manager.isSnapshotVersionUpToDate(ScrollView._targetPropertyName, targetVersion);
+        manager.isSnapshotVersionUpToDate(ScrollRenderer._targetPropertyName, targetVersion);
 
       return this.createFillerElementIfTargetIsDefined__(target, false);
     },
@@ -722,32 +731,32 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement>
    * A property that describes the behavior of `_endFillerLength`.
    */
   protected _endFillerLengthProperty: Property<number> = new Property(
-    ScrollView._endFillerLengthPropertyName,
+    ScrollRenderer._endFillerLengthPropertyName,
     (thisValue, manager) => {
       // Dependency Injection: manager.getPropertyValue('_renderingView');
       const renderingViewVersion = manager.getPropertyValueSnapshotVersionWithName(
-        ScrollView._renderingViewPropertyName
+        ScrollRenderer._renderingViewPropertyName
       );
       // Dependency Injection: manager.getPropertyValue('_endFillerElement');
       const endFillerElementVersion = manager.getPropertyValueSnapshotVersionWithName(
-        ScrollView._endFillerElementPropertyName
+        ScrollRenderer._endFillerElementPropertyName
       );
       // Dependency Injection: manager.getPropertyValue('_elementLength');
       const elementLengthVersion = manager.getPropertyValueSnapshotVersionWithName(
-        ScrollView._elementLengthPropertyName
+        ScrollRenderer._elementLengthPropertyName
       );
 
       thisValue.shouldReuseLastValue = (_thisValue, manager) =>
         manager.isSnapshotVersionUpToDate(
-          ScrollView._renderingViewPropertyName,
+          ScrollRenderer._renderingViewPropertyName,
           renderingViewVersion
         ) &&
         manager.isSnapshotVersionUpToDate(
-          ScrollView._endFillerElementPropertyName,
+          ScrollRenderer._endFillerElementPropertyName,
           endFillerElementVersion
         ) &&
         manager.isSnapshotVersionUpToDate(
-          ScrollView._elementLengthPropertyName,
+          ScrollRenderer._elementLengthPropertyName,
           elementLengthVersion
         );
 
@@ -1325,7 +1334,7 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement>
     const shouldMuteMutationReporter = this._targetChildListMutationReporter !== undefined;
 
     this.deactivateObservers__();
-    this.invoke(ScrollView.beforeRenderingViewUpdateEventName, this);
+    this.invoke(ScrollRenderer.beforeRenderingViewUpdateEventName, this);
     shouldMuteMutationReporter && this._targetChildListMutationReporter.unobserve();
 
     modification();
@@ -1345,7 +1354,7 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement>
       this._renderingViewProperty,
       this._propertyManager
     );
-    this.invoke(ScrollView.afterRenderingViewUpdateEventName, this);
+    this.invoke(ScrollRenderer.afterRenderingViewUpdateEventName, this);
     this.activateObservers__();
   }
 
