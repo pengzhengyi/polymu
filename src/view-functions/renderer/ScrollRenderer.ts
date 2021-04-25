@@ -26,7 +26,7 @@ import {
   isScrollDirectionTowardsEnd,
   ScrollDirection,
 } from '../../dom/scroll';
-import { debounceWithCooldown } from '../../utils/debounce';
+import { executeAfterCooldown } from '../../utils/debounce';
 import { bound } from '../../utils/math';
 import { ViewElement } from '../../view-element/ViewElement';
 import { ViewElementChildListMutationReporter } from '../../views/ViewElementChildListMutationReporter';
@@ -897,7 +897,7 @@ export class ScrollRenderer<TViewElement, TDomElement extends HTMLElement>
 
     observeTarget.addEventListener(
       'scroll',
-      debounceWithCooldown((event) => {
+      executeAfterCooldown((event) => {
         if (
           event.target === this._scrollTarget ||
           (document === event.target && document.documentElement === this._scrollTarget)

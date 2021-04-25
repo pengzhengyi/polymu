@@ -13,7 +13,7 @@ import {
   UnmaterializableCollectionProvider,
 } from './collections/Collection';
 import { Transform } from './view-functions/transformation/Transform';
-import { debounceWithCooldown } from './utils/debounce';
+import { executeAfterCooldown, rateLimit } from './utils/debounce';
 
 export {
   ViewElement,
@@ -29,5 +29,6 @@ export {
   Collection,
   LazyCollectionProvider,
   UnmaterializableCollectionProvider,
-  debounceWithCooldown,
+  rateLimit,
+  executeAfterCooldown,
 };
