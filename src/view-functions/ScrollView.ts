@@ -224,21 +224,25 @@ export class ScrollView<TViewElement, TDomElement extends HTMLElement>
     ScrollView._renderingViewPropertyName,
     (thisValue, manager) => {
       // The following dependencies are used in delegating calls to `handleReplaceRenderingStrategy__` and `handleShiftRenderingStrategy__` so they need to be hoisted here
-      // Dependency Injection: manager.getPropertyValue('_shiftAmount');
+      const shiftAmount: number = manager.getPropertyValue('_shiftAmount');
       // Dependency Injection: manager.getPropertyValue('_target');
       const renderingStrategy: RenderingStrategy = manager.getPropertyValue('_renderingStrategy');
 
       switch (renderingStrategy) {
         case RenderingStrategy.NoAction:
           break;
+        case RenderingStrategy.Shift:
+          if (this.windowSize && Math.abs(shiftAmount) < this.windowSize) {
+            this.modifyRenderingView__(() => {
+              this.handleShiftRenderingStrategy__();
+            });
+            break;
+          }
+        // when `shiftAmount` is larger than the window size, then it is equivalent to a full replacement
+        // fall through
         case RenderingStrategy.Replace:
           this.modifyRenderingView__(() => {
             this.handleReplaceRenderingStrategy__();
-          });
-          break;
-        case RenderingStrategy.Shift:
-          this.modifyRenderingView__(() => {
-            this.handleShiftRenderingStrategy__();
           });
           break;
       }
